@@ -23,6 +23,16 @@ func main() {
 		return c.JSON(brands)
 	})
 
+	app.Get("/sets", func(c *fiber.Ctx) error {
+		brands, err := models.GetSets()
+
+		if err != nil {
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+
+		return c.JSON(brands)
+	})
+
 	if err := app.Listen(":3000"); err != nil {
 		log.Fatal("Fiber: Failed to start server.")
 	}

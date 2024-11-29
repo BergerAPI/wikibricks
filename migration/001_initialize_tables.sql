@@ -9,5 +9,5 @@ create table if not exists t_set(
     name varchar(255),
     description text,
     pieces integer,
-    brand_id integer references t_brand(id)
+    brand_id integer references t_brand(id) on delete cascade
 );
