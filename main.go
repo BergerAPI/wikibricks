@@ -7,6 +7,12 @@ import (
 	"log"
 )
 
+type Brand struct {
+	Id          int32  `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
 func main() {
 	app := fiber.New()
 
@@ -23,8 +29,21 @@ func main() {
 		}
 	}(conn, context.Background())
 
-	app.Get("/", func(c *fiber.Ctx) error {
-		return c.SendString("Hello, World!")
+	app.Get("/brands", func(c *fiber.Ctx) error {
+		rows, err := conn.Query(context.Background(), "SELECT * from t_brand;")
+		defer rows.Close()
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		brands, err := pgx.CollectRows(rows, pgx.RowToStructByName[Brand])
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		return c.JSON(brands)
 	})
 
 	if err := app.Listen(":3000"); err != nil {
