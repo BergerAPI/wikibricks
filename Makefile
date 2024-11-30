@@ -1,3 +1,3 @@
 build:
-	npx tailwindcss -i ./global.css -o ./views/style/tailwind.css
+	npm run build
 	go build -o ./tmp/main.exe .
