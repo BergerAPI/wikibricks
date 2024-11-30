@@ -8,7 +8,7 @@ import (
 	"log"
 	"net/http"
 	"wikibricks/internal/database"
-	models2 "wikibricks/internal/models"
+	"wikibricks/internal/models"
 )
 
 //go:embed views/*
@@ -44,7 +44,7 @@ func main() {
 	database.InitDatabase("postgres://postgres:password@localhost:5432")
 
 	app.Get("/brands", func(c *fiber.Ctx) error {
-		brands, err := models2.GetBrands()
+		brands, err := models.GetBrands()
 
 		if err != nil {
 			return c.SendStatus(fiber.StatusInternalServerError)
@@ -57,7 +57,7 @@ func main() {
 	})
 
 	app.Get("/sets", func(c *fiber.Ctx) error {
-		sets, err := models2.GetSets()
+		sets, err := models.GetSets()
 
 		if err != nil {
 			return c.SendStatus(fiber.StatusInternalServerError)

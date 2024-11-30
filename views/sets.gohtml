@@ -1,36 +1,34 @@
-{{define "content"}}
-    <div class="grid grid-cols-1 grid-rows-2 lg:grid-rows-1 lg:grid-cols-[200px_1fr_200px]">
-        <div></div>
-        <div class="order-1">
-            <main>
-                <h1 class="text-3xl font-serif pb-2 mb-3 border-b border-b-black">Sets</h1>
+<main>
+    <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Sets</h1>
 
-                <p class="text-pretty mb-2">
-                    Bricks have captivated builders and enthusiasts for generations, serving as the foundation for creativity and engineering. Renowned companies like LEGO, known for their iconic interlocking plastic bricks, and BlueBrixx, which specializes in detailed and innovative designs, have brought endless possibilities to fans around the world. From classic sets to modern architectural marvels, the diverse offerings from various brands continue to inspire imagination and craftsmanship. Explore the rich variety of brick collections that have shaped the way we play, create, and construct.
-                </p>
+    <p class="text-pretty">
+        Bricks have captivated builders and enthusiasts for generations, serving as the foundation for
+        creativity and engineering. Renowned companies like LEGO, known for their iconic interlocking plastic
+        bricks, and BlueBrixx, which specializes in detailed and innovative designs, have brought endless
+        possibilities to fans around the world. From classic sets to modern architectural marvels, the diverse
+        offerings from various brands continue to inspire imagination and craftsmanship. Explore the rich
+        variety of brick collections that have shaped the way we play, create, and construct.
+    </p>
 
-                <table class="min-w-full border-collapse border">
-                    <thead>
-                        <tr class="[&>th]:border">
-                            <th>Brand</th>
-                            <th>Name</th>
-                        </tr>
-                    </thead>
+    <table class="mt-4 min-w-full border-collapse border">
+        <thead>
+        <tr class="[&>th]:border">
+            <th>Brand</th>
+            <th>Name</th>
+        </tr>
+        </thead>
 
-                    <tbody>
-                    {{range .Sets}}
-                        <tr class="[&>td]:border">
-                            <td>
-                                <a href="#">{{.BrandName}}</a>
-                            </td>
-                            <td>
-                                <a href="/sets/{{.Id}}">{{.Name}}</a>
-                            </td>
-                        </tr>
-                    {{end}}
-                    </tbody>
-                </table>
-            </main>
-        </div>
-    </div>
-{{end}}
+        <tbody>
+        {{range .Sets}}
+            <tr class="[&>td]:border">
+                <td>
+                    <a href="#">{{.BrandName}}</a>
+                </td>
+                <td>
+                    <a href="/sets/{{.Id}}">{{.Name}}</a>
+                </td>
+            </tr>
+        {{end}}
+        </tbody>
+    </table>
+</main>

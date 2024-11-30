@@ -54,7 +54,7 @@
                     {{template "logo"}}
                 </a>
 
-                <div class="flex">
+                <div class="hidden md:flex">
                     <label for="search" class="sr-only">Search Wikibricks</label>
                     <input id="search" class="py-1.5 px-1 border mr-0" placeholder="Search Wikibricks"/>
                     <button class="border font-semibold bg-gray-200 px-1 py-1.5 ml-0">Search</button>
@@ -67,7 +67,10 @@
             </nav>
         </div>
     </header>
-    {{template "content" .}}
+    <div class="flex xl:grid grid-cols-[200px_1fr_200px]">
+        <div></div>
+        {{embed}}
+    </div>
     <footer class="py-4 mt-12 border-t">
         <div class="container mx-auto text-center text-sm text-gray-600">
             <p>Content is available under CC BY-SA unless otherwise noted. Terms of Use | Privacy Policy</p>

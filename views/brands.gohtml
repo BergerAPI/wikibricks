@@ -1,7 +1,17 @@
-{{define "content"}}
 <main>
-    <h1>Brands</h1>
-    <ul>
+    <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Brands</h1>
+
+    <p class="text-pretty">
+        Bricks have played an integral role in both construction and creativity, serving as a foundation for everything
+        from towering structures to imaginative play. Whether used to build architectural marvels or to spark the
+        boundless creativity of children and hobbyists, bricks come in many forms and applications. Iconic companies
+        like LEGO have transformed the toy industry with their precisely crafted interlocking pieces, inspiring
+        generations of builders. Similarly, brands such as BlueBrixx provide unique and specialized sets, catering to
+        enthusiasts who seek diverse and intricate building experiences. These and other companies highlight the
+        timeless versatility of bricks in countless contexts.
+    </p>
+
+    <ul class="mt-4">
         {{range .Brands}}
             <li>
                 <a href="/brands/{{.Id}}">{{.Name}}</a>
@@ -9,4 +19,3 @@
         {{end}}
     </ul>
 </main>
-{{end}}
