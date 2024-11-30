@@ -4,6 +4,7 @@ import (
 	"embed"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/template/html/v2"
+	"html/template"
 	"log"
 	"net/http"
 	"wikibricks/database"
@@ -15,6 +16,22 @@ var views embed.FS
 
 func main() {
 	engine := html.NewFileSystem(http.FS(views), ".gohtml")
+
+	// For reading external styling and files
+	engine.AddFuncMap(template.FuncMap{
+		"read": func(s string) string {
+			bytes, err := views.ReadFile(s)
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			return string(bytes)
+		},
+		"unescape": func(s string) template.HTML {
+			return template.HTML(s)
+		},
+	})
 
 	app := fiber.New(fiber.Config{
 		Views: engine,
