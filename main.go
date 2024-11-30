@@ -16,7 +16,7 @@ import (
 var views embed.FS
 
 func main() {
-	engine := html.NewFileSystem(http.FS(views), ".gohtml")
+	engine := html.NewFileSystem(http.FS(views), ".go.html")
 
 	// For reading external styling and files
 	engine.AddFuncMap(template.FuncMap{
