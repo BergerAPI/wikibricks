@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strconv"
 	"wikibricks/internal/database"
 	"wikibricks/internal/models"
 )
@@ -65,6 +66,44 @@ func main() {
 
 		return c.Render("views/sets", fiber.Map{
 			"Sets":  sets,
+			"Title": "Sets Overview | Wikibricks",
+		}, "views/partials/layout")
+	})
+
+	app.Get("/sets/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.Atoi(c.Params("id"))
+
+		if err != nil {
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
+
+		set, err := models.GetSetById(int32(id))
+
+		if err != nil {
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+
+		return c.Render("views/single_set", fiber.Map{
+			"Set":   set,
+			"Title": "Sets Overview | Wikibricks",
+		}, "views/partials/layout")
+	})
+
+	app.Get("/brands/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.Atoi(c.Params("id"))
+
+		if err != nil {
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
+
+		brand, err := models.GetBrandById(int32(id))
+
+		if err != nil {
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+
+		return c.Render("views/single_brand", fiber.Map{
+			"Brand": brand,
 			"Title": "Sets Overview | Wikibricks",
 		}, "views/partials/layout")
 	})

@@ -14,7 +14,10 @@
     <ul class="mt-4">
         {{range .Brands}}
             <li>
-                <a href="/brands/{{.Id}}">{{.Name}}</a>
+                <span>
+                    <a href="/brands/{{.Id}}">{{.Name}}</a>
+                    (<a href="/brands/{{.Id}}">{{.Id}}</a>)
+                </span>
             </li>
         {{end}}
     </ul>

@@ -15,6 +15,7 @@ type Set struct {
 	BrandName   string `json:"brand_name" db:"brand_name"`
 }
 
+// GetSets returns all sets joined with the brand they originate from
 func GetSets() ([]Set, error) {
 	rows, err := database.Instance.Query(database.Context, "SELECT t_set.*, tb.name as brand_name from t_set join public.t_brand tb on tb.id = t_set.brand_id;")
 	defer rows.Close()
@@ -30,4 +31,22 @@ func GetSets() ([]Set, error) {
 	}
 
 	return sets, nil
+}
+
+// GetSetById returns one set by its id joined with the brand they originate from
+func GetSetById(id int32) (Set, error) {
+	rows, err := database.Instance.Query(database.Context, "SELECT t_set.*, tb.name as brand_name from t_set join public.t_brand tb on tb.id = t_set.brand_id where t_set.id = $1;", id)
+	defer rows.Close()
+
+	if err != nil {
+		return Set{}, errors.New("failed to run query")
+	}
+
+	set, err := pgx.CollectExactlyOneRow(rows, pgx.RowToStructByName[Set])
+
+	if err != nil {
+		return Set{}, errors.New("failed to collect rows")
+	}
+
+	return set, nil
 }
