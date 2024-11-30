@@ -44,6 +44,26 @@ func main() {
 	// Connecting to the database
 	database.InitDatabase("postgres://postgres:password@localhost:5432")
 
+	app.Get("/", func(c *fiber.Ctx) error {
+		brands, err := models.GetBrands()
+
+		if err != nil {
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+
+		sets, err := models.GetSets()
+
+		if err != nil {
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+
+		return c.Render("views/index", fiber.Map{
+			"Brands": brands,
+			"Sets":   sets,
+			"Title":  "Brand Overview | Wikibricks",
+		}, "views/partials/layout")
+	})
+
 	app.Get("/brands", func(c *fiber.Ctx) error {
 		brands, err := models.GetBrands()
 
