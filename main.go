@@ -31,6 +31,9 @@ func main() {
 		"unescape": func(s string) template.HTML {
 			return template.HTML(s)
 		},
+		"unescape_css": func(s string) template.CSS {
+			return template.CSS(s)
+		},
 	})
 
 	app := fiber.New(fiber.Config{
@@ -50,7 +53,7 @@ func main() {
 		return c.Render("views/brands", fiber.Map{
 			"Brands": brands,
 			"Title":  "Brand Overview | Wikibricks",
-		}, "views/layout")
+		}, "views/partials/layout")
 	})
 
 	app.Get("/sets", func(c *fiber.Ctx) error {
@@ -63,7 +66,7 @@ func main() {
 		return c.Render("views/sets", fiber.Map{
 			"Sets":  sets,
 			"Title": "Sets Overview | Wikibricks",
-		}, "views/layout")
+		}, "views/partials/layout")
 	})
 
 	if err := app.Listen(":3000"); err != nil {

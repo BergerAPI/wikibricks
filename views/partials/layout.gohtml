@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>
+        {{if .Title}}
+            {{.Title}}
+        {{else}}
+            Wikibricks - Your place to meet all your brick needs
+        {{end}}
+    </title>
+    <style>
+        {{unescape_css (read "views/style/tailwind.css")}}
+    </style>
+    <!-- <link rel="stylesheet" href="./style.css"> -->
+    <link rel="icon"
+          href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>😳</text></svg>"/>
+</head>
+<body>
+<header class="bg-gray-200 py-3 shadow">
+    <div class="container mx-auto flex justify-between items-center px-4">
+        <a href="#" class="text-xl font-bold">Wikipedia</a>
+        <nav class="space-x-4">
+            <a href="#" class="text-sm text-gray-700 hover:text-blue-600">Main Page</a>
+            <a href="#" class="text-sm text-gray-700 hover:text-blue-600">Contents</a>
+            <a href="#" class="text-sm text-gray-700 hover:text-blue-600">Current Events</a>
+            <a href="#" class="text-sm text-gray-700 hover:text-blue-600">Random Article</a>
+        </nav>
+    </div>
+</header>
+{{template "content" .}}
+<footer class="bg-gray-200 py-4 mt-12">
+    <div class="container mx-auto px-4 text-center text-sm text-gray-600">
+        <p>Content is available under CC BY-SA unless otherwise noted. Terms of Use | Privacy Policy</p>
+    </div>
+</footer>
+</body>
+</html>
