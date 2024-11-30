@@ -3,23 +3,13 @@
 @tailwind utilities;
 
 body {
-    background-color: #f9f9f9;
-    color: #202122;
-    line-height: 1.6;
+    @apply bg-[#f9f9f9] text-[#202122] leading-5
 }
 
 a {
-    color: #0645ad;
-    text-decoration: none;
+    @apply text-blue-800 hover:underline
 }
 
-a:hover {
-    text-decoration: underline;
-}
-
-h1 {
-    font-size: 2em;
-    margin-bottom: 10px;
-    border-bottom: 1px solid #a2a9b1;
-    padding-bottom: 5px;
+ol, ul {
+    @apply pl-5 space-y-2 list-disc marker:text-gray-950
 }
