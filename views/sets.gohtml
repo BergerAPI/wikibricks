@@ -1,0 +1,12 @@
+{{define "content"}}
+<main>
+    <h1>Sets</h1>
+    <ul>
+        {{range .Sets}}
+            <li>
+                <a href="/set/{{.Id}}">{{.Name}}</a>
+            </li>
+        {{end}}
+    </ul>
+</main>
+{{end}}

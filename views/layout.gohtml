@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>
+        {{if .Title}}
+            {{.Title}}
+        {{else}}
+            Wikibricks - Your place to meet all your brick needs
+        {{end}}
+    </title>
+    <style>
+        body {
+            background-color: #f9f9f9;
+            color: #202122;
+            line-height: 1.6;
+        }
+
+        a {
+            color: #0645ad;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #a2a9b1;
+            padding-bottom: 5px;
+        }
+    </style>
+    <!-- <link rel="stylesheet" href="./style.css"> -->
+    <link rel="icon"
+          href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>😳</text></svg>"/>
+</head>
+<body>
+<header>
+    <div id="logo">
+        <a href="#">Wikipedia</a>
+    </div>
+    <nav>
+        <a href="#">Main Page</a>
+        <a href="#">Contents</a>
+        <a href="#">Current Events</a>
+        <a href="#">Random Article</a>
+    </nav>
+</header>
+{{template "content" .}}
+<footer>
+    <p>Content is available under <a href="#">CC BY-SA 3.0</a> unless otherwise noted.</p>
+</footer>
+</body>
+</html>

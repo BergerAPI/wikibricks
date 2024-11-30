@@ -1,14 +1,24 @@
 package main
 
 import (
+	"embed"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/template/html/v2"
 	"log"
+	"net/http"
 	"wikibricks/database"
 	"wikibricks/models"
 )
 
+//go:embed views/*
+var views embed.FS
+
 func main() {
-	app := fiber.New()
+	engine := html.NewFileSystem(http.FS(views), ".gohtml")
+
+	app := fiber.New(fiber.Config{
+		Views: engine,
+	})
 
 	// Connecting to the database
 	database.InitDatabase("postgres://postgres:password@localhost:5432")
@@ -20,17 +30,23 @@ func main() {
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
-		return c.JSON(brands)
+		return c.Render("views/brands", fiber.Map{
+			"Brands": brands,
+			"Title":  "Brand Overview | Wikibricks",
+		}, "views/layout")
 	})
 
 	app.Get("/sets", func(c *fiber.Ctx) error {
-		brands, err := models.GetSets()
+		sets, err := models.GetSets()
 
 		if err != nil {
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
-		return c.JSON(brands)
+		return c.Render("views/sets", fiber.Map{
+			"Sets":  sets,
+			"Title": "Sets Overview | Wikibricks",
+		}, "views/layout")
 	})
 
 	if err := app.Listen(":3000"); err != nil {

@@ -1,0 +1,12 @@
+{{define "content"}}
+<main>
+    <h1>Brands</h1>
+    <ul>
+        {{range .Brands}}
+            <li>
+                <a href="/brands/{{.Id}}">{{.Name}}</a>
+            </li>
+        {{end}}
+    </ul>
+</main>
+{{end}}
