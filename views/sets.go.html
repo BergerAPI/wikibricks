@@ -1,5 +1,8 @@
-<main>
-    <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Sets</h1>
+<main class="min-w-0">
+    <div class="flex justify-between">
+        <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Sets</h1>
+        <a href="/sets/add">Add set</a>
+    </div>
 
     <p class="text-pretty">
         Bricks have captivated builders and enthusiasts for generations, serving as the foundation for
@@ -10,25 +13,31 @@
         variety of brick collections that have shaped the way we play, create, and construct.
     </p>
 
-    <table class="mt-4 min-w-full border-collapse border">
-        <thead>
-        <tr class="[&>th]:border">
-            <th>Brand</th>
-            <th>Name</th>
-        </tr>
-        </thead>
+    <div class="min-w-full overflow-x-scroll">
+        <table class="table-auto w-full mt-4 border-collapse border overflow-x-scroll">
+            <thead>
+                <tr class="[&>th]:border bg-background">
+                    <th>Brand</th>
+                    <th>Name</th>
+                    <th>Pieces</th>
+                </tr>
+            </thead>
 
-        <tbody>
-        {{range .Sets}}
-            <tr class="[&>td]:border">
-                <td>
-                    <a href="/brands/{{.BrandId}}">{{.BrandName}}</a>
-                </td>
-                <td>
-                    <a href="/sets/{{.Id}}">{{.Name}}</a>
-                </td>
-            </tr>
-        {{end}}
-        </tbody>
-    </table>
+            <tbody>
+                {{range .Sets}}
+                <tr class="[&>td]:border [&>td]:p-1">
+                    <td>
+                        <a href="/brands/{{.BrandId}}">{{.BrandName}}</a>
+                    </td>
+                    <td>
+                        <a href="/sets/{{.Id}}">{{.Name}}</a>
+                    </td>
+                    <td>
+                        {{.Pieces}}
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
 </main>

@@ -1,0 +1,45 @@
+<main>
+    <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Add Set</h1>
+
+    {{if not (eq .Error "")}}
+    <div class="border border-red-300 p-2 mb-4 bg-red-200">
+        <p class="font-semibold">Oops! Something went wrong</p>
+        <p>{{.Error}}</p>
+    </div>
+    {{end}}
+
+    {{if not (eq .Info "")}}
+    <div class="border border-green-300 p-2 mb-4 bg-green-200">
+        <p class="font-semibold">Information</p>
+        <p>{{.Info}}</p>
+    </div>
+    {{end}}
+
+    <form action="/sets/add" method="post" class="flex flex-col [&>label]:block [&>label>span]:text-gray-700 space-y-2">
+        <label>
+            <span>Name</span>
+            <input class="mt-1 block w-full" name="name" placeholder="Tuxedo Cat"/>
+        </label>
+
+        <label>
+            <span>Description</span>
+            <textarea class="mt-1 block w-full" name="description"></textarea>
+        </label>
+
+        <label>
+            <span>Piece Count</span>
+            <input class="mt-1 block w-full" name="pieces" type="number"/>
+        </label>
+
+        <label>
+            <span>Brand</span>
+            <select class="mt-1 block w-full" name="brand" type="number">
+                {{range .Brands}}
+                <option value="{{.Id}}">{{.Name}}</option>
+                {{end}}
+            </select>
+        </label>
+
+        <button type="submit">Submit</button>
+    </form>
+</main>
