@@ -3,7 +3,7 @@ package models
 import (
 	"errors"
 	"github.com/jackc/pgx/v5"
-	"wikibricks/database"
+	"wikibricks/internal/database"
 )
 
 type Set struct {
