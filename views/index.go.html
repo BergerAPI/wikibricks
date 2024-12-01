@@ -32,7 +32,7 @@
         <ul>
             {{range .Sets}}
             <li>
-                <a href="/sets/{{.Id}}">{{.Name}}</a> - {{.Description}}
+                <a href="/sets/{{.Id}}">{{.Name}}</a> - {{elipse 250 .Description}}
             </li>
             {{end}}
         </ul>
@@ -46,7 +46,7 @@
         <ul>
             {{range .Brands}}
             <li>
-                <a href="/brands/{{.Id}}">{{.Name}}</a> - {{.Description}}
+                <a href="/brands/{{.Id}}">{{.Name}}</a> - {{elipse 250 .Description}}
             </li>
             {{end}}
         </ul>

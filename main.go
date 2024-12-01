@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"fmt"
+	"github.com/samber/lo"
 	"html/template"
 	"log"
 	"net/http"
@@ -38,6 +39,7 @@ func main() {
 		"unescape_css": func(s string) template.CSS {
 			return template.CSS(s)
 		},
+		"elipse": func(size int, s string) string { return lo.Elipse(s, size) },
 	})
 
 	app := fiber.New(fiber.Config{
