@@ -16,7 +16,7 @@ func InitDatabase(connString string) {
 
 	conn, err := pgx.Connect(Context, connString)
 	if err != nil {
-		log.Fatal("Unable to connect to database")
+		log.Fatal(err)
 	}
 
 	Instance = conn
