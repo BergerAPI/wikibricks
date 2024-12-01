@@ -2,8 +2,9 @@ package models
 
 import (
 	"errors"
-	"github.com/jackc/pgx/v5"
 	"wikibricks/internal/database"
+
+	"github.com/jackc/pgx/v5"
 )
 
 type Brand struct {
@@ -12,8 +13,8 @@ type Brand struct {
 	Description string `json:"description"`
 }
 
-func GetBrands() ([]Brand, error) {
-	rows, err := database.Instance.Query(database.Context, "SELECT * from t_brand;")
+func GetBrands(limit, offset int) ([]Brand, error) {
+	rows, err := database.Instance.Query(database.Context, "SELECT * from t_brand limit $1 offset $2;", limit, offset)
 	defer rows.Close()
 
 	if err != nil {

@@ -3,13 +3,32 @@
 @tailwind utilities;
 
 body {
-    @apply bg-[#f9f9f9] text-[#202122] leading-5
+  @apply bg-background text-[#202122] leading-5;
 }
 
 a {
-    @apply text-blue-800 hover:underline
+  @apply text-blue-800 hover:underline;
 }
 
-ol, ul {
-    @apply pl-5 space-y-2 list-disc marker:text-gray-950
+input,
+textarea {
+  @apply border p-1;
+}
+
+button {
+  @apply border p-1;
+}
+
+select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-size: 1.5em 1.5em;
+  background-repeat: no-repeat;
+
+  @apply border rounded-none p-1 bg-white appearance-none;
+}
+
+ol,
+ul {
+  @apply pl-5 space-y-2 list-disc marker:text-gray-950;
 }

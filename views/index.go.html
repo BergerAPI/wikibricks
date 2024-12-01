@@ -1,4 +1,4 @@
-<main class="container mx-auto mt-6 px-6">
+<main>
     <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Wikibricks</h1>
 
     <p class="font-bold">Welcome to Wikibricks!</p>
@@ -9,7 +9,7 @@
         fascinating universe of toy bricks.
     </p>
 
-    <ul>
+    <ul class="mt-2">
         <li>
             <span class="font-semibold">Browse Sets:</span>
             Explore detailed information on iconic sets from your favorite brands.
@@ -31,9 +31,9 @@
         </div>
         <ul>
             {{range .Sets}}
-                <li>
-                    <a href="/sets/{{.Id}}">{{.Name}}</a> - {{.Description}}
-                </li>
+            <li>
+                <a href="/sets/{{.Id}}">{{.Name}}</a> - {{elipse 250 .Description}}
+            </li>
             {{end}}
         </ul>
     </section>
@@ -45,9 +45,9 @@
         </div>
         <ul>
             {{range .Brands}}
-                <li>
-                    <a href="/brands/{{.Id}}">{{.Name}}</a> - {{.Description}}
-                </li>
+            <li>
+                <a href="/brands/{{.Id}}">{{.Name}}</a> - {{elipse 250 .Description}}
+            </li>
             {{end}}
         </ul>
     </section>
