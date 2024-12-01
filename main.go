@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"wikibricks/internal/database"
 	"wikibricks/internal/models"
@@ -47,7 +48,7 @@ func main() {
 	})
 
 	// Connecting to the database
-	database.InitDatabase("postgres://postgres:password@localhost:5432")
+	database.InitDatabase(os.Getenv("DB_CONN"))
 
 	app.Get("/", func(c *fiber.Ctx) error {
 		brands, err := models.GetBrands(3, 0)
