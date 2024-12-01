@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"embed"
 	"fmt"
 	"github.com/samber/lo"
+	"github.com/yuin/goldmark"
 	"html/template"
 	"log"
 	"net/http"
@@ -133,12 +135,18 @@ func main() {
 		}{}
 
 		if err := c.BodyParser(&payload); err != nil {
-			return err
+			return c.Redirect("/sets/add?error=" + url.QueryEscape(err.Error()))
+		}
+
+		// Converting the description from Markdown to HTML
+		var buf bytes.Buffer
+		if err := goldmark.Convert([]byte(payload.Description), &buf); err != nil {
+			return c.Redirect("/sets/add?error=" + url.QueryEscape(err.Error()))
 		}
 
 		err := models.InsertSet(models.Set{
 			Name:        payload.Name,
-			Description: payload.Description,
+			Description: buf.String(),
 			Pieces:      payload.Pieces,
 			BrandId:     payload.Brand,
 		})

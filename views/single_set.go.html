@@ -9,7 +9,8 @@
             </tr>
             <tr>
                 <td colspan="2">
-                    <img class="px-1" src="https://placehold.co/800x800" width="800" height="800" loading="lazy" decoding="async"
+                    <img class="px-1" src="https://placehold.co/800x800" width="800" height="800" loading="lazy"
+                         decoding="async"
                          alt="Image of {{.Set.Name}}"/>
                 </td>
             </tr>
@@ -19,13 +20,17 @@
             </tr>
             <tr>
                 <th scope="row" class="text-left">Brand</th>
-                <td class="text-left">{{.Set.BrandName}}</td>
+                <td class="text-left">
+                    <a href="/brands/{{.Set.BrandId}}">
+                        {{.Set.BrandName}}
+                    </a>
+                </td>
             </tr>
             </tbody>
         </table>
     </div>
 
-    <p class="text-pretty">
-        {{.Set.Description}}
-    </p>
+    <div class="text-pretty [&>ul]:mt-2">
+        {{unescape .Set.Description}}
+    </div>
 </main>
