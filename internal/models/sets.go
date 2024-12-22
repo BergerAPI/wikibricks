@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"errors"
 	"wikibricks/internal/database"
 
@@ -18,7 +19,7 @@ type Set struct {
 
 // GetSets returns all sets joined with the brand they originate from
 func GetSets(limit, offset int) ([]Set, error) {
-	rows, err := database.Instance.Query(database.Context, "select t_set.*, tb.name as brand_name from t_set join public.t_brand tb on tb.id = t_set.brand_id limit $1 offset $2;", limit, offset)
+	rows, err := database.Instance.Query(context.Background(), "select t_set.*, tb.name as brand_name from t_set join public.t_brand tb on tb.id = t_set.brand_id limit $1 offset $2;", limit, offset)
 	defer rows.Close()
 
 	if err != nil {
@@ -36,7 +37,7 @@ func GetSets(limit, offset int) ([]Set, error) {
 
 // GetSetById returns one set by its id joined with the brand they originate from
 func GetSetById(id int32) (Set, error) {
-	rows, err := database.Instance.Query(database.Context, "select t_set.*, tb.name as brand_name from t_set join public.t_brand tb on tb.id = t_set.brand_id where t_set.id = $1;", id)
+	rows, err := database.Instance.Query(context.Background(), "select t_set.*, tb.name as brand_name from t_set join public.t_brand tb on tb.id = t_set.brand_id where t_set.id = $1;", id)
 	defer rows.Close()
 
 	if err != nil {
@@ -54,7 +55,7 @@ func GetSetById(id int32) (Set, error) {
 
 // InsertSet creates a new set entry in the database
 func InsertSet(set Set) error {
-	_, err := database.Instance.Exec(database.Context, "insert into t_set (name, description, pieces, brand_id) values ($1, $2, $3, $4)", set.Name, set.Description, set.Pieces, set.BrandId)
+	_, err := database.Instance.Exec(context.Background(), "insert into t_set (name, description, pieces, brand_id) values ($1, $2, $3, $4)", set.Name, set.Description, set.Pieces, set.BrandId)
 	if err != nil {
 		return errors.New("unable to insert into database")
 	}

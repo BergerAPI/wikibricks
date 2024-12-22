@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 	"github.com/yuin/goldmark"
 	"net/url"
 	"strconv"
@@ -15,12 +16,14 @@ func InitializeSets(app *fiber.App) {
 		page, err := strconv.Atoi(c.Query("page", "0"))
 
 		if err != nil {
+			log.Errorf(err.Error())
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
 		sets, err := models.GetSets(100, page*100)
 
 		if err != nil {
+			log.Errorf(err.Error())
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
@@ -35,12 +38,14 @@ func InitializeSets(app *fiber.App) {
 		id, err := strconv.Atoi(c.Params("id"))
 
 		if err != nil {
+			log.Errorf(err.Error())
 			return c.SendStatus(fiber.StatusBadRequest)
 		}
 
 		set, err := models.GetSetById(int32(id))
 
 		if err != nil {
+			log.Errorf(err.Error())
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
@@ -54,6 +59,7 @@ func InitializeSets(app *fiber.App) {
 		brands, err := models.GetBrands(10000, 0)
 
 		if err != nil {
+			log.Errorf(err.Error())
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 

@@ -8,13 +8,10 @@ import (
 
 var (
 	Instance *pgx.Conn
-	Context  context.Context
 )
 
 func InitDatabase(connString string) {
-	Context = context.Background()
-
-	conn, err := pgx.Connect(Context, connString)
+	conn, err := pgx.Connect(context.Background(), connString)
 	if err != nil {
 		log.Fatal(err)
 	}

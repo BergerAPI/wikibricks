@@ -3,6 +3,7 @@ package routes
 import (
 	"fmt"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 	"strconv"
 	"wikibricks/internal/models"
 )
@@ -12,12 +13,14 @@ func InitializeBrands(app *fiber.App) {
 		page, err := strconv.Atoi(c.Query("page", "0"))
 
 		if err != nil {
+			log.Errorf(err.Error())
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
 		brands, err := models.GetBrands(100, page*100)
 
 		if err != nil {
+			log.Errorf(err.Error())
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
@@ -32,12 +35,14 @@ func InitializeBrands(app *fiber.App) {
 		id, err := strconv.Atoi(c.Params("id"))
 
 		if err != nil {
+			log.Errorf(err.Error())
 			return c.SendStatus(fiber.StatusBadRequest)
 		}
 
 		brand, err := models.GetBrandById(int32(id))
 
 		if err != nil {
+			log.Errorf(err.Error())
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 

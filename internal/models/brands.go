@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"errors"
 	"wikibricks/internal/database"
 
@@ -14,7 +15,7 @@ type Brand struct {
 }
 
 func GetBrands(limit, offset int) ([]Brand, error) {
-	rows, err := database.Instance.Query(database.Context, "SELECT * from t_brand limit $1 offset $2;", limit, offset)
+	rows, err := database.Instance.Query(context.Background(), "SELECT * from t_brand limit $1 offset $2;", limit, offset)
 	defer rows.Close()
 
 	if err != nil {
@@ -32,7 +33,7 @@ func GetBrands(limit, offset int) ([]Brand, error) {
 
 // GetBrandById returns one brand by its id
 func GetBrandById(id int32) (Brand, error) {
-	rows, err := database.Instance.Query(database.Context, "SELECT * from t_brand where id = $1;", id)
+	rows, err := database.Instance.Query(context.Background(), "SELECT * from t_brand where id = $1;", id)
 	defer rows.Close()
 
 	if err != nil {
