@@ -2,7 +2,8 @@
   "name": "my-app",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts"
+    "dev": "tsx watch src/index.tsx",
+    "dev:css": "npx tailwindcss -i ./global.css -o ./public/styles.css --watch"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",
