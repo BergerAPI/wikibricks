@@ -7,6 +7,7 @@ export type User = {
   id: number;
   username: string;
   password: string;
+  permissions: string;
   created_at: string;
 };
 

@@ -1,9 +1,12 @@
 import { type Context } from 'hono'
 import { Layout } from '../layout'
+import type { DefaultContext } from '../utils'
 
-export const handleRootPage = async (c: Context) => {
+export const handleRootPage = async (c: DefaultContext) => {
+    const user = c.get("user");
+
     return c.render(
-        <Layout>
+        <Layout user={user}>
             <main>
                 <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Wikibricks</h1>
 
