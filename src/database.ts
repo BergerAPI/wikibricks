@@ -51,5 +51,16 @@ export const initDatabase = async () => {
   );
 
   create index if not exists idx_set on t_set(name, brand_id, issued);
+
+  create table if not exists t_set_change(
+      id serial primary key,
+      set_id integer references t_set(id) on delete cascade,
+      user_id integer references t_user(id) on delete cascade,
+      old_value jsonb,
+      new_value jsonb,
+      created_at timestamp default current_timestamp
+  );
+
+  create index if not exists idx_set_change on t_set_change(set_id, user_id, created_at);
     `.simple();
 };

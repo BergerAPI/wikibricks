@@ -1,7 +1,7 @@
 import { type Context } from 'hono'
 import { Layout } from '../layout'
 
-export const handler = async (c: Context) => {
+export const handleRootPage = async (c: Context) => {
     return c.render(
         <Layout>
             <main>

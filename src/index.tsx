@@ -2,14 +2,14 @@ import "dotenv/config"
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { initDatabase } from './database';
-import { handler } from "./routes/root";
+import { handleRootPage } from "./routes/root";
 
 (async () => {
     const app = new Hono()
 
     await initDatabase();
 
-    app.get('/', handler)
+    app.get('/', handleRootPage)
 
     const port = 3000
 
