@@ -2,22 +2,33 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
-
-select,
-textarea,
-input {
-    appearance: none; /* Remove default styling on most browsers */
-    -webkit-appearance: none; /* Remove default styling on Safari */
-    -moz-appearance: none;
-
-    @apply p-2 rounded-none border border-gray-300;
-}
-
-select {
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"><path fill="black" d="M7 10l5 5 5-5z"/></svg>');
+body {
+    @apply bg-background text-[#202122] leading-5;
+  }
+  
+  a {
+    @apply text-blue-800 hover:underline;
+  }
+  
+  input,
+  textarea {
+    @apply border p-1;
+  }
+  
+  button {
+    @apply border p-1;
+  }
+  
+  select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-size: 1.5em 1.5em;
     background-repeat: no-repeat;
-    background-position: right 10px center;
-    background-size: 20px;
-}
+  
+    @apply border rounded-none p-1 bg-white appearance-none;
+  }
+  
+  ol,
+  ul {
+    @apply pl-5 space-y-2 list-disc marker:text-gray-950;
+  }
