@@ -75,7 +75,7 @@ export const handleNewSetPage = async (c: DefaultContext) => {
 
     const brands = await sql<{ id: number, name: string }[]>`SELECT id, name FROM t_brand ORDER BY name ASC;`;
 
-    if (user?.permissions !== "admin") return c.redirect("/login");
+    if (user === undefined) return c.redirect("/login?redirect=/sets/new");
 
     return c.render(
         <Layout user={user}>

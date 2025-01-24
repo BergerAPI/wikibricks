@@ -93,5 +93,8 @@ export const handleLoginSubmit = async (c: Context) => {
         sameSite: "Strict",
     });
 
-    return c.redirect('/')
+    // Checking if there is a specific route to redirect to
+    const redirect = c.req.query("redirect");
+
+    return c.redirect(redirect ?? "/");
 }
