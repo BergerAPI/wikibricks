@@ -24,7 +24,7 @@ export type SetVersion = {
   approval_status: string
   change_message: string
   previous_version: string
-  value: string
+  value: any
   created_at: string
 };
 

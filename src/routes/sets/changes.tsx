@@ -56,8 +56,8 @@ const ChangeTable = ({ changes }: { changes: SetVersionMetaData[] }) => (
         </thead>
         <tbody>
             {changes.map(change => {
-                const oldValue = change.old_value ? JSON.parse(change.old_value) : null;
-                const newValue = JSON.parse(change.value);
+                const oldValue = change.old_value ? change.old_value : null;
+                const newValue = change.value;
 
                 return (
                     <tr class="[&>td]:border [&>td]:p-1" key={change.version_id}>
@@ -76,7 +76,7 @@ const ChangeTable = ({ changes }: { changes: SetVersionMetaData[] }) => (
 );
 
 async function handleSetUpdate(change: SetVersion) {
-    const newValue = JSON.parse(change.value);
+    const newValue = change.value;
 
     if (change.previous_version === null) {
         await sql`
@@ -115,7 +115,7 @@ export const handleSetChangesPage = async (c: DefaultContext) => {
         ORDER BY sv.created_at DESC
     `;
 
-    console.log(changes)
+    console.log(changes);
 
     return c.render(
         <Layout user={user}>

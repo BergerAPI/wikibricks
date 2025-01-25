@@ -4,12 +4,25 @@ import { PermissionLevel, type DefaultContext } from '../../utils'
 
 export const handleSetsPage = async (c: DefaultContext) => {
     const user = c.get("user");
-    const sets = await sql<Set[]>`
-        SELECT s.id, s.name, b.name as brand_name, s.manufacturer_id, s.issued, s.brand_id, s.pieces
-        FROM sets s
-        LEFT JOIN brands b ON s.brand_id = b.id 
-        ORDER BY s.issued DESC, s.name ASC;
-    `;
+
+    // Simple pagination
+    let page: any | number = c.req.query("page");
+
+    if (page && isNaN(Number(page))) return c.redirect("/sets");
+    else page = Number(page) || 0;
+
+    const [sets, [totalCount]] = await Promise.all([
+        sql<(Set & { total: number })[]>`
+            SELECT s.id, s.name, b.name as brand_name, s.manufacturer_id, s.issued, s.brand_id, s.pieces
+            FROM sets s
+            LEFT JOIN brands b ON s.brand_id = b.id 
+            ORDER BY s.issued DESC, s.name ASC
+            LIMIT 10 OFFSET ${page ? page * 10 : 0}
+        `,
+        sql<[{ count: number }]>`
+            SELECT COUNT(*) as count FROM sets
+        `
+    ]);
 
     return c.render(
         <Layout user={user}>
@@ -57,6 +70,11 @@ export const handleSetsPage = async (c: DefaultContext) => {
                             ))}
                         </tbody>
                     </table>
+
+                    <div class="mt-4 flex justify-center space-x-2">
+                        {page > 0 && <a href={`/sets?page=${page - 1}`}>Previous</a>}
+                        {sets.length === 10 && page < totalCount.count / 10 && <a href={`/sets?page=${page + 1}`}>Next</a>}
+                    </div>
                 </div>
             </main>
         </Layout>
@@ -118,7 +136,7 @@ export const handleNewSetSubmit = async (c: DefaultContext) => {
 
     // Every created set by a user will be handles by a change and needs to be accepted by a moderator
     await sql`
-        INSERT INTO set_versions (set_id, edited_by, previous_version_id, value, approval_status)
+        INSERT INTO set_versions (set_id, edited_by, previous_version, value, approval_status)
         VALUES (NULL, ${user.id}, NULL, ${JSON.stringify({ name, brand_id, pieces, description })}, 'pending')
     `;
 
