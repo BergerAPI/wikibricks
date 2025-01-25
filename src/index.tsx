@@ -5,7 +5,8 @@ import { initDatabase } from './database';
 import { handleRootPage } from "./routes/root";
 import { attemptAuthentication, type Variables } from "./utils";
 import { handleLoginPage, handleLoginSubmit } from "./routes/auth";
-import { handleChangeSubmit, handleNewSetPage, handleNewSetSubmit, handleSetChangesPage, handleSetsPage } from "./routes/sets";
+import { handleNewSetPage, handleNewSetSubmit, handleSetsPage } from "./routes/sets";
+import { handleChangeSubmit, handleSetChangesPage } from "./routes/sets/changes";
 
 (async () => {
     const app = new Hono<{ Variables: Variables }>()

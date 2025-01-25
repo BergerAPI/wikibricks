@@ -1,7 +1,7 @@
 import postgres from 'postgres'
 
 /**
- * Represents a user in the system
+ * Represents a user in the database
  */
 export type User = {
   id: number;
@@ -10,6 +10,34 @@ export type User = {
   permission_level: number;
   created_at: string;
 };
+
+
+/**
+ * Represents a change of a set in the database
+ */
+export type SetChange = {
+  id: string;
+  old_value: string | null;
+  new_value: string;
+  created_at: string;
+  set_id: string;
+  set_name: string;
+  user_name: string;
+  status: string;
+};
+
+/**
+ * Represents a set in the database
+ */
+export type Set = {
+  id: number
+  name: string
+  brand_name: string
+  brand_id: number
+  pieces: number
+  manufacturer_id: string
+  issued: string
+}
 
 // Database connection
 export const sql = postgres(process.env.DB_CONN ?? "");
