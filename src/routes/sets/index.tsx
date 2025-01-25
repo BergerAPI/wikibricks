@@ -6,8 +6,8 @@ export const handleSetsPage = async (c: DefaultContext) => {
     const user = c.get("user");
     const sets = await sql<Set[]>`
         SELECT s.id, s.name, b.name as brand_name, s.manufacturer_id, s.issued, s.brand_id, s.pieces
-        FROM t_set s
-        LEFT JOIN t_brand b ON s.brand_id = b.id 
+        FROM sets s
+        LEFT JOIN brands b ON s.brand_id = b.id 
         ORDER BY s.issued DESC, s.name ASC;
     `;
 
@@ -66,7 +66,7 @@ export const handleSetsPage = async (c: DefaultContext) => {
 export const handleNewSetPage = async (c: DefaultContext) => {
     const user = c.get("user");
 
-    const brands = await sql<{ id: number, name: string }[]>`SELECT id, name FROM t_brand ORDER BY name ASC;`;
+    const brands = await sql<{ id: number, name: string }[]>`SELECT id, name FROM brands ORDER BY name ASC;`;
 
     if (user === undefined) return c.redirect("/login?redirect=/sets/new");
 
@@ -118,8 +118,8 @@ export const handleNewSetSubmit = async (c: DefaultContext) => {
 
     // Every created set by a user will be handles by a change and needs to be accepted by a moderator
     await sql`
-        INSERT INTO t_set_change (set_id, user_id, old_value, new_value, status)
-        VALUES (1, ${user.id}, NULL, ${JSON.stringify({ name, brand_id, pieces, description })}, 'pending')
+        INSERT INTO set_versions (set_id, edited_by, previous_version_id, value, approval_status)
+        VALUES (NULL, ${user.id}, NULL, ${JSON.stringify({ name, brand_id, pieces, description })}, 'pending')
     `;
 
     return c.redirect("/sets");

@@ -35,7 +35,7 @@ export const attemptAuthentication = async (c: any, next: any) => {
 
     try {
         const payload = await verify(token, SECRET);
-        const [user] = await sql<User[]>`SELECT * FROM t_user WHERE id = ${payload.id as any} LIMIT 1`;
+        const [user] = await sql<User[]>`SELECT * FROM users WHERE id = ${payload.id as any} LIMIT 1`;
 
         if (!user) {
             return await next();

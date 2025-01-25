@@ -74,7 +74,7 @@ export const handleLoginSubmit = async (c: Context) => {
         )
     }
 
-    const [user] = await sql<User[]>`SELECT password, id FROM t_user WHERE username = ${username.toString()} LIMIT 1;`
+    const [user] = await sql<User[]>`SELECT password, id FROM users WHERE username = ${username.toString()} LIMIT 1;`
 
     if (!user || user.password !== password) {
         return c.render(

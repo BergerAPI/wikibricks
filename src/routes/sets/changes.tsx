@@ -1,6 +1,12 @@
-import { sql, type SetChange } from "../../database";
+import { sql, type SetVersion } from "../../database";
 import { Layout } from "../../layout";
 import { PermissionLevel, type DefaultContext } from "../../utils";
+
+type SetVersionMetaData = SetVersion & {
+    set_name: string;
+    username: string;
+    old_value: string;
+};
 
 const DiffDisplay = ({ oldValue, newValue }: { oldValue: any; newValue: any }) => {
     const diffItems = [];
@@ -37,7 +43,7 @@ const ActionButtons = ({ changeId }: { changeId: string }) => (
     </td>
 );
 
-const ChangeTable = ({ changes }: { changes: SetChange[] }) => (
+const ChangeTable = ({ changes }: { changes: SetVersionMetaData[] }) => (
     <table class="table-auto w-full mt-4 border-collapse border">
         <thead>
             <tr class="[&>th]:border bg-background">
@@ -51,17 +57,17 @@ const ChangeTable = ({ changes }: { changes: SetChange[] }) => (
         <tbody>
             {changes.map(change => {
                 const oldValue = change.old_value ? JSON.parse(change.old_value) : null;
-                const newValue = JSON.parse(change.new_value);
+                const newValue = JSON.parse(change.value);
 
                 return (
-                    <tr class="[&>td]:border [&>td]:p-1" key={change.id}>
+                    <tr class="[&>td]:border [&>td]:p-1" key={change.version_id}>
                         <td>{change.set_name}</td>
-                        <td>{change.user_name}</td>
+                        <td>{change.username}</td>
                         <td>
                             <DiffDisplay oldValue={oldValue} newValue={newValue} />
                         </td>
                         <td>{new Date(change.created_at).toLocaleString()}</td>
-                        <ActionButtons changeId={change.id} />
+                        <ActionButtons changeId={change.version_id} />
                     </tr>
                 );
             })}
@@ -69,17 +75,17 @@ const ChangeTable = ({ changes }: { changes: SetChange[] }) => (
     </table>
 );
 
-async function handleSetUpdate(change: SetChange) {
-    const newValue = JSON.parse(change.new_value);
+async function handleSetUpdate(change: SetVersion) {
+    const newValue = JSON.parse(change.value);
 
-    if (change.old_value === null) {
+    if (change.previous_version === null) {
         await sql`
-            INSERT INTO t_set (name, brand_id, pieces, description)
+            INSERT INTO sets (name, brand_id, pieces, description)
             VALUES (${newValue.name}, ${newValue.brand_id}, ${newValue.pieces}, ${newValue.description})
         `;
     } else {
         await sql`
-            UPDATE t_set 
+            UPDATE sets 
             SET name = ${newValue.name},
                 brand_id = ${newValue.brand_id},
                 pieces = ${newValue.pieces},
@@ -96,17 +102,20 @@ export const handleSetChangesPage = async (c: DefaultContext) => {
         return c.redirect("/sets");
     }
 
-    const changes = await sql<SetChange[]>`
+    const changes = await sql<SetVersionMetaData[]>`
         SELECT 
-            sc.id, sc.old_value, sc.new_value, sc.created_at,
-            sc.set_id, s.name as set_name, u.username as user_name,
-            sc.status
-        FROM t_set_change sc
-        JOIN t_set s ON sc.set_id = s.id
-        JOIN t_user u ON sc.user_id = u.id
-        WHERE sc.status = 'pending'
-        ORDER BY sc.created_at DESC
+            sv.*, sov.value as old_value,
+            s.name as set_name,
+            u.username as username
+        FROM set_versions sv
+        JOIN users u ON sv.edited_by = u.id
+        LEFT JOIN sets s ON sv.set_id = s.id
+        LEFT JOIN set_versions sov ON sv.previous_version = sov.version_id
+        WHERE sv.approval_status = 'pending'
+        ORDER BY sv.created_at DESC
     `;
+
+    console.log(changes)
 
     return c.render(
         <Layout user={user}>
@@ -128,7 +137,7 @@ export const handleChangeSubmit = async (c: DefaultContext) => {
 
     const changeId = c.req.param("id");
     const { type } = await c.req.parseBody();
-    const changes = await sql<SetChange[]>`SELECT * FROM t_set_change WHERE id = ${changeId}`;
+    const changes = await sql<SetVersion[]>`SELECT * FROM set_versions WHERE version_id = ${changeId}`;
 
     if (!["accept", "decline"].includes(type.toString()) || !changeId || changes.length === 0) {
         return c.redirect("/sets/changes");
@@ -138,9 +147,9 @@ export const handleChangeSubmit = async (c: DefaultContext) => {
 
     if (type === "accept") {
         await handleSetUpdate(change);
-        await sql`UPDATE t_set_change SET status = 'accepted' WHERE id = ${changeId}`;
+        await sql`UPDATE set_versions SET approval_status = 'accepted' WHERE version_id = ${changeId}`;
     } else
-        await sql`UPDATE t_set_change SET status = 'declined' WHERE id = ${changeId}`;
+        await sql`UPDATE set_versions SET approval_status = 'declined' WHERE version_id = ${changeId}`;
 
     return c.redirect("/sets/changes");
 }
