@@ -137,13 +137,11 @@ export const handleChangeSubmit = async (c: DefaultContext) => {
 
     const changeId = c.req.param("id");
     const { type } = await c.req.parseBody();
-    const changes = await sql<SetVersion[]>`SELECT * FROM set_versions WHERE version_id = ${changeId}`;
+    const [change] = await sql<SetVersion[]>`SELECT * FROM set_versions WHERE version_id = ${changeId}`;
 
-    if (!["accept", "decline"].includes(type.toString()) || !changeId || changes.length === 0) {
+    if (!["accept", "decline"].includes(type.toString()) || !changeId || !change) {
         return c.redirect("/sets/changes");
     }
-
-    const change = changes[0];
 
     if (type === "accept") {
         await handleSetUpdate(change);
