@@ -34,11 +34,13 @@ export type SetVersion = {
 export type Set = {
   id: number
   name: string
-  brand_name: string
   brand_id: number
   pieces: number
   manufacturer_id: string
   issued: string
+  description: string
+  theme: string
+  size: string
 }
 
 // Database connection

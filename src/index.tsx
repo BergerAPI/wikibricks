@@ -5,7 +5,7 @@ import { initDatabase } from './database';
 import { handleRootPage } from "./routes/root";
 import { attemptAuthentication, type Variables } from "./utils";
 import { handleLoginPage, handleLoginSubmit } from "./routes/auth";
-import { handleSetsPage } from "./routes/sets";
+import { handleSetPage, handleSetsPage } from "./routes/sets";
 import { handleChangeSubmit, handleSetChangesPage } from "./routes/sets/changes";
 import { handleNewSetPage, handleNewSetSubmit } from "./routes/sets/new-set";
 
@@ -24,6 +24,7 @@ import { handleNewSetPage, handleNewSetSubmit } from "./routes/sets/new-set";
 
     // Set routes
     app.get('/sets', handleSetsPage)
+    app.get('/sets/:id', handleSetPage)
     app.get('/sets/new', handleNewSetPage)
     app.post('/sets/new', handleNewSetSubmit)
     app.get("/sets/changes", handleSetChangesPage)

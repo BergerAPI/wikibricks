@@ -12,7 +12,7 @@ export const handleSetsPage = async (c: DefaultContext) => {
     else page = Number(page) || 0;
 
     const [sets, [totalCount]] = await Promise.all([
-        sql<(Set & { total: number })[]>`
+        sql<(Set & { brand_name: number })[]>`
             SELECT s.id, s.name, b.name as brand_name, s.manufacturer_id, s.issued, s.brand_id, s.pieces
             FROM sets s
             LEFT JOIN brands b ON s.brand_id = b.id 
@@ -79,4 +79,59 @@ export const handleSetsPage = async (c: DefaultContext) => {
             </main>
         </Layout>
     )
+}
+
+export const handleSetPage = async (c: DefaultContext) => {
+    const user = c.get("user");
+    const setId = c.req.param("id");
+
+    const [set] = await sql<(Set & { brand_name: string })[]>`
+        SELECT s.*, b.name as brand_name
+        FROM sets s
+        LEFT JOIN brands b ON s.brand_id = b.id
+        WHERE s.id = ${setId}
+    `;
+
+    if (!set) return c.notFound();
+
+    return c.render(
+        <Layout user={user}>
+            <main class="overflow-auto">
+                <h1 class="text-3xl font-serif pb-2 mb-3 border-b">{set.name}</h1>
+
+                <div class="sm:float-right sm:clear-both sm:ml-2 sm:w-64 w-full bg-background border mb-2 p-1">
+                    <table class="m-auto border-spacing-0.5 leading-6">
+                        <tbody>
+                            <tr>
+                                <th colspan={2} class="infobox-above">{set.name}</th>
+                            </tr>
+                            <tr>
+                                <td colspan={2}>
+                                    <img class="px-1" src="https://placehold.co/800x800" width="800" height="800" loading="lazy"
+                                        decoding="async"
+                                        alt={`Image of ${set.name}`} />
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row" class="text-left">Pieces</th>
+                                <td class="text-left">{set.pieces}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row" class="text-left">Brand</th>
+                                <td class="text-left">
+                                    <a href="/brands/{{.Set.BrandId}}">
+                                        {set.brand_name}
+                                    </a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="text-pretty [&>ul]:mt-2">
+                    {set.description}
+                </div>
+            </main>
+        </Layout>
+    );
 }
