@@ -13,6 +13,13 @@ export type DefaultContext<T extends Variables = Variables> = Context<{ Variable
 
 const SECRET = "your-secret-here";
 
+// Permission levels for all users
+export enum PermissionLevel {
+    USER = 0,
+    MODERATOR = 5,
+    ADMIN = 9
+}
+
 // Function to sign a user jwt (JSON Web Token)
 export const signUser = async (user: User) => {
     return sign({ id: user.id }, SECRET);

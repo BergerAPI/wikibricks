@@ -7,7 +7,7 @@ export type User = {
   id: number;
   username: string;
   password: string;
-  permissions: string;
+  permission_level: number;
   created_at: string;
 };
 
@@ -21,7 +21,7 @@ export const initDatabase = async () => {
     id serial primary key,
     username varchar(255) unique,
     password varchar(255),
-    permissions varchar(255) default 'user',
+    permission_level integer default 0,
     created_at timestamp default current_timestamp
   );
 
@@ -57,6 +57,7 @@ export const initDatabase = async () => {
       id serial primary key,
       set_id integer references t_set(id) on delete cascade,
       user_id integer references t_user(id) on delete cascade,
+      status varchar(64),
       old_value jsonb,
       new_value jsonb,
       created_at timestamp default current_timestamp
