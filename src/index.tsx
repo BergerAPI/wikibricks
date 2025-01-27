@@ -24,11 +24,11 @@ import { handleNewSetPage, handleNewSetSubmit } from "./routes/sets/new-set";
 
     // Set routes
     app.get('/sets', handleSetsPage)
-    app.get('/sets/:id', handleSetPage)
     app.get('/sets/new', handleNewSetPage)
     app.post('/sets/new', handleNewSetSubmit)
     app.get("/sets/changes", handleSetChangesPage)
     app.post("/sets/changes/:id", handleChangeSubmit)
+    app.get('/sets/:id', handleSetPage)
 
     const port = 3000
 

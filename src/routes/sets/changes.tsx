@@ -115,8 +115,6 @@ export const handleSetChangesPage = async (c: DefaultContext) => {
         ORDER BY sv.created_at DESC
     `;
 
-    console.log(changes);
-
     return c.render(
         <Layout user={user}>
             <main>
