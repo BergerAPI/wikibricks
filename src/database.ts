@@ -1,4 +1,4 @@
-import postgres from 'postgres'
+import postgres from "postgres";
 
 /**
  * Represents a user in the database
@@ -11,37 +11,40 @@ export type User = {
   created_at: string;
 };
 
-
 /**
  * Represents a change of a set in the database
  */
-export type SetVersion = {
-  version_id: string
-  set_id: string
-  edited_by: string
-  approved_by: string
-  approved_at: string
-  approval_status: string
-  change_message: string
-  previous_version: string
-  value: any
-  created_at: string
+export type EntityVersion = {
+  id: number;
+  entity_id: number;
+  version_number: string;
+  is_active: boolean;
+  created_at: string;
+  created_by: number;
+  description: string;
+  change_message: string;
+  previous_version: number;
 };
 
 /**
  * Represents a set in the database
  */
-export type Set = {
-  id: number
-  name: string
-  brand_id: number
-  pieces: number
-  manufacturer_id: string
-  issued: string
-  description: string
-  theme: string
-  size: string
-}
+export type SetView = {
+  id: string;
+  name: string;
+  type: string;
+  created_at: string;
+  version_number: string;
+  version_created_at: string;
+  created_by: string;
+  description: string;
+  pieces: number;
+  issued: string;
+  theme: string;
+  size: string;
+  manufacturer_id: string;
+  brand_id: string;
+};
 
 // Database connection
 export const sql = postgres(process.env.DB_CONN ?? "");
@@ -49,55 +52,112 @@ export const sql = postgres(process.env.DB_CONN ?? "");
 // Initialize database
 export const initDatabase = async () => {
   await sql`
-  create table if not exists users(
-    id serial primary key,
-    username varchar(255) unique,
-    password varchar(255),
-    permission_level integer default 0,
-    created_at timestamp default current_timestamp
-  );
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(255) UNIQUE,
+    password VARCHAR(255),
+    permission_level INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
-  create index if not exists idx_user on users(username);
+CREATE INDEX IF NOT EXISTS idx_user ON users(username);
 
-  create table if not exists brands(
-    id serial primary key,
-    name varchar(255) unique,
-    description text,
-    country varchar(255),
-    website varchar(255),
-    created_at timestamp default current_timestamp
-  );
+CREATE TABLE IF NOT EXISTS entities (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) UNIQUE,
+    head_version_id INT,
+    type VARCHAR(64) CHECK (type IN ('set', 'brand', 'brick', 'wiki')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
-  create index if not exists idx_brand on brands(name);
+CREATE INDEX IF NOT EXISTS idx_entity ON entities(name, type, head_version_id);
 
-  create table if not exists sets(
-      id serial primary key,
-      name varchar(255),
-      description text,
-      pieces integer,
-      issued varchar(64),
-      theme varchar(64),
-      size varchar(64),
-      manufacturer_id varchar(64),
-      brand_id integer references brands(id) on delete cascade,
-      created_at timestamp default current_timestamp
-  );
+CREATE TABLE IF NOT EXISTS entity_versions (
+    id SERIAL PRIMARY KEY,
+    entity_id INT NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+    version_number INT NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    created_by INT REFERENCES users(id) ON DELETE SET NULL,
+    previous_version INT REFERENCES entity_versions(id) ON DELETE SET NULL DEFAULT NULL,
+    description TEXT,
 
-  create index if not exists idx_set on sets(name, brand_id, issued);
+    -- Informations about changes in this version by the author
+    change_message TEXT DEFAULT '',
 
-  create table if not exists set_versions(
-      version_id serial primary key,
-      set_id integer references sets(id) on delete cascade,
-      edited_by integer references users(id) on delete set null,
-      approved_by integer references users(id) on delete set null,
-      approved_at timestamp,
-      approval_status varchar(64),
-      change_message text,
-      previous_version integer references set_versions(version_id) on delete set null,
-      value jsonb,
-      created_at timestamp default current_timestamp
-  );
+    review_status VARCHAR(32) DEFAULT 'pending' CHECK (review_status IN ('pending', 'approved', 'rejected')),
+    reviewed_at TIMESTAMP,
+    reviewed_by INT REFERENCES users(id) ON DELETE SET NULL,
+    review_comment TEXT DEFAULT '',
 
-  create index if not exists idx_set_change on set_versions(set_id, edited_by, created_at);
+    -- Ensure version number uniqueness for an entity
+    UNIQUE (entity_id, version_number)
+);
+
+CREATE INDEX IF NOT EXISTS idx_version ON entity_versions(entity_id, version_number, review_status);
+
+-- Add the foreign key constraint for head_version_id after entity_versions exists
+-- ALTER TABLE entities
+-- ADD CONSTRAINT fk_head_version
+-- FOREIGN KEY (head_version_id)
+-- REFERENCES entity_versions(id)
+-- ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS brands (
+    version_id INT PRIMARY KEY REFERENCES entity_versions(id) ON DELETE CASCADE,
+    country VARCHAR(255),
+    website VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS sets (
+    version_id INT PRIMARY KEY REFERENCES entity_versions(id) ON DELETE CASCADE,
+    pieces INTEGER,
+    issued VARCHAR(64),
+    theme VARCHAR(64),
+    size VARCHAR(64),
+    manufacturer_id VARCHAR(64),
+    brand_id INT REFERENCES entities(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_set ON sets(brand_id, issued);
+
+CREATE OR REPLACE VIEW set_view AS
+SELECT
+    e.id AS id,
+    e.name AS name,
+    e.type AS type,
+    e.created_at AS created_at,
+    v.version_number AS version_number,
+    v.created_at AS version_created_at,
+    v.created_by AS created_by,
+    v.description AS description,
+    s.pieces AS pieces,
+    s.issued AS issued,
+    s.theme AS theme,
+    s.size AS size,
+    s.manufacturer_id AS manufacturer_id,
+    s.brand_id AS brand_id
+FROM entities e
+JOIN entity_versions v ON e.head_version_id = v.id
+JOIN sets s ON v.id = s.version_id
+WHERE e.type = 'set';
+
+CREATE OR REPLACE VIEW brand_view AS
+SELECT
+    e.id AS brand_id,
+    e.name AS name,
+    e.type AS type,
+    e.created_at AS created_at,
+    v.version_number AS version_number,
+    v.created_at AS version_created_at,
+    v.created_by AS created_by,
+    v.description AS description,
+    b.country AS country,
+    b.website AS website
+FROM entities e
+JOIN entity_versions v ON v.id = e.head_version_id
+JOIN brands b ON v.id = b.version_id
+WHERE e.type = 'brand';
     `.simple();
 };
