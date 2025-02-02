@@ -27,12 +27,15 @@ export type EntityVersion = {
 };
 
 /**
- * Represents a set in the database
+ * Represents entities in the database
  */
+export type EntityType = 'set' | 'brand';
+export type EntityViewType<T extends EntityType> = T extends 'set' ? SetView : BrandView;
+
 export type SetView = {
   id: string;
   name: string;
-  type: string;
+  type: EntityType;
   created_at: string;
   version_number: string;
   version_created_at: string;
@@ -44,6 +47,19 @@ export type SetView = {
   size: string;
   manufacturer_id: string;
   brand_id: string;
+};
+
+export type BrandView = {
+  type: EntityType;
+  brand_id: string;
+  name: string;
+  description: string;
+  country: string;
+  website: string;
+  created_at: string
+  version_number: string
+  version_created_at: string
+  created_by: string
 };
 
 // Database connection

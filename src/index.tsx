@@ -5,40 +5,43 @@ import { initDatabase } from "./database";
 import { handleRootPage } from "./routes/root";
 import { attemptAuthentication, type Variables } from "./utils";
 import { handleLoginPage, handleLoginSubmit } from "./routes/auth";
-import { handleSetPage, handleSetsPage } from "./routes/sets";
+import { handleSetsPage } from "./routes/sets";
 import { handleSetChangesPage } from "./routes/changes";
 import { handleNewSetPage, handleNewSetSubmit } from "./routes/sets/new-set";
+import { handleEntityPage } from "./routes/entities";
 
 (async () => {
-  const app = new Hono<{ Variables: Variables }>();
+    const app = new Hono<{ Variables: Variables }>();
 
-  await initDatabase();
+    await initDatabase();
 
-  app.use(attemptAuthentication);
+    app.use(attemptAuthentication);
 
-  app.get("/", handleRootPage);
+    app.get("/", handleRootPage);
 
-  // Auth routes
-  app.get("/login", handleLoginPage);
-  app.post("/login", handleLoginSubmit);
+    // Auth routes
+    app.get("/login", handleLoginPage);
+    app.post("/login", handleLoginSubmit);
 
-  // Set routes
-  app.get("/sets", handleSetsPage);
-  app.get("/sets/new", handleNewSetPage);
-  app.post("/sets/new", handleNewSetSubmit);
-  app.get("/sets/:id", handleSetPage);
+    // Set routes
+    app.get("/sets", handleSetsPage);
+    app.get("/sets/new", handleNewSetPage);
+    app.post("/sets/new", handleNewSetSubmit);
 
-  // Changes routes
-  app.get("/changes", handleSetChangesPage);
+    // Changes routes
+    app.get("/entities/:id", handleEntityPage);
 
-  const port = 3000;
+    // Changes routes
+    app.get("/changes", handleSetChangesPage);
 
-  console.log(`Server is running on http://localhost:${port}`);
+    const port = 3000;
 
-  serve({
-    fetch: app.fetch,
-    port,
-  });
+    console.log(`Server is running on http://localhost:${port}`);
+
+    serve({
+        fetch: app.fetch,
+        port,
+    });
 })().then(() => {
-  /* Do nothing */
+    /* Do nothing */
 });
