@@ -29,7 +29,6 @@ export const handleEntityHistoryPage = async (c: DefaultContext) => {
 
     if (!entityInfo) return c.notFound();
 
-
     return c.render(
         <Layout user={user}>
             <main>
@@ -59,7 +58,7 @@ export const handleEntityHistoryPage = async (c: DefaultContext) => {
                                         </a>
                                     </td>
                                     <td >
-                                        {new Date(version.created_at).toLocaleDateString()}
+                                        {version.created_at.toLocaleDateString()}
                                     </td>
                                     <td>{version.username}</td>
                                     <td>{version.change_message}</td>

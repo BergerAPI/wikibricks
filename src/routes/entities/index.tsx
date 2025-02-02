@@ -2,13 +2,16 @@ import { sql, type BrandView, type EntityType, type EntityViewType, type SetView
 import { Layout } from "../../layout";
 import type { DefaultContext } from "../../utils";
 
-type AttributeDefinition<T> = string | {
+type AttributeDefinition<T, K extends keyof T> = string | {
     text: string;
-    link: (value: T[keyof T]) => string;
+    link: (value: T[K]) => string;
+} | {
+    text: string;
+    value: (value: T[K]) => string;
 }
 
 type EntityAttributes<T extends EntityType> = Partial<{
-    [P in keyof EntityViewType<T>]: AttributeDefinition<EntityViewType<T>>
+    [P in keyof EntityViewType<T>]: AttributeDefinition<EntityViewType<T>, P>
 }>
 
 
@@ -24,7 +27,7 @@ const INFO_FIELDS: InfoFields = {
         'issued': 'Issued',
         'brand_id': {
             text: 'Brand',
-            link: (value: string | number) => `/entities/${value}`
+            link: (value: string) => `/entities/${value}`
         },
     },
     'brand': {
@@ -70,9 +73,9 @@ const InfoBox = <T extends EntityType>({ entity, fields }: { entity: EntityViewT
                             {typeof info === 'string' ? info : info.text}
                         </th>
                         <td class="text-left">
-                            {typeof info === 'string' ? entity[field] : (
+                            {typeof info === 'string' ? entity[field] : info.link !== undefined ? (
                                 <a href={info.link(entity[field])}>{entity[field]}</a>
-                            )}
+                            ) : info.value(entity[field])}
                         </td>
                     </tr>
                 })}
@@ -118,7 +121,7 @@ export const handleEntityPage = async (c: DefaultContext) => {
             <main class="overflow-auto">
                 <h1 class="text-3xl font-serif pb-2 mb-3 border-b">{entity.name}</h1>
 
-                {Object.keys(infoFields).length > 0 && <InfoBox entity={entity} fields={infoFields} />}
+                {Object.keys(infoFields).length > 0 && <InfoBox entity={entity} fields={infoFields as EntityAttributes<typeof entity.type>} />}
 
                 <div class="text-pretty [&>ul]:mt-2">{entity.description}</div>
             </main>

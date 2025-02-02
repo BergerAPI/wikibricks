@@ -1,7 +1,7 @@
 # Active
 
 - [x] Unify Entity Pages
-- [ ] Change History Page
+- [x] Change History Page
 - [ ] User Page
 - [ ] Account Settings
 - [ ] Entity change page

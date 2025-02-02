@@ -8,7 +8,7 @@ export type User = {
   username: string;
   password: string;
   permission_level: number;
-  created_at: string;
+  created_at: Date;
 };
 
 /**
@@ -19,7 +19,7 @@ export type EntityVersion = {
   entity_id: number;
   version_number: string;
   is_active: boolean;
-  created_at: string;
+  created_at: Date;
   created_by: number;
   description: string;
   change_message: string;
@@ -37,9 +37,9 @@ export type SetView = {
   id: string;
   name: string;
   type: EntityType;
-  created_at: string;
+  created_at: Date;
   version_number: string;
-  version_created_at: string;
+  version_created_at: Date;
   created_by: string;
   description: string;
   pieces: number;
@@ -57,7 +57,7 @@ export type BrandView = {
   description: string;
   country: string;
   website: string;
-  created_at: string
+  created_at: Date
   version_number: string
   version_created_at: string
   created_by: string
