@@ -1,3 +1,4 @@
+import { Table, TableHead } from "../../components/table";
 import { sql, type EntityVersion } from "../../database";
 import { Layout } from "../../layout";
 import type { DefaultContext } from "../../utils";
@@ -39,20 +40,18 @@ export const handleEntityHistoryPage = async (c: DefaultContext) => {
                 </p>
 
                 <div>
-                    <table class="w-full">
-                        <thead>
-                            <tr class="border-b">
-                                <th class="text-left p-2">Version</th>
-                                <th class="text-left p-2">Created</th>
-                                <th class="text-left p-2">Author</th>
-                                <th class="text-left p-2">Status</th>
-                                <th class="text-left p-2">Change Message</th>
-                            </tr>
-                        </thead>
+                    <Table>
+                        <TableHead>
+                            <th>Version</th>
+                            <th>Created</th>
+                            <th>Author</th>
+                            <th>Status</th>
+                            <th>Change Message</th>
+                        </TableHead>
                         <tbody>
                             {versions.map((version) => (
-                                <tr key={version.id} class="border-b hover:bg-background">
-                                    <td class="p-2">
+                                <tr>
+                                    <td>
                                         <a
                                             href={`/entities/${entityId}/version/${version.version_number}`}
                                             class="text-primary hover:underline"
@@ -60,11 +59,11 @@ export const handleEntityHistoryPage = async (c: DefaultContext) => {
                                             {version.version_number}
                                         </a>
                                     </td>
-                                    <td class="p-2">
+                                    <td >
                                         {new Date(version.created_at).toLocaleDateString()}
                                     </td>
-                                    <td class="p-2">{version.username}</td>
-                                    <td class="p-2">
+                                    <td>{version.username}</td>
+                                    <td >
                                         <span class={`px-2 py-1 rounded text-sm ${version.review_status === 'approved' ? 'bg-green-100 text-green-800' :
                                             version.review_status === 'rejected' ? 'bg-red-100 text-red-800' :
                                                 'bg-yellow-100 text-yellow-800'
@@ -72,11 +71,11 @@ export const handleEntityHistoryPage = async (c: DefaultContext) => {
                                             {version.review_status}
                                         </span>
                                     </td>
-                                    <td class="p-2">{version.change_message}</td>
+                                    <td>{version.change_message}</td>
                                 </tr>
                             ))}
                         </tbody>
-                    </table>
+                    </Table>
                 </div>
             </main>
         </Layout>

@@ -1,6 +1,7 @@
 import { Layout } from "../../layout";
 import { sql, type SetView } from "../../database";
 import { PermissionLevel, type DefaultContext } from "../../utils";
+import { Table, TableHead } from "../../components/table";
 
 export const handleSetsPage = async (c: DefaultContext) => {
     const user = c.get("user");
@@ -50,18 +51,16 @@ export const handleSetsPage = async (c: DefaultContext) => {
                 </p>
 
                 <div class="min-w-full overflow-x-auto">
-                    <table class="table-auto w-full mt-4 border-collapse border overflow-x-scroll [&_td]:border [&_th]:border">
-                        <thead>
-                            <tr class="bg-background">
-                                <th>Brand</th>
-                                <th>Name</th>
-                                <th>Pieces</th>
-                            </tr>
-                        </thead>
+                    <Table>
+                        <TableHead>
+                            <th>Brand</th>
+                            <th>Name</th>
+                            <th>Pieces</th>
+                        </TableHead>
 
                         <tbody>
                             {sets.map((set) => (
-                                <tr class="[&>td]:p-1" key={set.id}>
+                                <tr>
                                     <td>
                                         <a href={`/entities/${set.brand_id}`}>{set.brand_name}</a>
                                     </td>
@@ -72,7 +71,7 @@ export const handleSetsPage = async (c: DefaultContext) => {
                                 </tr>
                             ))}
                         </tbody>
-                    </table>
+                    </Table>
 
                     <div class="mt-4 flex justify-center space-x-2">
                         {page > 0 && <a href={`/sets?page=${page - 1}`}>Previous</a>}
