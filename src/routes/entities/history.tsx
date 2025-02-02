@@ -22,12 +22,12 @@ export const handleEntityHistoryPage = async (c: DefaultContext) => {
                 u.username
             FROM entity_versions ev
             LEFT JOIN users u ON ev.created_by = u.id
-            WHERE ev.entity_id = ${entityId}
+            WHERE ev.entity_id = ${entityId} AND ev.review_status = 'approved'
             ORDER BY ev.version_number DESC
         `
     ]);
 
-    if (versions.length === 0 || !entityInfo) return c.notFound();
+    if (!entityInfo) return c.notFound();
 
 
     return c.render(
@@ -45,7 +45,6 @@ export const handleEntityHistoryPage = async (c: DefaultContext) => {
                             <th>Version</th>
                             <th>Created</th>
                             <th>Author</th>
-                            <th>Status</th>
                             <th>Change Message</th>
                         </TableHead>
                         <tbody>
@@ -63,14 +62,6 @@ export const handleEntityHistoryPage = async (c: DefaultContext) => {
                                         {new Date(version.created_at).toLocaleDateString()}
                                     </td>
                                     <td>{version.username}</td>
-                                    <td >
-                                        <span class={`px-2 py-1 rounded text-sm ${version.review_status === 'approved' ? 'bg-green-100 text-green-800' :
-                                            version.review_status === 'rejected' ? 'bg-red-100 text-red-800' :
-                                                'bg-yellow-100 text-yellow-800'
-                                            }`}>
-                                            {version.review_status}
-                                        </span>
-                                    </td>
                                     <td>{version.change_message}</td>
                                 </tr>
                             ))}
