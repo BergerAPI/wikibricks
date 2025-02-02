@@ -29,7 +29,7 @@ export type EntityVersion = {
 /**
  * Represents entities in the database
  */
-export type EntityType = 'set' | 'brand';
+export type EntityType = 'set' | 'brand' | 'wiki';
 export type EntityViewType<T extends EntityType> = T extends 'set' ? SetView : BrandView;
 
 export type SetView = {

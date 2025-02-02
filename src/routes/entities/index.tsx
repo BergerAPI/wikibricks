@@ -33,8 +33,53 @@ const INFO_FIELDS: InfoFields = {
             text: 'Website',
             link: (value: string) => value
         },
-    }
+    },
+    'wiki': {},
 };
+
+const InfoBox = <T extends EntityType>({ entity, fields }: { entity: EntityViewType<T>, fields: EntityAttributes<T> }) => {
+    return <div class="sm:float-right sm:clear-both sm:ml-2 sm:w-64 w-full bg-background border mb-2 p-1">
+        <table class="m-auto border-spacing-0.5 leading-6">
+            <tbody>
+                <tr>
+                    <th colspan={2} class="infobox-above">
+                        {entity.name}
+                    </th>
+                </tr>
+                <tr>
+                    <td colspan={2}>
+                        <img
+                            class="px-1"
+                            src="https://placehold.co/800x800"
+                            width="800"
+                            height="800"
+                            loading="lazy"
+                            decoding="async"
+                            alt={`Image of ${entity.name}`}
+                        />
+                    </td>
+                </tr>
+
+                {Object.entries(fields).map(([f, info]) => {
+                    const field = f as keyof EntityViewType<typeof entity.type>;
+
+                    if (!entity[field]) return null;
+
+                    return <tr>
+                        <th scope="row" class="text-left">
+                            {typeof info === 'string' ? info : info.text}
+                        </th>
+                        <td class="text-left">
+                            {typeof info === 'string' ? entity[field] : (
+                                <a href={info.link(entity[field])}>{entity[field]}</a>
+                            )}
+                        </td>
+                    </tr>
+                })}
+            </tbody>
+        </table>
+    </div>
+}
 
 export const handleEntityPage = async (c: DefaultContext) => {
     const user = c.get("user");
@@ -73,47 +118,7 @@ export const handleEntityPage = async (c: DefaultContext) => {
             <main class="overflow-auto">
                 <h1 class="text-3xl font-serif pb-2 mb-3 border-b">{entity.name}</h1>
 
-                <div class="sm:float-right sm:clear-both sm:ml-2 sm:w-64 w-full bg-background border mb-2 p-1">
-                    <table class="m-auto border-spacing-0.5 leading-6">
-                        <tbody>
-                            <tr>
-                                <th colspan={2} class="infobox-above">
-                                    {entity.name}
-                                </th>
-                            </tr>
-                            <tr>
-                                <td colspan={2}>
-                                    <img
-                                        class="px-1"
-                                        src="https://placehold.co/800x800"
-                                        width="800"
-                                        height="800"
-                                        loading="lazy"
-                                        decoding="async"
-                                        alt={`Image of ${entity.name}`}
-                                    />
-                                </td>
-                            </tr>
-
-                            {Object.entries(infoFields).map(([f, info]) => {
-                                const field = f as keyof EntityViewType<typeof entity.type>;
-
-                                if (!entity[field]) return null;
-
-                                return <tr>
-                                    <th scope="row" class="text-left">
-                                        {typeof info === 'string' ? info : info.text}
-                                    </th>
-                                    <td class="text-left">
-                                        {typeof info === 'string' ? entity[field] : (
-                                            <a href={info.link(entity[field])}>{entity[field]}</a>
-                                        )}
-                                    </td>
-                                </tr>
-                            })}
-                        </tbody>
-                    </table>
-                </div>
+                {Object.keys(infoFields).length > 0 && <InfoBox entity={entity} fields={infoFields} />}
 
                 <div class="text-pretty [&>ul]:mt-2">{entity.description}</div>
             </main>
