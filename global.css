@@ -4,6 +4,16 @@
     --color-background: #f9f9f9;
 }
 
+@layer base {
+    *,
+    ::after,
+    ::before,
+    ::backdrop,
+    ::file-selector-button {
+      border-color: var(--color-gray-200, currentColor);
+    }
+  }
+
 body {
     @apply bg-background text-[#202122] leading-5;
 }

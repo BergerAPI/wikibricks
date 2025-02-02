@@ -24,6 +24,7 @@ export type EntityVersion = {
   description: string;
   change_message: string;
   previous_version: number;
+  review_status: 'pending' | 'approved' | 'rejected';
 };
 
 /**

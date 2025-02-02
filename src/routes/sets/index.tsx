@@ -50,9 +50,9 @@ export const handleSetsPage = async (c: DefaultContext) => {
                 </p>
 
                 <div class="min-w-full overflow-x-auto">
-                    <table class="table-auto w-full mt-4 border-collapse border overflow-x-scroll">
+                    <table class="table-auto w-full mt-4 border-collapse border overflow-x-scroll [&_td]:border [&_th]:border">
                         <thead>
-                            <tr class="[&>th]:border bg-background">
+                            <tr class="bg-background">
                                 <th>Brand</th>
                                 <th>Name</th>
                                 <th>Pieces</th>
@@ -61,7 +61,7 @@ export const handleSetsPage = async (c: DefaultContext) => {
 
                         <tbody>
                             {sets.map((set) => (
-                                <tr class="[&>td]:border [&>td]:p-1" key={set.id}>
+                                <tr class="[&>td]:p-1" key={set.id}>
                                     <td>
                                         <a href={`/entities/${set.brand_id}`}>{set.brand_name}</a>
                                     </td>

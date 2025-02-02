@@ -7,10 +7,11 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",
+    "@tailwindcss/cli": "^4.0.3",
     "dotenv": "^16.4.7",
     "hono": "^4.6.17",
     "postgres": "^3.4.5",
-    "tailwindcss": "^4.0.0"
+    "tailwindcss": "^4.0.3"
   },
   "devDependencies": {
     "@types/node": "^20.11.17",
