@@ -10,6 +10,7 @@ import { handleSetChangesPage } from "./routes/changes";
 import { handleNewSetPage, handleNewSetSubmit } from "./routes/sets/new-set";
 import { handleEntityPage } from "./routes/entities";
 import { handleEntityHistoryPage } from "./routes/entities/history";
+import { handleUserPage } from "./routes/users";
 
 (async () => {
     const app = new Hono<{ Variables: Variables }>();
@@ -35,6 +36,9 @@ import { handleEntityHistoryPage } from "./routes/entities/history";
 
     // Changes routes
     app.get("/changes", handleSetChangesPage);
+
+    // User routes
+    app.get("/users/:id", handleUserPage);
 
     const port = 3000;
 

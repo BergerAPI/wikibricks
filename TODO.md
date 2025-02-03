@@ -2,10 +2,12 @@
 
 - [x] Unify Entity Pages
 - [x] Change History Page
-- [ ] User Page
+- [x] User Page
 - [ ] Improve safety of pages (Internal Server Errors)
 - [ ] Error pages (Not Found, Internal Server Error, ...)
 - [ ] Account Settings
+- [ ] View specific versions of entities
+- [ ] Cleanup code (More comments, structure)
 - [ ] Entity change page
 - [ ] Entity add page
 - [ ] Admin Tools

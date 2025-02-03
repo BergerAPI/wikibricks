@@ -1,3 +1,4 @@
+import { InfoBox, InfoBoxImage, InfoBoxRow } from "../../components/info-box";
 import { sql, type BrandView, type EntityType, type EntityViewType, type SetView } from "../../database";
 import { Layout } from "../../layout";
 import type { DefaultContext } from "../../utils";
@@ -53,48 +54,22 @@ const INFO_FIELDS: InfoFields = {
     'wiki': {},
 };
 
-const InfoBox = <T extends EntityType>({ entity, fields }: { entity: EntityViewType<T>, fields: EntityAttributes<T> }) => {
-    return <div class="sm:float-right sm:clear-both sm:ml-2 sm:w-64 w-full bg-background border mb-2 p-1">
-        <table class="m-auto border-spacing-0.5 leading-6">
-            <tbody>
-                <tr>
-                    <th colspan={2} class="infobox-above">
-                        {entity.name}
-                    </th>
-                </tr>
-                <tr>
-                    <td colspan={2}>
-                        <img
-                            class="px-1"
-                            src="https://placehold.co/800x800"
-                            width="800"
-                            height="800"
-                            loading="lazy"
-                            decoding="async"
-                            alt={`Image of ${entity.name}`}
-                        />
-                    </td>
-                </tr>
+const EntityInfoBox = <T extends EntityType>({ entity, fields }: { entity: EntityViewType<T>, fields: EntityAttributes<T> }) => {
+    return <InfoBox title={entity.name}>
+        <InfoBoxImage src="https://placehold.co/800x800" alt={`Image of ${entity.name}`} />
 
-                {Object.entries(fields).map(([f, info]) => {
-                    const field = f as keyof EntityViewType<typeof entity.type>;
+        {Object.entries(fields).map(([f, info]) => {
+            const field = f as keyof EntityViewType<typeof entity.type>;
 
-                    if (!entity[field]) return null;
+            if (!entity[field]) return null;
 
-                    return <tr>
-                        <th scope="row" class="text-left">
-                            {typeof info === 'string' ? info : info.text}
-                        </th>
-                        <td class="text-left">
-                            {typeof info === 'string' ? entity[field] : info.link !== undefined ? (
-                                <a href={info.link(entity[field])}>{info.value(entity[field], entity)}</a>
-                            ) : info.value(entity[field])}
-                        </td>
-                    </tr>
-                })}
-            </tbody>
-        </table>
-    </div>
+            return <InfoBoxRow label={typeof info === 'string' ? info : info.text}>
+                {typeof info === 'string' ? entity[field] : info.link !== undefined ? (
+                    <a href={info.link(entity[field])}>{info.value(entity[field], entity)}</a>
+                ) : info.value(entity[field])}
+            </InfoBoxRow>
+        })}
+    </InfoBox>
 }
 
 export const handleEntityPage = async (c: DefaultContext) => {
@@ -141,7 +116,7 @@ export const handleEntityPage = async (c: DefaultContext) => {
                     </div>
                 </div>
 
-                {Object.keys(infoFields).length > 0 && <InfoBox entity={entity} fields={infoFields as EntityAttributes<typeof entity.type>} />}
+                {Object.keys(infoFields).length > 0 && <EntityInfoBox entity={entity} fields={infoFields as EntityAttributes<typeof entity.type>} />}
 
                 <div class="text-pretty [&>ul]:mt-2">{entity.description}</div>
             </main>

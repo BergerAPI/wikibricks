@@ -3,8 +3,9 @@ import { sql, type EntityVersion } from "../../database";
 import { Layout } from "../../layout";
 import type { DefaultContext } from "../../utils";
 
-type VersionWithUsername = EntityVersion & {
+type VersionWithUser = EntityVersion & {
     username: string;
+    user_id: number;
 };
 
 export const handleEntityHistoryPage = async (c: DefaultContext) => {
@@ -16,10 +17,11 @@ export const handleEntityHistoryPage = async (c: DefaultContext) => {
         sql<{ name: string }[]>`
             SELECT name FROM entities WHERE id = ${entityId}
         `,
-        sql<VersionWithUsername[]>`
+        sql<VersionWithUser[]>`
             SELECT 
                 ev.*,
-                u.username
+                u.username,
+                u.id as user_id
             FROM entity_versions ev
             LEFT JOIN users u ON ev.created_by = u.id
             WHERE ev.entity_id = ${entityId} AND ev.review_status = 'approved'
@@ -60,7 +62,9 @@ export const handleEntityHistoryPage = async (c: DefaultContext) => {
                                     <td >
                                         {version.created_at.toLocaleDateString()}
                                     </td>
-                                    <td>{version.username}</td>
+                                    <td>
+                                        <a href={`/users/${version.user_id}`}>{version.username}</a>
+                                    </td>
                                     <td>{version.change_message}</td>
                                 </tr>
                             ))}
