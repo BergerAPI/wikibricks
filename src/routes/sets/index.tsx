@@ -28,7 +28,7 @@ export const handleSetsPage = async (c: DefaultContext) => {
     return c.render(
         <Layout user={user}>
             <main class="min-w-0">
-                <div class="flex justify-between pb-2 mb-3 border-b">
+                <div class="flex justify-between items-center pb-2 mb-3 border-b">
                     <h1 class="text-3xl font-serif">Sets</h1>
                     <div class="space-x-2">
                         <a href="/sets/new">Add Set</a>
