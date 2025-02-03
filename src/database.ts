@@ -1,7 +1,7 @@
 import postgres from "postgres";
 
 /**
- * Represents a user in the database
+ * A column in the user table
  */
 export type User = {
   id: number;
@@ -12,7 +12,7 @@ export type User = {
 };
 
 /**
- * Represents a change of a set in the database
+ * A column in the entity versions table
  */
 export type EntityVersion = {
   id: number;
@@ -28,11 +28,18 @@ export type EntityVersion = {
 };
 
 /**
- * Represents entities in the database
+ * Possible types of entities
  */
 export type EntityType = 'set' | 'brand' | 'wiki';
+
+/**
+ * Conjuction of all possible views for each entity type
+ */
 export type EntityViewType<T extends EntityType> = (T extends 'set' ? SetView : (T extends 'brand' ? BrandView : WikiView));
 
+/**
+ * A column returned by the set_view view which joins entities, entity_versions, and sets
+ */
 export type SetView = {
   id: string;
   name: string;
@@ -50,6 +57,9 @@ export type SetView = {
   brand_id: string;
 };
 
+/**
+ * A column returned by the brand_view view which joins entities, entity_versions, and brands
+ */
 export type BrandView = {
   id: string;
   type: EntityType;
@@ -63,6 +73,9 @@ export type BrandView = {
   created_by: string
 };
 
+/**
+ * A column returned by the wiki_view view which joins entities, entity_versions
+ */
 export type WikiView = {
   id: string;
   type: EntityType;

@@ -18,7 +18,7 @@ export const handleSetsPage = async (c: DefaultContext) => {
             FROM set_view s
             LEFT JOIN brand_view b ON s.brand_id = b.id
             ORDER BY s.issued DESC, s.name ASC
-            LIMIT 10 OFFSET ${page ? page * 10 : 0}
+            LIMIT 10 OFFSET ${page * 10}
         `,
         sql<[{ count: number }]>`
             SELECT COUNT(*) as count FROM set_view

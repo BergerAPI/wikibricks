@@ -1,3 +1,4 @@
+import { Table, TableHead } from "../components/table";
 import { sql, type EntityVersion, type SetView } from "../database";
 import { Layout } from "../layout";
 import { PermissionLevel, type DefaultContext } from "../utils";
@@ -9,19 +10,17 @@ type SetVersionMetaData = SetView & {
 };
 
 const ChangeTable = ({ changes }: { changes: SetVersionMetaData[] }) => (
-  <table class="table-auto w-full mt-4 border-collapse border">
-    <thead>
-      <tr class="[&>th]:border bg-background">
-        <th>Set</th>
-        <th>Changed By</th>
-        <th>Date</th>
-        <th></th>
-      </tr>
-    </thead>
+  <Table>
+    <TableHead>
+      <th>Set</th>
+      <th>Changed By</th>
+      <th>Date</th>
+    </TableHead>
+
     <tbody>
       {changes.map((change) => {
         return (
-          <tr class="[&>td]:border [&>td]:p-1">
+          <tr>
             <td>{change.set_name}</td>
             <td>{change.username}</td>
             <td>{new Date(change.created_at).toLocaleString()}</td>
@@ -32,7 +31,7 @@ const ChangeTable = ({ changes }: { changes: SetVersionMetaData[] }) => (
         );
       })}
     </tbody>
-  </table>
+  </Table>
 );
 
 export const handleSetChangesPage = async (c: DefaultContext) => {

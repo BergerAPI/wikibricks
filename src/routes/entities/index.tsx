@@ -3,40 +3,50 @@ import { sql, type BrandView, type EntityType, type EntityViewType, type SetView
 import { Layout } from "../../layout";
 import type { DefaultContext } from "../../utils";
 
-type AttributeDefinition<T, K extends keyof T> = string | {
-    text: string;
-    link?: (value: T[K]) => string;
-    value: (value: T[K], obj: T) => string;
-}
+/**
+ * Defines an attribute for a given property.
+ * Can either be a string label or an object that defines text, link and value formatter.
+ */
+type AttributeDefinition<T, K extends keyof T> =
+    | string
+    | {
+        text: string;
+        link?: (value: T[K]) => string;
+        value: (value: T[K], obj: T) => string;
+    };
 
-type EntityAttributes<T extends EntityType, J = {}> = Partial<{
-    [P in keyof (EntityViewType<T> & J)]: AttributeDefinition<EntityViewType<T> & J, P>
-}>
+/**
+ * Defines a mapping of entity attribute keys to attribute definitions.
+ */
+type EntityAttributes<
+    E extends EntityType,
+    Extra = {}
+> = Partial<{
+    [P in keyof (EntityViewType<E> & Extra)]: AttributeDefinition<EntityViewType<E> & Extra, P>;
+}>;
 
-
-type InfoFields<J = {
-    "set": {
-        "brand_name"?: string;
-    },
-}> = {
-        [K in EntityType]: EntityAttributes<K, J extends { [key in K]?: any } ? J[K] : {}>
-    }
+/**
+ * Defines the info field configuration for all entity types.
+ */
+type InfoFields<Extra extends { [key in EntityType]?: any } = { set: { brand_name?: string } }> = {
+    [K in EntityType]: EntityAttributes<K, K extends keyof Extra ? Extra[K] : {}>;
+};
 
 const INFO_FIELDS: InfoFields = {
-    'set': {
-        'pieces': 'Pieces',
-        'size': 'Size',
-        'theme': 'Theme',
-        'issued': 'Issued',
-        'brand_id': {
+    set: {
+        pieces: 'Pieces',
+        size: 'Size',
+        theme: 'Theme',
+        issued: 'Issued',
+        brand_id: {
             text: 'Brand',
             link: (value) => `/entities/${value}`,
             value: (value, obj) => obj.brand_name || value,
         },
     },
-    'brand': {
-        'country': 'Country',
-        'website': {
+    brand: {
+        country: 'Country',
+        website: {
             text: 'Website',
             link: (value) => {
                 const full = value.startsWith('http') ? value : `https://${value}`
@@ -51,7 +61,7 @@ const INFO_FIELDS: InfoFields = {
             value: (value, _) => value,
         },
     },
-    'wiki': {},
+    wiki: {},
 };
 
 const EntityInfoBox = <T extends EntityType>({ entity, fields }: { entity: EntityViewType<T>, fields: EntityAttributes<T> }) => {
