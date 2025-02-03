@@ -53,7 +53,7 @@ export const handleEntityHistoryPage = async (c: DefaultContext) => {
                                 <tr>
                                     <td>
                                         <a
-                                            href={`/entities/${entityId}/version/${version.version_number}`}
+                                            href={`/entities/${entityId}?version=${version.version_number}`}
                                             class="text-primary hover:underline"
                                         >
                                             {version.version_number}

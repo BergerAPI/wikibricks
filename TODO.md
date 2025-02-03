@@ -6,7 +6,7 @@
 - [x] Improve safety of pages (Internal Server Errors)
 - [x] Error pages (Not Found, Internal Server Error, ...)
 - [ ] Account Settings
-- [ ] View specific versions of entities
+- [x] View specific versions of entities
 - [x] Cleanup code (More comments, structure)
 - [ ] Entity change page
 - [ ] Entity add page

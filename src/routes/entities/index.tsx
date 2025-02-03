@@ -32,7 +32,7 @@ type InfoFields<Extra extends { [key in EntityType]?: any } = { set: { brand_nam
     [K in EntityType]: EntityAttributes<K, K extends keyof Extra ? Extra[K] : {}>;
 };
 
-const INFO_FIELDS: InfoFields = {
+export const INFO_FIELDS: InfoFields = {
     set: {
         pieces: 'Pieces',
         size: 'Size',
@@ -86,6 +86,9 @@ export const handleEntityPage = async (c: DefaultContext) => {
     const user = c.get("user");
     const entityId = c.req.param("id");
 
+    // Possible version selection
+    const version = c.req.query("version");
+
     const [entity] = await sql.begin(async (sql) => {
         // First get the entity type
         const [entityInfo] = await sql<{ type: string }[]>`
@@ -97,16 +100,34 @@ export const handleEntityPage = async (c: DefaultContext) => {
         // Then fetch from the appropriate view based on type
         switch (entityInfo.type) {
             case 'set':
+                if (version)
+                    return await sql<(SetView & { brand_name: string })[]>`
+                        SELECT s.*, e.name as brand_name
+                        FROM set_versions_view s
+                        LEFT JOIN entities e ON s.brand_id = e.id
+                        WHERE s.id = ${entityId} AND s.version_number = ${version}
+                    `;
+
                 return await sql<(SetView & { brand_name: string })[]>`
                     SELECT s.*, e.name as brand_name FROM set_view s
                     LEFT JOIN entities e ON s.brand_id = e.id
                     WHERE s.id = ${entityId}
                 `;
             case 'brand':
+                if (version)
+                    return await sql<BrandView[]>`
+                        SELECT * FROM brand_versions_view WHERE id = ${entityId} AND version_number = ${version}
+                    `;
+
                 return await sql<BrandView[]>`
                     SELECT * FROM brand_view WHERE id = ${entityId}
                 `;
             case 'wiki':
+                if (version)
+                    return await sql<WikiView[]>`
+                        SELECT * FROM wiki_versions_view WHERE id = ${entityId} AND version_number = ${version}
+                    `;
+
                 return await sql<WikiView[]>`
                     SELECT * FROM wiki_view WHERE id = ${entityId}
                 `;
@@ -124,7 +145,7 @@ export const handleEntityPage = async (c: DefaultContext) => {
         <Layout user={user}>
             <main class="overflow-auto">
                 <div class="flex justify-between items-center pb-2 mb-3 border-b">
-                    <h1 class="text-3xl font-serif">{entity.name}</h1>
+                    <h1 class="text-3xl font-serif">{!version ? entity.name : `${entity.name}: Version ${version}`}</h1>
                     <div class="space-x-2">
                         <a href={`/entities/${entity.id}/history`}>Version History</a>
                     </div>

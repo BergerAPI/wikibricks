@@ -28,6 +28,30 @@ export type EntityVersion = {
 };
 
 /**
+ * A column in the brands table
+ */
+export type Brand = {
+  version_id: number;
+  country: string;
+  website: string;
+  created_at: Date;
+}
+
+/**
+ * A column in the sets table
+ */
+export type Set = {
+  version_id: number;
+  pieces: number;
+  issued: string;
+  theme: string;
+  size: string;
+  manufacturer_id: string;
+  brand_id: number;
+  created_at: Date;
+}
+
+/**
  * Possible types of entities
  */
 export type EntityType = 'set' | 'brand' | 'wiki';
@@ -163,8 +187,9 @@ CREATE TABLE IF NOT EXISTS sets (
 
 CREATE INDEX IF NOT EXISTS idx_set ON sets(brand_id, issued);
 
-CREATE OR REPLACE VIEW set_view AS
+CREATE OR REPLACE VIEW set_versions_view AS
 SELECT
+    v.id AS version_id,
     e.id AS id,
     e.name AS name,
     e.type AS type,
@@ -179,13 +204,14 @@ SELECT
     s.size AS size,
     s.manufacturer_id AS manufacturer_id,
     s.brand_id AS brand_id
-FROM entities e
-JOIN entity_versions v ON e.head_version_id = v.id
+FROM entity_versions v
+JOIN entities e ON v.entity_id = e.id
 JOIN sets s ON v.id = s.version_id
 WHERE e.type = 'set';
 
-CREATE OR REPLACE VIEW brand_view AS
+CREATE OR REPLACE VIEW brand_versions_view AS
 SELECT
+    v.id AS version_id,
     e.id AS id,
     e.name AS name,
     e.type AS type,
@@ -196,13 +222,14 @@ SELECT
     v.description AS description,
     b.country AS country,
     b.website AS website
-FROM entities e
-JOIN entity_versions v ON v.id = e.head_version_id
+FROM entity_versions v
+JOIN entities e ON v.entity_id = e.id
 JOIN brands b ON v.id = b.version_id
 WHERE e.type = 'brand';
 
-CREATE OR REPLACE VIEW wiki_view AS
+CREATE OR REPLACE VIEW wiki_versions_view AS
 SELECT
+    v.id AS version_id,
     e.id AS id,
     e.name AS name,
     e.type AS type,
@@ -211,8 +238,23 @@ SELECT
     v.created_at AS version_created_at,
     v.created_by AS created_by,
     v.description AS description
-FROM entities e
-JOIN entity_versions v ON v.id = e.head_version_id
+FROM entity_versions v
+JOIN entities e ON v.entity_id = e.id
 WHERE e.type = 'wiki';
-    `.simple();
+
+CREATE OR REPLACE VIEW set_view AS
+SELECT v.*
+FROM entities e
+JOIN set_versions_view v ON v.version_id = e.head_version_id;
+
+CREATE OR REPLACE VIEW brand_view AS
+SELECT v.*
+FROM entities e
+JOIN brand_versions_view v ON v.version_id = e.head_version_id;
+
+CREATE OR REPLACE VIEW wiki_view AS
+SELECT v.*
+FROM entities e
+JOIN wiki_versions_view v ON v.version_id = e.head_version_id;
+`.simple();
 };
