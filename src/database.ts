@@ -31,7 +31,7 @@ export type EntityVersion = {
  * Represents entities in the database
  */
 export type EntityType = 'set' | 'brand' | 'wiki';
-export type EntityViewType<T extends EntityType> = T extends 'set' ? SetView : BrandView;
+export type EntityViewType<T extends EntityType> = (T extends 'set' ? SetView : BrandView);
 
 export type SetView = {
   id: string;
@@ -51,8 +51,8 @@ export type SetView = {
 };
 
 export type BrandView = {
+  id: string;
   type: EntityType;
-  brand_id: string;
   name: string;
   description: string;
   country: string;
@@ -162,7 +162,7 @@ WHERE e.type = 'set';
 
 CREATE OR REPLACE VIEW brand_view AS
 SELECT
-    e.id AS brand_id,
+    e.id AS id,
     e.name AS name,
     e.type AS type,
     e.created_at AS created_at,

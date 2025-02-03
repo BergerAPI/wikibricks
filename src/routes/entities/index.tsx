@@ -4,20 +4,22 @@ import type { DefaultContext } from "../../utils";
 
 type AttributeDefinition<T, K extends keyof T> = string | {
     text: string;
-    link: (value: T[K]) => string;
-} | {
-    text: string;
-    value: (value: T[K]) => string;
+    link?: (value: T[K]) => string;
+    value: (value: T[K], obj: T) => string;
 }
 
-type EntityAttributes<T extends EntityType> = Partial<{
-    [P in keyof EntityViewType<T>]: AttributeDefinition<EntityViewType<T>, P>
+type EntityAttributes<T extends EntityType, J = {}> = Partial<{
+    [P in keyof (EntityViewType<T> & J)]: AttributeDefinition<EntityViewType<T> & J, P>
 }>
 
 
-type InfoFields = {
-    [K in EntityType]: EntityAttributes<K>
-}
+type InfoFields<J = {
+    "set": {
+        "brand_name"?: string;
+    },
+}> = {
+        [K in EntityType]: EntityAttributes<K, J extends { [key in K]?: any } ? J[K] : {}>
+    }
 
 const INFO_FIELDS: InfoFields = {
     'set': {
@@ -27,14 +29,25 @@ const INFO_FIELDS: InfoFields = {
         'issued': 'Issued',
         'brand_id': {
             text: 'Brand',
-            link: (value: string) => `/entities/${value}`
+            link: (value) => `/entities/${value}`,
+            value: (value, obj) => obj.brand_name || value,
         },
     },
     'brand': {
         'country': 'Country',
         'website': {
             text: 'Website',
-            link: (value: string) => value
+            link: (value) => {
+                const full = value.startsWith('http') ? value : `https://${value}`
+
+                try {
+                    new URL(full);
+                    return full;
+                } catch {
+                    return '#';
+                }
+            },
+            value: (value, _) => value,
         },
     },
     'wiki': {},
@@ -74,7 +87,7 @@ const InfoBox = <T extends EntityType>({ entity, fields }: { entity: EntityViewT
                         </th>
                         <td class="text-left">
                             {typeof info === 'string' ? entity[field] : info.link !== undefined ? (
-                                <a href={info.link(entity[field])}>{entity[field]}</a>
+                                <a href={info.link(entity[field])}>{info.value(entity[field], entity)}</a>
                             ) : info.value(entity[field])}
                         </td>
                     </tr>
@@ -99,12 +112,14 @@ export const handleEntityPage = async (c: DefaultContext) => {
         // Then fetch from the appropriate view based on type
         switch (entityInfo.type) {
             case 'set':
-                return await sql<SetView[]>`
-                    SELECT * FROM set_view WHERE id = ${entityId}
+                return await sql<(SetView & { brand_name: string })[]>`
+                    SELECT s.*, e.name as brand_name FROM set_view s
+                    LEFT JOIN entities e ON s.brand_id = e.id
+                    WHERE s.id = ${entityId}
                 `;
             case 'brand':
                 return await sql<BrandView[]>`
-                    SELECT * FROM brand_view WHERE brand_id = ${entityId}
+                    SELECT * FROM brand_view WHERE id = ${entityId}
                 `;
             default:
                 return [null];
@@ -119,7 +134,12 @@ export const handleEntityPage = async (c: DefaultContext) => {
     return c.render(
         <Layout user={user}>
             <main class="overflow-auto">
-                <h1 class="text-3xl font-serif pb-2 mb-3 border-b">{entity.name}</h1>
+                <div class="flex justify-between items-center pb-2 mb-3 border-b">
+                    <h1 class="text-3xl font-serif">{entity.name}</h1>
+                    <div class="space-x-2">
+                        <a href={`/entities/${entity.id}/history`}>Version History</a>
+                    </div>
+                </div>
 
                 {Object.keys(infoFields).length > 0 && <InfoBox entity={entity} fields={infoFields as EntityAttributes<typeof entity.type>} />}
 
