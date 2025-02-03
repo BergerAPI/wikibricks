@@ -31,7 +31,7 @@ export type EntityVersion = {
  * Represents entities in the database
  */
 export type EntityType = 'set' | 'brand' | 'wiki';
-export type EntityViewType<T extends EntityType> = (T extends 'set' ? SetView : BrandView);
+export type EntityViewType<T extends EntityType> = (T extends 'set' ? SetView : (T extends 'brand' ? BrandView : WikiView));
 
 export type SetView = {
   id: string;
@@ -57,6 +57,17 @@ export type BrandView = {
   description: string;
   country: string;
   website: string;
+  created_at: Date
+  version_number: string
+  version_created_at: string
+  created_by: string
+};
+
+export type WikiView = {
+  id: string;
+  type: EntityType;
+  name: string;
+  description: string;
   created_at: Date
   version_number: string
   version_created_at: string
@@ -176,5 +187,19 @@ FROM entities e
 JOIN entity_versions v ON v.id = e.head_version_id
 JOIN brands b ON v.id = b.version_id
 WHERE e.type = 'brand';
+
+CREATE OR REPLACE VIEW wiki_view AS
+SELECT
+    e.id AS id,
+    e.name AS name,
+    e.type AS type,
+    e.created_at AS created_at,
+    v.version_number AS version_number,
+    v.created_at AS version_created_at,
+    v.created_by AS created_by,
+    v.description AS description
+FROM entities e
+JOIN entity_versions v ON v.id = e.head_version_id
+WHERE e.type = 'wiki';
     `.simple();
 };

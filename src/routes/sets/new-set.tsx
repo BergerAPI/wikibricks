@@ -6,8 +6,8 @@ export const handleNewSetPage = async (c: DefaultContext) => {
     const user = c.get("user");
 
     const brands = await sql<
-        { brand_id: number; name: string }[]
-    >`SELECT brand_id, name FROM brand_view ORDER BY name ASC;`;
+        { id: number; name: string }[]
+    >`SELECT id, name FROM brand_view ORDER BY name ASC;`;
 
     if (user === undefined) return c.redirect("/login?redirect=/sets/new");
 
@@ -44,7 +44,7 @@ export const handleNewSetPage = async (c: DefaultContext) => {
                         <span>Brand</span>
                         <select class="mt-1 block w-full" name="brand_id" type="number">
                             {brands.map((it) => (
-                                <option value={it.brand_id}>{it.name}</option>
+                                <option value={it.id}>{it.name}</option>
                             ))}
                         </select>
                     </label>

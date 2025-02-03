@@ -1,5 +1,5 @@
 import { InfoBox, InfoBoxImage, InfoBoxRow } from "../../components/info-box";
-import { sql, type BrandView, type EntityType, type EntityViewType, type SetView } from "../../database";
+import { sql, type BrandView, type EntityType, type EntityViewType, type SetView, type WikiView } from "../../database";
 import { Layout } from "../../layout";
 import type { DefaultContext } from "../../utils";
 
@@ -95,6 +95,10 @@ export const handleEntityPage = async (c: DefaultContext) => {
             case 'brand':
                 return await sql<BrandView[]>`
                     SELECT * FROM brand_view WHERE id = ${entityId}
+                `;
+            case 'wiki':
+                return await sql<WikiView[]>`
+                    SELECT * FROM wiki_view WHERE id = ${entityId}
                 `;
             default:
                 return [null];
