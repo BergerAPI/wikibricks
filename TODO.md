@@ -3,6 +3,8 @@
 - [x] Unify Entity Pages
 - [x] Change History Page
 - [ ] User Page
+- [ ] Improve safety of pages (Internal Server Errors)
+- [ ] Error pages (Not Found, Internal Server Error, ...)
 - [ ] Account Settings
 - [ ] Entity change page
 - [ ] Entity add page
