@@ -2,7 +2,7 @@
   "name": "my-app",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.tsx",
+    "dev": "tsx watch src/index.ts",
     "dev:css": "npx tailwindcss -i ./global.css -o ./public/styles.css --watch"
   },
   "dependencies": {

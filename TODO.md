@@ -3,8 +3,8 @@
 - [x] Unify Entity Pages
 - [x] Change History Page
 - [x] User Page
-- [ ] Improve safety of pages (Internal Server Errors)
-- [ ] Error pages (Not Found, Internal Server Error, ...)
+- [x] Improve safety of pages (Internal Server Errors)
+- [x] Error pages (Not Found, Internal Server Error, ...)
 - [ ] Account Settings
 - [ ] View specific versions of entities
 - [x] Cleanup code (More comments, structure)
