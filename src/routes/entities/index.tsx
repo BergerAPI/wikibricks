@@ -64,7 +64,7 @@ export const INFO_FIELDS: InfoFields = {
     wiki: {},
 };
 
-const EntityInfoBox = <T extends EntityType>({ entity, fields }: { entity: EntityViewType<T>, fields: EntityAttributes<T> }) => {
+const EntityInfoBox = <T extends EntityType>({ entity, fields, editable }: { entity: EntityViewType<T>, fields: EntityAttributes<T>, editable: boolean }) => {
     return <InfoBox title={entity.name}>
         <InfoBoxImage src="https://placehold.co/800x800" alt={`Image of ${entity.name}`} />
 
@@ -74,9 +74,9 @@ const EntityInfoBox = <T extends EntityType>({ entity, fields }: { entity: Entit
             if (!entity[field]) return null;
 
             return <InfoBoxRow label={typeof info === 'string' ? info : info.text}>
-                {typeof info === 'string' ? entity[field] : info.link !== undefined ? (
-                    <a href={info.link(entity[field])}>{info.value(entity[field], entity)}</a>
-                ) : info.value(entity[field])}
+                {typeof info === 'string' ? <span field={field} contenteditable={editable}>{entity[field]}</span> : info.link !== undefined ? (
+                    <a contenteditable={editable} field={field} href={info.link(entity[field])}>{info.value(entity[field], entity)}</a>
+                ) : <span contenteditable={editable} field={field}>{info.value(entity[field])}</span>}
             </InfoBoxRow>
         })}
     </InfoBox>
@@ -86,8 +86,9 @@ export const handleEntityPage = async (c: DefaultContext) => {
     const user = c.get("user");
     const entityId = c.req.param("id");
 
-    // Possible version selection
+    // Possible query parameters for versioned entities and edit mode
     const version = c.req.query("version");
+    const edit = c.req.query("edit") !== undefined;
 
     const [entity] = await sql.begin(async (sql) => {
         // First get the entity type
@@ -151,10 +152,32 @@ export const handleEntityPage = async (c: DefaultContext) => {
                     </div>
                 </div>
 
-                {Object.keys(infoFields).length > 0 && <EntityInfoBox entity={entity} fields={infoFields as EntityAttributes<typeof entity.type>} />}
+                {Object.keys(infoFields).length > 0 && <EntityInfoBox editable={true} entity={entity} fields={infoFields as EntityAttributes<typeof entity.type>} />}
 
-                <div class="text-pretty [&>ul]:mt-2">{entity.description}</div>
+                <div contenteditable={edit} field="description" class="text-pretty [&>ul]:mt-2">{entity.description}</div>
+
+                {edit && <button id="save" class="mt-2">Save</button>}
             </main>
+
+            <script dangerouslySetInnerHTML={{
+                __html: `
+// When the user clicks the save button 
+document.getElementById('save').addEventListener('click', async () => {
+    const data = {}
+
+    document.querySelectorAll("[contenteditable]").forEach(it => {
+        data[it.getAttribute('field')] = it.innerText;
+    });
+
+    await fetch(\`/entities/${entity.id}\`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    });
+});
+`}} />
         </Layout>,
     );
 };

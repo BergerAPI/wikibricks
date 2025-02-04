@@ -44,3 +44,7 @@ ol,
 ul {
     @apply pl-5 space-y-2 list-disc marker:text-gray-950;
 }
+
+[contenteditable] {
+    @apply outline-none;
+}
