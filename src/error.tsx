@@ -1,3 +1,4 @@
+import type { StatusCode } from "hono/utils/http-status";
 import type { User } from "./database";
 import { Layout } from "./layout";
 import type { DefaultContext } from "./utils";
@@ -20,6 +21,7 @@ const ErrorPage = ({ context }: { context: DefaultContext }) => {
 
 export const handleError = (err: Error, c: DefaultContext) => {
     // TODO: Log error to a service like Sentry
+    c.status(c.res.status as StatusCode);
 
     return c.html(
         <ErrorPage context={c} />
@@ -29,6 +31,8 @@ export const handleError = (err: Error, c: DefaultContext) => {
 export const handleNotFound = async (c: DefaultContext, next: any) => {
     if (c.res.status.toString().startsWith("2") || c.res.status.toString().startsWith("3"))
         return await next();
+
+    c.status(c.res.status as StatusCode);
 
     return c.html(
         <ErrorPage context={c} />
