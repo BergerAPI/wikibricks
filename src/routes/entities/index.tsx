@@ -152,14 +152,20 @@ export const handleEntityPage = async (c: DefaultContext) => {
                     </div>
                 </div>
 
-                {Object.keys(infoFields).length > 0 && <EntityInfoBox editable={true} entity={entity} fields={infoFields as EntityAttributes<typeof entity.type>} />}
+                {edit && <div class="mb-3 pb-2 border-b flex items-center gap-2">
+                    <label class="flex items-center flex-1 space-x-1">
+                        <span>Change Message</span>
+                        <input class="flex-1" id="change_message" />
+                    </label>
+                    <button id="save">Save</button>
+                </div>}
+
+                {Object.keys(infoFields).length > 0 && <EntityInfoBox editable={edit} entity={entity} fields={infoFields as EntityAttributes<typeof entity.type>} />}
 
                 <div contenteditable={edit} field="description" class="text-pretty [&>ul]:mt-2">{entity.description}</div>
-
-                {edit && <button id="save" class="mt-2">Save</button>}
             </main>
 
-            <script dangerouslySetInnerHTML={{
+            {edit && <script dangerouslySetInnerHTML={{
                 __html: `
 // When the user clicks the save button 
 document.getElementById('save').addEventListener('click', async () => {
@@ -169,6 +175,9 @@ document.getElementById('save').addEventListener('click', async () => {
         data[it.getAttribute('field')] = it.innerText;
     });
 
+    const changeMessage = document.getElementById('change_message').value;
+    data.changeMessage = changeMessage;
+
     await fetch(\`/entities/${entity.id}\`, {
         method: 'POST',
         body: JSON.stringify(data),
@@ -177,7 +186,24 @@ document.getElementById('save').addEventListener('click', async () => {
         }
     });
 });
-`}} />
+`}} />}
         </Layout>,
     );
 };
+
+export const handleEntityPageSubmit = async (c: DefaultContext) => {
+    const user = c.get("user");
+    const entityId = c.req.param("id");
+
+    if (!user) return c.redirect("/login?redirect=/entities/${entityId}");
+
+    const { changeMessage, ...data } = await c.req.json();
+
+    if (!changeMessage || Object.keys(data).length === 0) {
+        return c.redirect(`/entities/${entityId}?edit`);
+    }
+
+    console.log(changeMessage, data);
+
+    return c.redirect(`/entities/${entityId}/history`);
+}
