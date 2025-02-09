@@ -66,6 +66,7 @@ export type EntityViewType<T extends EntityType> = (T extends 'set' ? SetView : 
  */
 export type SetView = {
   id: string;
+  version_id: number;
   name: string;
   type: EntityType;
   created_at: Date;
@@ -86,6 +87,7 @@ export type SetView = {
  */
 export type BrandView = {
   id: string;
+  version_id: number;
   type: EntityType;
   name: string;
   description: string;
@@ -102,6 +104,7 @@ export type BrandView = {
  */
 export type WikiView = {
   id: string;
+  version_id: number;
   type: EntityType;
   name: string;
   description: string;
@@ -152,10 +155,7 @@ CREATE TABLE IF NOT EXISTS entity_versions (
     review_status VARCHAR(32) DEFAULT 'pending' CHECK (review_status IN ('pending', 'approved', 'rejected')),
     reviewed_at TIMESTAMP,
     reviewed_by INT REFERENCES users(id) ON DELETE SET NULL,
-    review_comment TEXT DEFAULT '',
-
-    -- Ensure version number uniqueness for an entity
-    UNIQUE (entity_id, version_number)
+    review_comment TEXT DEFAULT ''
 );
 
 CREATE INDEX IF NOT EXISTS idx_version ON entity_versions(entity_id, version_number, review_status);

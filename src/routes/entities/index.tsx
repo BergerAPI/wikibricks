@@ -32,6 +32,9 @@ type InfoFields<Extra extends { [key in EntityType]?: any } = { set: { brand_nam
     [K in EntityType]: EntityAttributes<K, K extends keyof Extra ? Extra[K] : {}>;
 };
 
+/**
+ * Defines the info fields for each entity type.
+ */
 export const INFO_FIELDS: InfoFields = {
     set: {
         pieces: 'Pieces',
@@ -64,32 +67,13 @@ export const INFO_FIELDS: InfoFields = {
     wiki: {},
 };
 
-const EntityInfoBox = <T extends EntityType>({ entity, fields, editable }: { entity: EntityViewType<T>, fields: EntityAttributes<T>, editable: boolean }) => {
-    return <InfoBox title={entity.name}>
-        <InfoBoxImage src="https://placehold.co/800x800" alt={`Image of ${entity.name}`} />
-
-        {Object.entries(fields).map(([f, info]) => {
-            const field = f as keyof EntityViewType<typeof entity.type>;
-
-            if (!entity[field]) return null;
-
-            return <InfoBoxRow label={typeof info === 'string' ? info : info.text}>
-                {typeof info === 'string' ? <span field={field} contenteditable={editable}>{entity[field]}</span> : info.link !== undefined ? (
-                    <a contenteditable={editable} field={field} href={info.link(entity[field])}>{info.value(entity[field], entity)}</a>
-                ) : <span contenteditable={editable} field={field}>{info.value(entity[field])}</span>}
-            </InfoBoxRow>
-        })}
-    </InfoBox>
-}
-
-export const handleEntityPage = async (c: DefaultContext) => {
-    const user = c.get("user");
-    const entityId = c.req.param("id");
-
-    // Possible query parameters for versioned entities and edit mode
-    const version = c.req.query("version");
-    const edit = c.req.query("edit") !== undefined;
-
+/**
+ * Get an entity by ID and optionally version.
+ * @param entityId The entity ID to fetch
+ * @param version The version number to fetch
+ * @returns The entity or null if not found
+ */
+const getEntity = async (entityId: string, version?: number) => {
     const [entity] = await sql.begin(async (sql) => {
         // First get the entity type
         const [entityInfo] = await sql<{ type: string }[]>`
@@ -106,7 +90,7 @@ export const handleEntityPage = async (c: DefaultContext) => {
                         SELECT s.*, e.name as brand_name
                         FROM set_versions_view s
                         LEFT JOIN entities e ON s.brand_id = e.id
-                        WHERE s.id = ${entityId} AND s.version_number = ${version}
+                        WHERE s.id = ${entityId} AND s.version_id = ${version}
                     `;
 
                 return await sql<(SetView & { brand_name: string })[]>`
@@ -117,7 +101,7 @@ export const handleEntityPage = async (c: DefaultContext) => {
             case 'brand':
                 if (version)
                     return await sql<BrandView[]>`
-                        SELECT * FROM brand_versions_view WHERE id = ${entityId} AND version_number = ${version}
+                        SELECT * FROM brand_versions_view WHERE id = ${entityId} AND version_id = ${version}
                     `;
 
                 return await sql<BrandView[]>`
@@ -126,7 +110,7 @@ export const handleEntityPage = async (c: DefaultContext) => {
             case 'wiki':
                 if (version)
                     return await sql<WikiView[]>`
-                        SELECT * FROM wiki_versions_view WHERE id = ${entityId} AND version_number = ${version}
+                        SELECT * FROM wiki_versions_view WHERE id = ${entityId} AND version_id = ${version}
                     `;
 
                 return await sql<WikiView[]>`
@@ -136,6 +120,56 @@ export const handleEntityPage = async (c: DefaultContext) => {
                 return [null];
         }
     });
+
+    return entity;
+}
+
+const EntityInfoBox = <T extends EntityType>({ entity, fields, editable }: { entity: EntityViewType<T>, fields: EntityAttributes<T>, editable: boolean }) => {
+    return <InfoBox title={entity.name}>
+        <InfoBoxImage src="https://placehold.co/800x800" alt={`Image of ${entity.name}`} />
+
+        {Object.entries(fields).map(([f, info]) => {
+            const field = f as keyof EntityViewType<typeof entity.type>;
+
+            if (!entity[field]) return null;
+
+            return <InfoBoxRow label={typeof info === 'string' ? info : info.text}>
+                {(() => {
+                    const value = entity[field];
+
+                    if (editable)
+                        return <span field={field} contentEditable>{value}</span>;
+
+                    if (typeof info === 'string')
+                        return <span>{value}</span>;
+
+                    if (info.link)
+                        return (
+                            <a href={info.link(value)}>
+                                {info.value(value, entity)}
+                            </a>
+                        );
+
+                    return (
+                        <span>
+                            {info.value(value, entity)}
+                        </span>
+                    );
+                })()}
+            </InfoBoxRow>
+        })}
+    </InfoBox>
+}
+
+export const handleEntityPage = async (c: DefaultContext) => {
+    const user = c.get("user");
+    const entityId = c.req.param("id");
+
+    // Possible query parameters for versioned entities and edit mode
+    const version = c.req.query("version");
+    const edit = c.req.query("edit") !== undefined;
+
+    const entity = await getEntity(entityId, version ? parseInt(version) : undefined);
 
     if (!entity) return c.notFound();
 
@@ -148,6 +182,9 @@ export const handleEntityPage = async (c: DefaultContext) => {
                 <div class="flex justify-between items-center pb-2 mb-3 border-b">
                     <h1 class="text-3xl font-serif">{!version ? entity.name : `${entity.name}: Version ${version}`}</h1>
                     <div class="space-x-2">
+                        {edit ?
+                            <a href={`/entities/${entity.id}`}>Cancel</a> :
+                            <a href={`/entities/${entity.id}?edit`}>Edit Page</a>}
                         <a href={`/entities/${entity.id}/history`}>Version History</a>
                     </div>
                 </div>
@@ -157,6 +194,7 @@ export const handleEntityPage = async (c: DefaultContext) => {
                         <span>Change Message</span>
                         <input class="flex-1" id="change_message" />
                     </label>
+
                     <button id="save">Save</button>
                 </div>}
 
@@ -197,13 +235,46 @@ export const handleEntityPageSubmit = async (c: DefaultContext) => {
 
     if (!user) return c.redirect("/login?redirect=/entities/${entityId}");
 
+    const entity = await getEntity(entityId);
+
+    if (!entity) return c.notFound();
+
     const { changeMessage, ...data } = await c.req.json();
 
     if (!changeMessage || Object.keys(data).length === 0) {
         return c.redirect(`/entities/${entityId}?edit`);
     }
 
-    console.log(changeMessage, data);
+    // Update the entity with the new data
+    const modifiedFields = Object.entries(data).filter(([key, value]) => value !== (entity[key as keyof typeof entity]?.toString() ?? ''))
+
+    if (modifiedFields.length === 0)
+        return c.redirect(`/entities/${entityId}`);
+
+    await sql.begin(async (sql) => {
+        const [{ id: newVersionId }] = await sql<{ id: number }[]>`
+        INSERT INTO entity_versions ${sql({
+            entity_id: entityId,
+            version_number: entity.version_number + 1,
+            created_by: user.id,
+            change_message: changeMessage,
+            description: data.description,
+            review_status: 'pending',
+        })}
+            RETURNING id;
+        `;
+
+        if (['set', 'brand'].includes(entity.type))
+            await sql`
+            INSERT INTO ${sql({
+                set: 'sets',
+                brand: 'brands',
+            }[entity.type as 'set' | 'brand'])} ${sql({
+                version_id: newVersionId,
+                ...Object.keys(data).filter(k => k !== 'description').reduce((acc, key) => ({ ...acc, [key]: data[key] }), {}),
+            })};
+            `;
+    });
 
     return c.redirect(`/entities/${entityId}/history`);
 }

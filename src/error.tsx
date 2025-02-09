@@ -23,6 +23,8 @@ export const handleError = (err: Error, c: DefaultContext) => {
     // TODO: Log error to a service like Sentry
     c.status(c.res.status as StatusCode);
 
+    console.error(err);
+
     return c.html(
         <ErrorPage context={c} />
     );
