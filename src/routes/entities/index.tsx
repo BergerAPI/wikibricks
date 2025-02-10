@@ -1,5 +1,5 @@
 import { InfoBox, InfoBoxImage, InfoBoxRow } from "../../components/info-box";
-import { sql, type BrandView, type EntityType, type EntityViewType, type SetView, type WikiView } from "../../database";
+import { sql, type BrandView, type DataEntityType, type EntityType, type EntityViewType, type SetView, type WikiView } from "../../database";
 import { Layout } from "../../layout";
 import type { DefaultContext } from "../../utils";
 
@@ -67,6 +67,34 @@ export const INFO_FIELDS: InfoFields = {
     wiki: {},
 };
 
+// Consolidate SQL query definitions per entity type to reduce duplications.
+const queryMapping = {
+    set: {
+        defaultQuery: (entityId: string) => sql<(SetView & { brand_name: string })[]>`
+        SELECT s.*, e.name as brand_name 
+        FROM set_view s 
+        LEFT JOIN entities e ON s.brand_id = e.id 
+        WHERE s.id = ${entityId}`,
+        versionQuery: (entityId: string, version: number) => sql<(SetView & { brand_name: string })[]>`
+        SELECT s.*, e.name as brand_name 
+        FROM set_versions_view s 
+        LEFT JOIN entities e ON s.brand_id = e.id 
+        WHERE s.id = ${entityId} AND s.version_id = ${version}`,
+    },
+    brand: {
+        defaultQuery: (entityId: string) => sql<BrandView[]>`
+        SELECT * FROM brand_view WHERE id = ${entityId}`,
+        versionQuery: (entityId: string, version: number) => sql<BrandView[]>`
+        SELECT * FROM brand_versions_view WHERE id = ${entityId} AND version_id = ${version}`,
+    },
+    wiki: {
+        defaultQuery: (entityId: string) => sql<WikiView[]>`
+        SELECT * FROM wiki_view WHERE id = ${entityId}`,
+        versionQuery: (entityId: string, version: number) => sql<WikiView[]>`
+        SELECT * FROM wiki_versions_view WHERE id = ${entityId} AND version_id = ${version}`,
+    },
+};
+
 /**
  * Get an entity by ID and optionally version.
  * @param entityId The entity ID to fetch
@@ -74,55 +102,21 @@ export const INFO_FIELDS: InfoFields = {
  * @returns The entity or null if not found
  */
 const getEntity = async (entityId: string, version?: number) => {
-    const [entity] = await sql.begin(async (sql) => {
-        // First get the entity type
-        const [entityInfo] = await sql<{ type: string }[]>`
-            SELECT type FROM entities WHERE id = ${entityId}
-        `;
+    const [entityInfo] = await sql<{ type: string }[]>`
+      SELECT type FROM entities WHERE id = ${entityId}
+    `;
 
-        if (!entityInfo) return [null];
+    if (!entityInfo) return null;
 
-        // Then fetch from the appropriate view based on type
-        switch (entityInfo.type) {
-            case 'set':
-                if (version)
-                    return await sql<(SetView & { brand_name: string })[]>`
-                        SELECT s.*, e.name as brand_name
-                        FROM set_versions_view s
-                        LEFT JOIN entities e ON s.brand_id = e.id
-                        WHERE s.id = ${entityId} AND s.version_id = ${version}
-                    `;
+    const mapping = queryMapping[entityInfo.type as EntityType];
+    if (!mapping) return null;
 
-                return await sql<(SetView & { brand_name: string })[]>`
-                    SELECT s.*, e.name as brand_name FROM set_view s
-                    LEFT JOIN entities e ON s.brand_id = e.id
-                    WHERE s.id = ${entityId}
-                `;
-            case 'brand':
-                if (version)
-                    return await sql<BrandView[]>`
-                        SELECT * FROM brand_versions_view WHERE id = ${entityId} AND version_id = ${version}
-                    `;
-
-                return await sql<BrandView[]>`
-                    SELECT * FROM brand_view WHERE id = ${entityId}
-                `;
-            case 'wiki':
-                if (version)
-                    return await sql<WikiView[]>`
-                        SELECT * FROM wiki_versions_view WHERE id = ${entityId} AND version_id = ${version}
-                    `;
-
-                return await sql<WikiView[]>`
-                    SELECT * FROM wiki_view WHERE id = ${entityId}
-                `;
-            default:
-                return [null];
-        }
-    });
-
-    return entity;
-}
+    return await sql.begin(async (sql) => {
+        return version
+            ? await mapping.versionQuery(entityId, version)
+            : await mapping.defaultQuery(entityId);
+    }).then((result) => result[0]);
+};
 
 const EntityInfoBox = <T extends EntityType>({ entity, fields, editable }: { entity: EntityViewType<T>, fields: EntityAttributes<T>, editable: boolean }) => {
     return <InfoBox title={entity.name}>
@@ -131,14 +125,14 @@ const EntityInfoBox = <T extends EntityType>({ entity, fields, editable }: { ent
         {Object.entries(fields).map(([f, info]) => {
             const field = f as keyof EntityViewType<typeof entity.type>;
 
-            if (!entity[field]) return null;
+            if (!entity[field] && !editable) return null;
 
             return <InfoBoxRow label={typeof info === 'string' ? info : info.text}>
                 {(() => {
                     const value = entity[field];
 
                     if (editable)
-                        return <span field={field} contentEditable>{value}</span>;
+                        return <input class="flex-1 border-none outline-none h-6" field={field} value={value instanceof Date ? value.toISOString() : value} />;
 
                     if (typeof info === 'string')
                         return <span>{value}</span>;
@@ -209,8 +203,13 @@ export const handleEntityPage = async (c: DefaultContext) => {
 document.getElementById('save').addEventListener('click', async () => {
     const data = {}
 
-    document.querySelectorAll("[contenteditable]").forEach(it => {
-        data[it.getAttribute('field')] = it.innerText;
+    document.querySelectorAll("[field]").forEach(it => {
+        const field = it.getAttribute('field');
+
+        if (it.nodeName === 'INPUT')
+            data[field] = it.value;
+        else        
+            data[field] = it.innerText;
     });
 
     const changeMessage = document.getElementById('change_message').value;
@@ -246,7 +245,10 @@ export const handleEntityPageSubmit = async (c: DefaultContext) => {
     }
 
     // Update the entity with the new data
-    const modifiedFields = Object.entries(data).filter(([key, value]) => value !== (entity[key as keyof typeof entity]?.toString() ?? ''))
+    const modifiedFields = Object.entries(data).filter(([key, value]) => {
+        const original = entity[key as keyof typeof entity];
+        return value !== (original?.toString() ?? "");
+    });
 
     if (modifiedFields.length === 0)
         return c.redirect(`/entities/${entityId}`);
@@ -269,9 +271,9 @@ export const handleEntityPageSubmit = async (c: DefaultContext) => {
             INSERT INTO ${sql({
                 set: 'sets',
                 brand: 'brands',
-            }[entity.type as 'set' | 'brand'])} ${sql({
+            }[entity.type as DataEntityType])} ${sql({
                 version_id: newVersionId,
-                ...Object.keys(data).filter(k => k !== 'description').reduce((acc, key) => ({ ...acc, [key]: data[key] }), {}),
+                ...Object.keys(data).filter(k => k !== 'description').filter(k => data[k] !== undefined && data[k].toString().length > 0).reduce((acc, key) => ({ ...acc, [key]: data[key] }), {}),
             })};
             `;
     });

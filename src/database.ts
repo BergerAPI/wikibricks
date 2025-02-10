@@ -54,7 +54,9 @@ export type Set = {
 /**
  * Possible types of entities
  */
-export type EntityType = 'set' | 'brand' | 'wiki';
+export type DataEntityType = 'set' | 'brand';
+export type RawEntityType = 'wiki'
+export type EntityType = DataEntityType | RawEntityType;
 
 /**
  * Conjuction of all possible views for each entity type

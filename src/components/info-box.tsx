@@ -34,7 +34,7 @@ export const InfoBoxImage = ({ src, alt }: { src: string, alt: string }) => (
 );
 
 export const InfoBoxRow = ({ label, children }: { label: string } & PropsWithChildren) => (
-    <tr>
+    <tr class="h-6">
         <th scope="row" class="text-left">
             {label}
         </th>
