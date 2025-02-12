@@ -3,17 +3,18 @@ import { sql, type EntityVersion, type SetView } from "../database";
 import { Layout } from "../layout";
 import { PermissionLevel, type DefaultContext } from "../utils";
 
-type SetVersionMetaData = SetView & {
-  set_name: string;
+type EntityVersionMetaData = EntityVersion & {
+  entity_title: string;
   username: string;
-  old_value: string;
+  user_id: string;
 };
 
-const ChangeTable = ({ changes }: { changes: SetVersionMetaData[] }) => (
+const ChangeTable = ({ changes }: { changes: EntityVersionMetaData[] }) => (
   <Table>
     <TableHead>
       <th>Set</th>
       <th>Changed By</th>
+      <th>Message</th>
       <th>Date</th>
     </TableHead>
 
@@ -21,12 +22,20 @@ const ChangeTable = ({ changes }: { changes: SetVersionMetaData[] }) => (
       {changes.map((change) => {
         return (
           <tr>
-            <td>{change.set_name}</td>
-            <td>{change.username}</td>
-            <td>{new Date(change.created_at).toLocaleString()}</td>
             <td>
-              <a href={`/changes/${change.id}`}>View</a>
+              <a href={`/entities/${change.entity_id}?version=${change.id}`}>
+                {change.entity_title}
+              </a>
             </td>
+            <td>
+              <a href={`/users/${change.user_id}`}>
+                {change.username}
+              </a>
+            </td>
+            <td>
+              {change.change_message || <em>No message</em>}
+            </td>
+            <td>{new Date(change.created_at).toLocaleString()}</td>
           </tr>
         );
       })}
@@ -41,16 +50,17 @@ export const handleSetChangesPage = async (c: DefaultContext) => {
     return c.redirect("/sets");
   }
 
-  const changes = await sql<SetVersionMetaData[]>`
-        SELECT
-            v.*,
-            e.name as set_name,
-            u.username
-        FROM entities e
-        JOIN entity_versions v ON v.entity_id = e.id
-        JOIN sets s ON s.version_id = v.id
-        JOIN users u ON v.created_by = u.id
-        WHERE v.review_status = 'pending'
+  const changes = await sql<EntityVersionMetaData[]>`
+        SELECT 
+          ev.*,
+          u.username,
+          e.name as entity_title,
+          u.id as user_id
+        FROM entity_versions ev
+        JOIN entities e ON ev.entity_id = e.id
+        LEFT JOIN users u ON ev.created_by = u.id
+        WHERE ev.review_status = 'pending'
+        ORDER BY ev.version_number DESC
     `;
 
   return c.render(
