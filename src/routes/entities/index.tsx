@@ -132,7 +132,14 @@ const EntityInfoBox = <T extends EntityType>({ entity, fields, editable }: { ent
                     const value = entity[field];
 
                     if (editable)
-                        return <input class="flex-1 border-none outline-none h-6" field={field} value={value instanceof Date ? value.toISOString() : value} />;
+                        return (
+                            <input
+                                class="flex-1 border-none outline-none h-6"
+                                field={field}
+                                type={typeof value === 'number' ? "number" : "text"}
+                                value={value instanceof Date ? value.toISOString() : value}
+                            />
+                        );
 
                     if (typeof info === 'string')
                         return <span>{value}</span>;
