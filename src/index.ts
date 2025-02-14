@@ -8,7 +8,7 @@ import { handleLoginPage, handleLoginSubmit } from "./routes/auth";
 import { handleSetsPage } from "./routes/sets";
 import { handleSetChangesPage } from "./routes/changes";
 import { handleNewSetPage, handleNewSetSubmit } from "./routes/sets/new-set";
-import { handleEntityPage, handleEntityPageSubmit } from "./routes/entities";
+import { handleEntityPage, handleEntityPageSubmit, handleEntityVersionPatch } from "./routes/entities";
 import { handleEntityHistoryPage } from "./routes/entities/history";
 import { handleUserPage } from "./routes/users";
 import { handleError, handleNotFound } from "./error";
@@ -35,6 +35,7 @@ import { handleError, handleNotFound } from "./error";
     app.get("/entities/:id", handleEntityPage);
     app.post("/entities/:id", handleEntityPageSubmit);
     app.get("/entities/:id/history", handleEntityHistoryPage);
+    app.patch("/entities/:id/:version", handleEntityVersionPatch);
 
     // Changes routes
     app.get("/changes", handleSetChangesPage);

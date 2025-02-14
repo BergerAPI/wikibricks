@@ -12,6 +12,11 @@ export type User = {
 };
 
 /**
+ * Represents all possible values of the entity version review_status row
+ */
+export type ReviewStatus = 'pending' | 'approved' | 'rejected';
+
+/**
  * A column in the entity versions table
  */
 export type EntityVersion = {
@@ -24,7 +29,7 @@ export type EntityVersion = {
   description: string;
   change_message: string;
   previous_version: number;
-  review_status: 'pending' | 'approved' | 'rejected';
+  review_status: ReviewStatus;
 };
 
 /**
@@ -63,58 +68,48 @@ export type EntityType = DataEntityType | RawEntityType;
  */
 export type EntityViewType<T extends EntityType> = (T extends 'set' ? SetView : (T extends 'brand' ? BrandView : WikiView));
 
+export type EntityVersionView = {
+  id: string;
+  version_id: number;
+  type: EntityType;
+  name: string;
+  description: string;
+  previous_version: number;
+  change_message: string;
+  review_status: ReviewStatus;
+  reviewed_at: Date;
+  reviewed_by: number;
+  review_comment: string;
+  created_at: Date;
+  version_number: string;
+  version_created_at: string;
+  created_by: string;
+}
+
 /**
  * A column returned by the set_view view which joins entities, entity_versions, and sets
  */
 export type SetView = {
-  id: string;
-  version_id: number;
-  name: string;
-  type: EntityType;
-  created_at: Date;
-  version_number: string;
-  version_created_at: Date;
-  created_by: string;
-  description: string;
   pieces: number;
   issued: string;
   theme: string;
   size: string;
   manufacturer_id: string;
   brand_id: string;
-};
+} & EntityVersionView;
 
 /**
  * A column returned by the brand_view view which joins entities, entity_versions, and brands
  */
 export type BrandView = {
-  id: string;
-  version_id: number;
-  type: EntityType;
-  name: string;
-  description: string;
   country: string;
   website: string;
-  created_at: Date
-  version_number: string
-  version_created_at: string
-  created_by: string
-};
+} & EntityVersionView;
 
 /**
  * A column returned by the wiki_view view which joins entities, entity_versions
  */
-export type WikiView = {
-  id: string;
-  version_id: number;
-  type: EntityType;
-  name: string;
-  description: string;
-  created_at: Date
-  version_number: string
-  version_created_at: string
-  created_by: string
-};
+export type WikiView = EntityVersionView;
 
 // Database connection
 export const sql = postgres(process.env.DB_CONN ?? "");
@@ -200,6 +195,12 @@ SELECT
     v.created_at AS version_created_at,
     v.created_by AS created_by,
     v.description AS description,
+    v.previous_version as previous_version,
+    v.change_message as change_message,
+    v.review_status as review_status,
+    v.reviewed_at as reviewed_at,
+    v.reviewed_by as reviewed_by,
+    v.review_comment as review_comment,
     s.pieces AS pieces,
     s.issued AS issued,
     s.theme AS theme,
@@ -222,6 +223,12 @@ SELECT
     v.created_at AS version_created_at,
     v.created_by AS created_by,
     v.description AS description,
+    v.previous_version as previous_version,
+    v.change_message as change_message,
+    v.review_status as review_status,
+    v.reviewed_at as reviewed_at,
+    v.reviewed_by as reviewed_by,
+    v.review_comment as review_comment,
     b.country AS country,
     b.website AS website
 FROM entity_versions v
@@ -239,7 +246,13 @@ SELECT
     v.version_number AS version_number,
     v.created_at AS version_created_at,
     v.created_by AS created_by,
-    v.description AS description
+    v.description AS description,
+    v.previous_version as previous_version,
+    v.change_message as change_message,
+    v.review_status as review_status,
+    v.reviewed_at as reviewed_at,
+    v.reviewed_by as reviewed_by,
+    v.review_comment as review_comment
 FROM entity_versions v
 JOIN entities e ON v.entity_id = e.id
 WHERE e.type = 'wiki';

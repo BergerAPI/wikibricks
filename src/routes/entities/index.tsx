@@ -1,7 +1,7 @@
 import { InfoBox, InfoBoxImage, InfoBoxRow } from "../../components/info-box";
 import { sql, type BrandView, type DataEntityType, type EntityType, type EntityViewType, type SetView, type WikiView } from "../../database";
 import { Layout } from "../../layout";
-import type { DefaultContext } from "../../utils";
+import { PermissionLevel, type DefaultContext } from "../../utils";
 
 /**
  * Defines an attribute for a given property.
@@ -71,27 +71,27 @@ export const INFO_FIELDS: InfoFields = {
 const queryMapping = {
     set: {
         defaultQuery: (entityId: string) => sql<(SetView & { brand_name: string })[]>`
-        SELECT s.*, e.name as brand_name 
-        FROM set_view s 
-        LEFT JOIN entities e ON s.brand_id = e.id 
-        WHERE s.id = ${entityId}`,
+            SELECT s.*, e.name as brand_name 
+            FROM set_view s 
+            LEFT JOIN entities e ON s.brand_id = e.id 
+            WHERE s.id = ${entityId}`,
         versionQuery: (entityId: string, version: number) => sql<(SetView & { brand_name: string })[]>`
-        SELECT s.*, e.name as brand_name 
-        FROM set_versions_view s 
-        LEFT JOIN entities e ON s.brand_id = e.id 
-        WHERE s.id = ${entityId} AND s.version_id = ${version}`,
+            SELECT s.*, e.name as brand_name 
+            FROM set_versions_view s 
+            LEFT JOIN entities e ON s.brand_id = e.id 
+            WHERE s.id = ${entityId} AND s.version_id = ${version}`,
     },
     brand: {
         defaultQuery: (entityId: string) => sql<BrandView[]>`
-        SELECT * FROM brand_view WHERE id = ${entityId}`,
+            SELECT * FROM brand_view WHERE id = ${entityId}`,
         versionQuery: (entityId: string, version: number) => sql<BrandView[]>`
-        SELECT * FROM brand_versions_view WHERE id = ${entityId} AND version_id = ${version}`,
+            SELECT * FROM brand_versions_view WHERE id = ${entityId} AND version_id = ${version}`,
     },
     wiki: {
         defaultQuery: (entityId: string) => sql<WikiView[]>`
-        SELECT * FROM wiki_view WHERE id = ${entityId}`,
+            SELECT * FROM wiki_view WHERE id = ${entityId}`,
         versionQuery: (entityId: string, version: number) => sql<WikiView[]>`
-        SELECT * FROM wiki_versions_view WHERE id = ${entityId} AND version_id = ${version}`,
+            SELECT * FROM wiki_versions_view WHERE id = ${entityId} AND version_id = ${version}`,
     },
 };
 
@@ -174,6 +174,9 @@ export const handleEntityPage = async (c: DefaultContext) => {
 
     if (!entity) return c.notFound();
 
+    const isProposedVersion = entity.review_status === "pending"
+    const isModerator = (user?.permission_level ?? 0) > PermissionLevel.MODERATOR
+
     // Define info box fields based on entity type
     const infoFields = INFO_FIELDS[entity.type];
 
@@ -183,14 +186,14 @@ export const handleEntityPage = async (c: DefaultContext) => {
                 <div class="flex justify-between items-center pb-2 mb-3 border-b">
                     <h1 class="text-3xl font-serif">{!version ? entity.name : `${entity.name}: Version ${version}`}</h1>
                     <div class="space-x-2">
-                        {edit ?
+                        {!isProposedVersion && (edit ?
                             <a href={`/entities/${entity.id}`}>Cancel</a> :
-                            <a href={`/entities/${entity.id}?edit`}>Edit Page</a>}
+                            <a href={`/entities/${entity.id}?edit`}>Edit Page</a>)}
                         <a href={`/entities/${entity.id}/history`}>Version History</a>
                     </div>
                 </div>
 
-                {edit && <div class="mb-3 pb-2 border-b flex items-center gap-2">
+                {edit && !isProposedVersion && <div class="mb-3 pb-2 border-b flex items-center gap-2">
                     <label class="flex items-center flex-1 space-x-1">
                         <span>Change Message</span>
                         <input class="flex-1" id="change_message" />
@@ -198,6 +201,47 @@ export const handleEntityPage = async (c: DefaultContext) => {
 
                     <button id="save">Save</button>
                 </div>}
+
+                {isProposedVersion && isModerator && <>
+                    <div class="mb-3 pb-2 border-b flex items-center gap-2">
+                        <label class="flex items-center flex-1 space-x-1">
+                            <span>Review Message</span>
+                            <input class="flex-1" id="review_message" />
+                        </label>
+
+                        <button title="Approving a change will set the version HEAD to this version and set the version review status to 'approved'" id="approve">Approve</button>
+                        <button title="Rejecting a change will discard the request to become the new HEAD version and every possibility to be merged into HEAD." id="reject">Reject</button>
+                    </div>
+
+                    <script dangerouslySetInnerHTML={{
+                        __html: `
+const reviewVersion = (type) => {
+    fetch("/entities/${entity.id}/${entity.version_id}", {
+        method: 'PATCH',
+        redirect: "follow",
+        body: JSON.stringify({
+            type,
+            reviewMessage: document.getElementById('review_message').value
+        }),
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    }).then(it => {
+        window.location.href = "/entities/${entity.id}"
+    });
+};
+
+// When the user approves a change
+document.getElementById('approve').addEventListener('click', () => {
+    reviewVersion("approved")
+});
+
+// When the user rejects a change
+document.getElementById('reject').addEventListener('click', () => {
+    reviewVersion("rejected")
+});
+                    `}} />
+                </>}
 
                 {Object.keys(infoFields).length > 0 && <EntityInfoBox editable={edit} entity={entity} fields={infoFields as EntityAttributes<typeof entity.type>} />}
 
@@ -222,12 +266,15 @@ document.getElementById('save').addEventListener('click', async () => {
     const changeMessage = document.getElementById('change_message').value;
     data.changeMessage = changeMessage;
 
-    await fetch(\`/entities/${entity.id}\`, {
+    fetch(\`/entities/${entity.id}\`, {
         method: 'POST',
+        redirect: "follow",
         body: JSON.stringify(data),
         headers: {
             'Content-Type': 'application/json'
         }
+    }).then(it => {
+        window.location.href = "/entities/${entity.id}/history"
     });
 });
 `}} />}
@@ -239,7 +286,8 @@ export const handleEntityPageSubmit = async (c: DefaultContext) => {
     const user = c.get("user");
     const entityId = c.req.param("id");
 
-    if (!user) return c.redirect("/login?redirect=/entities/${entityId}");
+    if (!user)
+        return c.body("Unauthorized", 401);
 
     const entity = await getEntity(entityId);
 
@@ -248,7 +296,7 @@ export const handleEntityPageSubmit = async (c: DefaultContext) => {
     const { changeMessage, ...data } = await c.req.json();
 
     if (!changeMessage || Object.keys(data).length === 0) {
-        return c.redirect(`/entities/${entityId}?edit`);
+        return c.body("Bad Request", 400);
     }
 
     // Update the entity with the new data
@@ -258,7 +306,7 @@ export const handleEntityPageSubmit = async (c: DefaultContext) => {
     });
 
     if (modifiedFields.length === 0)
-        return c.redirect(`/entities/${entityId}`);
+        return c.body("Bad Request", 400);
 
     await sql.begin(async (sql) => {
         const [{ id: newVersionId }] = await sql<{ id: number }[]>`
@@ -285,5 +333,42 @@ export const handleEntityPageSubmit = async (c: DefaultContext) => {
             `;
     });
 
-    return c.redirect(`/entities/${entityId}/history`);
+    return c.body("OK", 200);
 }
+
+export const handleEntityVersionPatch = async (c: DefaultContext) => {
+    const user = c.get("user");
+
+    if (!user || user.permission_level < PermissionLevel.MODERATOR)
+        return c.body("Unauthorized", 401);
+
+    const entityId = c.req.param("id");
+    const versionId = c.req.param("version");
+
+    if (!entityId || !versionId)
+        return c.body("Bad Request", 400)
+
+    const entity = await getEntity(entityId, parseInt(versionId));
+
+    if (!entity) return c.notFound();
+
+    const { reviewMessage, type } = await c.req.json();
+
+    if (!reviewMessage || !type || !["approved", "rejected"].includes(type))
+        return c.body("Bad Request", 400)
+
+    // Noting that the version has been review with the provided status
+    await sql`
+        UPDATE entity_versions SET review_status = ${type}, reviewed_at = NOW(), reviewed_by = ${user.id}, review_comment = ${reviewMessage} WHERE id = ${entity.version_id} AND entity_id = ${entity.id}
+    `
+
+    if (type === 'rejected')
+        return c.body("OK", 200)
+
+    // Setting the HEAD-id when approved
+    await sql`
+        UPDATE entities SET head_version_id = ${entity.version_id} WHERE id = ${entity.id}
+    `
+
+    return c.body("OK", 200)
+};
