@@ -1,9 +1,18 @@
 import { type Context } from 'hono'
 import { Layout } from '../layout'
 import type { DefaultContext } from '../utils'
+import { sql, type BrandView, type SetView, type WikiView } from '../database';
 
 export const handleRootPage = async (c: DefaultContext) => {
     const user = c.get("user");
+
+    const [sets, brands, wikis] = await sql.begin(async sql => {
+        const sets = await sql<SetView[]>`SELECT * FROM set_view LIMIT 3;`
+        const brands = await sql<BrandView[]>`SELECT * FROM brand_view LIMIT 3;`
+        const wikis = await sql<WikiView[]>`SELECT * FROM wiki_view LIMIT 3;`
+
+        return [sets, brands, wikis]
+    })
 
     return c.render(
         <Layout user={user}>
@@ -39,7 +48,9 @@ export const handleRootPage = async (c: DefaultContext) => {
                         <a class="text-sm" href="/sets">See all</a>
                     </div>
                     <ul>
-                        <li>Test</li>
+                        {sets.map(it => <li>
+                            <a href={`/entities/${it.id}`}>{it.name}</a>
+                        </li>)}
                     </ul>
                 </section>
 
@@ -49,7 +60,9 @@ export const handleRootPage = async (c: DefaultContext) => {
                         <a class="text-sm" href="/brands">See all</a>
                     </div>
                     <ul>
-                        <li>Test</li>
+                        {brands.map(it => <li>
+                            <a href={`/entities/${it.id}`}>{it.name}</a>
+                        </li>)}
                     </ul>
                 </section>
             </main>
