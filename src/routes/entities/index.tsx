@@ -193,63 +193,18 @@ export const handleEntityPage = async (c: DefaultContext) => {
                     </div>
                 </div>
 
-                {edit && !isProposedVersion && <div class="mb-3 pb-2 border-b flex items-center gap-2">
-                    <label class="flex items-center flex-1 space-x-1">
-                        <span>Change Message</span>
-                        <input class="flex-1" id="change_message" />
-                    </label>
-
-                    <button id="save">Save</button>
-                </div>}
-
-                {isProposedVersion && isModerator && <>
+                {edit && !isProposedVersion && <>
                     <div class="mb-3 pb-2 border-b flex items-center gap-2">
                         <label class="flex items-center flex-1 space-x-1">
-                            <span>Review Message</span>
-                            <input class="flex-1" id="review_message" />
+                            <span>Change Message</span>
+                            <input class="flex-1" id="change_message" />
                         </label>
 
-                        <button title="Approving a change will set the version HEAD to this version and set the version review status to 'approved'" id="approve">Approve</button>
-                        <button title="Rejecting a change will discard the request to become the new HEAD version and every possibility to be merged into HEAD." id="reject">Reject</button>
+                        <button id="save">Save</button>
                     </div>
 
                     <script dangerouslySetInnerHTML={{
                         __html: `
-const reviewVersion = (type) => {
-    fetch("/entities/${entity.id}/${entity.version_id}", {
-        method: 'PATCH',
-        redirect: "follow",
-        body: JSON.stringify({
-            type,
-            reviewMessage: document.getElementById('review_message').value
-        }),
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    }).then(it => {
-        window.location.href = "/entities/${entity.id}"
-    });
-};
-
-// When the user approves a change
-document.getElementById('approve').addEventListener('click', () => {
-    reviewVersion("approved")
-});
-
-// When the user rejects a change
-document.getElementById('reject').addEventListener('click', () => {
-    reviewVersion("rejected")
-});
-                    `}} />
-                </>}
-
-                {Object.keys(infoFields).length > 0 && <EntityInfoBox editable={edit} entity={entity} fields={infoFields as EntityAttributes<typeof entity.type>} />}
-
-                <div contenteditable={edit} field="description" class="text-pretty [&>ul]:mt-2">{entity.description}</div>
-            </main>
-
-            {edit && <script dangerouslySetInnerHTML={{
-                __html: `
 // When the user clicks the save button 
 document.getElementById('save').addEventListener('click', async () => {
     const data = {}
@@ -277,7 +232,56 @@ document.getElementById('save').addEventListener('click', async () => {
         window.location.href = "/entities/${entity.id}/history"
     });
 });
-`}} />}
+`}} />
+                </>}
+
+                {isProposedVersion && isModerator && <>
+                    <div class="mb-3 pb-2 border-b flex items-center gap-2">
+                        <label class="flex items-center flex-1 space-x-1">
+                            <span>Review Message</span>
+                            <input class="flex-1" id="review_message" />
+                        </label>
+
+                        <button title="Approving a change will set the version HEAD to this version and set the version review status to 'approved'" id="approve">Approve</button>
+                        <button title="Rejecting a change will discard the request to become the new HEAD version and every possibility to be merged into HEAD." id="reject">Reject</button>
+                    </div>
+
+                    <script dangerouslySetInnerHTML={{
+                        __html: `
+const reviewVersion = (type) => {
+    fetch("/entities/${entity.id}/${entity.version_id}", {
+        method: 'PATCH',
+        redirect: "follow",
+        body: JSON.stringify({
+            type,
+            reviewMessage: document.getElementById('review_message').value
+        }),
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    }).then(it => {
+        window.location.href = "/entities/${entity.id}/history"
+    });
+};
+
+// When the user approves a change
+document.getElementById('approve').addEventListener('click', () => {
+    reviewVersion("approved")
+});
+
+// When the user rejects a change
+document.getElementById('reject').addEventListener('click', () => {
+    reviewVersion("rejected")
+});
+                    `}} />
+                </>}
+
+                {Object.keys(infoFields).length > 0 && <EntityInfoBox editable={edit} entity={entity} fields={infoFields as EntityAttributes<typeof entity.type>} />}
+
+                <div dangerouslySetInnerHTML={{
+                    __html: entity.description.replaceAll("\n", "<br />")
+                }} contenteditable={edit} field="description" class="text-pretty [&>ul]:mt-2" />
+            </main>
         </Layout>,
     );
 };

@@ -10,6 +10,7 @@
 - [x] Cleanup code (More comments, structure)
 - [ ] Entity change page
 - [ ] Entity add page
+- [ ] Tags
 - [ ] Admin Tools
   - [ ] Ban users
   - [ ] Force create pages
