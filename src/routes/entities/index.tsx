@@ -11,14 +11,15 @@ type AttributeDefinition<T, K extends keyof T> =
     | string
     | {
         text: string;
+        type: "number" | "string"
         link?: (value: T[K]) => string;
-        value: (value: T[K], obj: T) => string;
+        value: (value: T[K], obj: T) => T[K];
     };
 
 /**
  * Defines a mapping of entity attribute keys to attribute definitions.
  */
-type EntityAttributes<
+export type EntityAttributes<
     E extends EntityType,
     Extra = {}
 > = Partial<{
@@ -37,12 +38,17 @@ type InfoFields<Extra extends { [key in EntityType]?: any } = { set: { brand_nam
  */
 export const INFO_FIELDS: InfoFields = {
     set: {
-        pieces: 'Pieces',
+        pieces: {
+            text: 'Pieces',
+            type: "number",
+            value: (v, _) => v
+        },
         size: 'Size',
         theme: 'Theme',
         issued: 'Issued',
         brand_id: {
             text: 'Brand',
+            type: "number",
             link: (value) => `/entities/${value}`,
             value: (value, obj) => obj.brand_name || value,
         },
@@ -51,6 +57,7 @@ export const INFO_FIELDS: InfoFields = {
         country: 'Country',
         website: {
             text: 'Website',
+            type: "string",
             link: (value) => {
                 const full = value.startsWith('http') ? value : `https://${value}`
 

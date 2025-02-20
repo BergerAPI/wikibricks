@@ -8,14 +8,14 @@
 - [ ] Account Settings
 - [x] View specific versions of entities
 - [x] Cleanup code (More comments, structure)
-- [ ] Entity change page
-- [ ] Entity add page
+- [x] Entity change page
+- [x] Entity add page
 - [ ] Tags
 - [ ] Admin Tools
   - [ ] Ban users
   - [ ] Force create pages
   - [ ] Modify users
-- [ ] Comments
+- [ ] Argon2 for Passwords
 - [ ] Deploy to VPS
 - [ ] CI/CD
   - [ ] View commit on production build
