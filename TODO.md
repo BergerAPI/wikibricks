@@ -11,6 +11,7 @@
 - [x] Entity change page
 - [x] Entity add page
 - [ ] Tags
+- [ ] Error Handling
 - [ ] Admin Tools
   - [ ] Ban users
   - [ ] Force create pages
@@ -20,6 +21,7 @@
 - [ ] CI/CD
   - [ ] View commit on production build
   - [ ] Maybe add staging
+- [ ] ViteJS for bundeling the client side
 
 # Future
 
