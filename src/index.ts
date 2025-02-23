@@ -5,13 +5,13 @@ import { initDatabase } from "./database";
 import { handleRootPage } from "./routes/root";
 import { attemptAuthentication, type Variables } from "./utils";
 import { handleLoginPage, handleLoginSubmit } from "./routes/auth";
-import { handleSetsPage } from "./routes/sets";
 import { handleSetChangesPage } from "./routes/changes";
 import { handleEntityPage, handleEntityPageSubmit, handleEntityVersionPatch } from "./routes/entities";
 import { handleEntityHistoryPage } from "./routes/entities/history";
 import { handleUserPage } from "./routes/users";
 import { handleError, handleNotFound } from "./error";
 import { handleNewEntityPage, handleNewEntitySubmit } from "./routes/entities/new-entity";
+import { handleSearchPage } from "./routes/entities/search";
 
 (async () => {
     const app = new Hono<{ Variables: Variables }>();
@@ -26,12 +26,10 @@ import { handleNewEntityPage, handleNewEntitySubmit } from "./routes/entities/ne
     app.get("/login", handleLoginPage);
     app.post("/login", handleLoginSubmit);
 
-    // Set routes
-    app.get("/sets", handleSetsPage);
-
     // Entity routes
     app.get("/entities/new", handleNewEntityPage);
     app.post("/entities/new", handleNewEntitySubmit);
+    app.get("/entities/search", handleSearchPage);
     app.get("/entities/:id", handleEntityPage);
     app.post("/entities/:id", handleEntityPageSubmit);
     app.get("/entities/:id/history", handleEntityHistoryPage);
