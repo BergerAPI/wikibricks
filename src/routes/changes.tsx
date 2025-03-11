@@ -47,7 +47,7 @@ export const handleSetChangesPage = async (c: DefaultContext) => {
   const user = c.get("user");
 
   if (!user || user.permission_level < PermissionLevel.MODERATOR) {
-    return c.redirect("/sets");
+    return c.redirect("/");
   }
 
   const changes = await sql<EntityVersionMetaData[]>`

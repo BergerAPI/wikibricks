@@ -45,7 +45,7 @@ export const handleRootPage = async (c: DefaultContext) => {
                 <section id="sets" class="mt-8">
                     <div class="pb-2 mb-3 border-b flex items-center gap-4">
                         <h2 class="text-2xl font-serif">Latest Sets</h2>
-                        <a class="text-sm" href="/sets">See all</a>
+                        <a class="text-sm" href="/entities/search?entity_type=set">See all</a>
                     </div>
                     <ul>
                         {sets.map(it => <li>
@@ -57,7 +57,7 @@ export const handleRootPage = async (c: DefaultContext) => {
                 <section id="brands" class="mt-8">
                     <div class="pb-2 mb-3 border-b flex items-center gap-4">
                         <h2 class="text-2xl font-serif">Brands</h2>
-                        <a class="text-sm" href="/brands">See all</a>
+                        <a class="text-sm" href="/entities/search?entity_type=brand">See all</a>
                     </div>
                     <ul>
                         {brands.map(it => <li>
