@@ -1,6 +1,7 @@
 import { Layout } from "../../layout";
 import { sql } from "../../database";
 import { PermissionLevel, type DefaultContext } from "../../utils";
+import { Table, TableHead } from "../../components/table";
 
 export const handleSearchPage = async (c: DefaultContext) => {
     const user = c.get("user");
@@ -50,12 +51,26 @@ export const handleSearchPage = async (c: DefaultContext) => {
                         <a href="/entities/new">Add Entity</a>
                     </div>
                 </div>
+                <form method="get" action="/entities/search" class="mb-4 w-[50%] space-y-2">
+                    <div class="flex gap-2">
+                        <label class="sr-only" for="name">Name:</label>
+                        <input
+                            type="text"
+                            id="name"
+                            name="name"
+                            value={nameSearch}
+                            class="border border-gray-300 p-1 w-full"
+                            placeholder="Search by name"
+                        />
 
-                <form method="get" action="/entities/search" class="mb-4">
-                    <div class="flex flex-wrap space-x-4 items-end">
-                        <div>
-                            <label class="block font-semibold">Entity Type</label>
-                            <select name="entity_type" class="border p-2 rounded">
+                        <button type="submit" class="border border-gray-300 bg-gray-100 px-3 py-1 text-sm hover:bg-gray-200">Search</button>
+                    </div>
+
+                    <details>
+                        <summary class="cursor-pointer font-semibold p-2 border bg-background">Advanced search</summary>
+                        <div class="border border-t-0 p-2">
+                            <label class="block text-sm text-gray-600 mb-1">Entity Type:</label>
+                            <select name="entity_type" class="border border-gray-300 w-full p-1">
                                 {["all", "set", "brand", "wiki"].map((option) => (
                                     <option value={option} selected={entityType === option}>
                                         {option.charAt(0).toUpperCase() + option.slice(1)}
@@ -63,47 +78,30 @@ export const handleSearchPage = async (c: DefaultContext) => {
                                 ))}
                             </select>
                         </div>
-                        <div>
-                            <label class="block font-semibold">Name</label>
-                            <input
-                                type="text"
-                                name="name"
-                                value={nameSearch}
-                                class="border p-2 rounded"
-                                placeholder="Search by name"
-                            />
-                        </div>
-                        <div>
-                            <button type="submit" class="border p-2 rounded">Search</button>
-                        </div>
-                    </div>
+                    </details>
                 </form>
 
                 <div class="min-w-full overflow-x-auto">
-                    <table class="w-full border-collapse">
-                        <thead class="bg-gray-200">
-                            <tr>
-                                <th class="p-2 text-left">Type</th>
-                                <th class="p-2 text-left">Name</th>
-                                <th class="p-2 text-left">Description</th>
-                                <th class="p-2 text-left">Created At</th>
-                            </tr>
-                        </thead>
+                    <Table>
+                        <TableHead>
+                            <th>Type</th>
+                            <th>Name</th>
+                            <th>Date</th>
+                        </TableHead>
                         <tbody>
                             {results.map((r: any) => (
-                                <tr key={r.id} class="border-b">
-                                    <td class="p-2">
+                                <tr key={r.id}>
+                                    <td>
                                         <a href={`/entities/${r.id}`}>{r.type}</a>
                                     </td>
-                                    <td class="p-2">
+                                    <td>
                                         <a href={`/entities/${r.id}`}>{r.name}</a>
                                     </td>
-                                    <td class="p-2">{r.description}</td>
-                                    <td class="p-2">{new Date(r.created_at).toLocaleDateString()}</td>
+                                    <td>{new Date(r.created_at).toLocaleDateString()}</td>
                                 </tr>
                             ))}
                         </tbody>
-                    </table>
+                    </Table>
 
                     <div class="mt-4 flex justify-center space-x-2">
                         {page > 0 && (
