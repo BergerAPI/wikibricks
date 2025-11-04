@@ -27,3 +27,6 @@ lerna-debug.log*
 # misc
 .DS_Store
 public/styles.css
+setup-vps.sh
+wikibricks.service
+deploy.yml
