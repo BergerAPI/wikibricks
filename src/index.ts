@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import { initDatabase } from "./database";
 import { handleRootPage } from "./routes/root";
 import { attemptAuthentication, type Variables } from "./utils";
-import { handleLoginPage, handleLoginSubmit } from "./routes/auth";
+import { handleLoginPage, handleLoginSubmit, handleRegisterPage, handleRegisterSubmit } from "./routes/auth";
 import { handleSetChangesPage } from "./routes/changes";
 import { handleEntityPage, handleEntityPageSubmit, handleEntityVersionPatch } from "./routes/entities";
 import { handleEntityHistoryPage } from "./routes/entities/history";
@@ -25,6 +25,8 @@ import { handleSearchPage } from "./routes/entities/search";
     // Auth routes
     app.get("/login", handleLoginPage);
     app.post("/login", handleLoginSubmit);
+    app.get("/register", handleRegisterPage);
+    app.post("/register", handleRegisterSubmit);
 
     // Entity routes
     app.get("/entities/new", handleNewEntityPage);
