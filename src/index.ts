@@ -4,57 +4,73 @@ import { Hono } from "hono";
 import { initDatabase } from "./database";
 import { handleRootPage } from "./routes/root";
 import { attemptAuthentication, type Variables } from "./utils";
-import { handleLoginPage, handleLoginSubmit, handleRegisterPage, handleRegisterSubmit } from "./routes/auth";
+import {
+  handleLoginPage,
+  handleLoginSubmit,
+  handleRegisterPage,
+  handleRegisterSubmit,
+  handleLogoutSubmit,
+} from "./routes/auth";
 import { handleSetChangesPage } from "./routes/changes";
-import { handleEntityPage, handleEntityPageSubmit, handleEntityVersionPatch } from "./routes/entities";
+import {
+  handleEntityPage,
+  handleEntityPageSubmit,
+  handleEntityVersionPatch,
+} from "./routes/entities";
 import { handleEntityHistoryPage } from "./routes/entities/history";
 import { handleUserPage } from "./routes/users";
 import { handleError, handleNotFound } from "./error";
-import { handleNewEntityPage, handleNewEntitySubmit } from "./routes/entities/new-entity";
+import {
+  handleNewEntityPage,
+  handleNewEntitySubmit,
+} from "./routes/entities/new-entity";
 import { handleSearchPage } from "./routes/entities/search";
 
 (async () => {
-    const app = new Hono<{ Variables: Variables }>();
+  const app = new Hono<{ Variables: Variables }>();
 
-    await initDatabase();
+  await initDatabase();
 
-    app.use(attemptAuthentication);
+  app.use(attemptAuthentication);
 
-    app.get("/", handleRootPage);
+  app.get("/", handleRootPage);
 
-    // Auth routes
-    app.get("/login", handleLoginPage);
-    app.post("/login", handleLoginSubmit);
-    app.get("/register", handleRegisterPage);
-    app.post("/register", handleRegisterSubmit);
+  // Auth routes
+  app.get("/login", handleLoginPage);
+  app.post("/login", handleLoginSubmit);
+  app.get("/register", handleRegisterPage);
+  app.post("/register", handleRegisterSubmit);
+  app.post("/logout", handleLogoutSubmit);
 
-    // Entity routes
-    app.get("/entities/new", handleNewEntityPage);
-    app.post("/entities/new", handleNewEntitySubmit);
-    app.get("/entities/search", handleSearchPage);
-    app.get("/entities/:id", handleEntityPage);
-    app.post("/entities/:id", handleEntityPageSubmit);
-    app.get("/entities/:id/history", handleEntityHistoryPage);
-    app.patch("/entities/:id/:version", handleEntityVersionPatch);
+  // Entity routes
+  app.get("/entities/new", handleNewEntityPage);
+  app.post("/entities/new", handleNewEntitySubmit);
+  app.get("/entities/search", handleSearchPage);
+  app.get("/entities/:id", handleEntityPage);
+  app.post("/entities/:id", handleEntityPageSubmit);
+  app.get("/entities/:id/history", handleEntityHistoryPage);
+  app.patch("/entities/:id/:version", handleEntityVersionPatch);
 
-    // Changes routes
-    app.get("/changes", handleSetChangesPage);
+  // Based off, developed by, set id, Ergänzungssets, bricks
 
-    // User routes
-    app.get("/users/:id", handleUserPage);
+  // Changes routes
+  app.get("/changes", handleSetChangesPage);
 
-    // Handling errors
-    app.onError(handleError);
-    app.use(handleNotFound);
+  // User routes
+  app.get("/users/:id", handleUserPage);
 
-    const port = 3000;
+  // Handling errors
+  app.onError(handleError);
+  app.use(handleNotFound);
 
-    console.log(`Server is running on http://localhost:${port}`);
+  const port = 3000;
 
-    serve({
-        fetch: app.fetch,
-        port,
-    });
+  console.log(`Server is running on http://localhost:${port}`);
+
+  serve({
+    fetch: app.fetch,
+    port,
+  });
 })().then(() => {
-    /* Do nothing */
+  /* Do nothing */
 });
