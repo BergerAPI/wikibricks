@@ -1,4 +1,4 @@
-# Production Dockerfile
+# Production Dockerfile with multi-stage build
 FROM node:18-alpine AS builder
 
 # Set working directory
@@ -13,32 +13,36 @@ COPY package.json package-lock.json* ./
 # Install all dependencies (including dev dependencies for building)
 RUN npm ci
 
-# Copy source code
+# Copy source code and config files
 COPY . .
 
-# Build TailwindCSS for production
-RUN npx tailwindcss -i ./global.css -o ./public/styles.css --minify
+# Create public directory if it doesn't exist
+RUN mkdir -p ./public
+
+# Build TypeScript and CSS
+RUN npm run build
 
 # Production stage
 FROM node:18-alpine AS runner
 
 WORKDIR /app
 
-# Install only production dependencies
+# Install only runtime dependencies
 COPY package.json package-lock.json* ./
 RUN npm ci --only=production && npm cache clean --force
 
-# Copy built application
-COPY --from=builder /app/src ./src
+# Copy compiled application and assets from builder stage
+COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
 # Create non-root user
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S appuser -u 1001
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S appuser -u 1001 -G nodejs
 
-# Change ownership
+# Change ownership of app directory
 RUN chown -R appuser:nodejs /app
+
+# Switch to non-root user
 USER appuser
 
 # Expose port
@@ -48,5 +52,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
 
-# Start the application
-CMD ["npx", "tsx", "src/index.ts"]
+# Start the application using compiled JavaScript
+CMD ["npm", "start"]

@@ -1,4 +1,4 @@
-# Use Node.js 18 LTS as base image
+# Development Dockerfile
 FROM node:18-alpine
 
 # Set working directory
@@ -10,18 +10,18 @@ RUN apk add --no-cache python3 make g++
 # Copy package files
 COPY package.json package-lock.json* ./
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install all dependencies (including devDependencies for development)
+RUN npm ci && npm cache clean --force
 
 # Copy source code
 COPY . .
 
-# Build TailwindCSS
-RUN npx tailwindcss -i ./global.css -o ./public/styles.css --minify
+# Create public directory and build CSS
+RUN mkdir -p ./public && npm run build:css
 
 # Create a non-root user
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nextjs -u 1001
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001 -G nodejs
 
 # Change ownership of the app directory
 RUN chown -R nextjs:nodejs /app
@@ -34,5 +34,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
 
-# Start the application
+# Start the application in development mode
 CMD ["npm", "run", "dev"]
