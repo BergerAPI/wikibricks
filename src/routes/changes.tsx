@@ -2,6 +2,7 @@ import { Table, TableHead } from "../components/table";
 import { sql, type EntityVersion, type SetView } from "../database";
 import { Layout } from "../layout";
 import { PermissionLevel, type DefaultContext } from "../utils";
+import { t } from "../translation";
 
 type EntityVersionMetaData = EntityVersion & {
   entity_title: string;
@@ -12,10 +13,10 @@ type EntityVersionMetaData = EntityVersion & {
 const ChangeTable = ({ changes }: { changes: EntityVersionMetaData[] }) => (
   <Table>
     <TableHead>
-      <th>Set</th>
-      <th>Changed By</th>
-      <th>Message</th>
-      <th>Date</th>
+      <th>{t("changes.set")}</th>
+      <th>{t("changes.changedBy")}</th>
+      <th>{t("changes.message")}</th>
+      <th>{t("entities.date")}</th>
     </TableHead>
 
     <tbody>
@@ -28,13 +29,9 @@ const ChangeTable = ({ changes }: { changes: EntityVersionMetaData[] }) => (
               </a>
             </td>
             <td>
-              <a href={`/users/${change.user_id}`}>
-                {change.username}
-              </a>
+              <a href={`/users/${change.user_id}`}>{change.username}</a>
             </td>
-            <td>
-              {change.change_message || <em>No message</em>}
-            </td>
+            <td>{change.change_message || <em>{t("error.noMessage")}</em>}</td>
             <td>{new Date(change.created_at).toLocaleString()}</td>
           </tr>
         );
@@ -51,7 +48,7 @@ export const handleSetChangesPage = async (c: DefaultContext) => {
   }
 
   const changes = await sql<EntityVersionMetaData[]>`
-        SELECT 
+        SELECT
           ev.*,
           u.username,
           e.name as entity_title,
@@ -66,7 +63,9 @@ export const handleSetChangesPage = async (c: DefaultContext) => {
   return c.render(
     <Layout user={user}>
       <main>
-        <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Change Requests</h1>
+        <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
+          {t("changes.title")}
+        </h1>
         <div class="min-w-full overflow-x-auto">
           <ChangeTable changes={changes} />
         </div>

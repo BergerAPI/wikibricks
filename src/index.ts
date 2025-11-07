@@ -3,7 +3,7 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { initDatabase } from "./database";
 import { handleRootPage } from "./routes/root";
-import { attemptAuthentication, type Variables } from "./utils";
+import { attemptAuthentication, detectLanguage, type Variables } from "./utils";
 import {
   handleLoginPage,
   handleLoginSubmit,
@@ -31,6 +31,7 @@ import { handleSearchPage } from "./routes/entities/search";
 
   await initDatabase();
 
+  app.use(detectLanguage);
   app.use(attemptAuthentication);
 
   app.get("/", handleRootPage);

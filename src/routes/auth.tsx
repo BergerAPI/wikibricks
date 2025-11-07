@@ -3,6 +3,7 @@ import { Layout } from "../layout";
 import { deleteCookie, setCookie } from "hono/cookie";
 import { sql, type User } from "../database";
 import { signUser, type DefaultContext, PermissionLevel } from "../utils";
+import { t } from "../translation";
 
 const CredentialsForm = ({ error }: { error?: string }) => {
   return (
@@ -15,7 +16,7 @@ const CredentialsForm = ({ error }: { error?: string }) => {
 
       <div class="mb-4">
         <label htmlFor="username" class="block mb-1 font-medium">
-          Username
+          {t("auth.username")}
         </label>
         <input
           id="username"
@@ -27,7 +28,7 @@ const CredentialsForm = ({ error }: { error?: string }) => {
       </div>
       <div class="mb-4">
         <label htmlFor="password" class="block mb-1 font-medium">
-          Password
+          {t("auth.password")}
         </label>
         <input
           id="password"
@@ -41,7 +42,7 @@ const CredentialsForm = ({ error }: { error?: string }) => {
         type="submit"
         class="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700 focus:outline-none"
       >
-        Log in
+        {t("auth.loginButton")}
       </button>
     </form>
   );
@@ -58,7 +59,7 @@ const RegisterForm = ({ error }: { error?: string }) => {
 
       <div class="mb-4">
         <label htmlFor="username" class="block mb-1 font-medium">
-          Username
+          {t("auth.username")}
         </label>
         <input
           id="username"
@@ -69,13 +70,11 @@ const RegisterForm = ({ error }: { error?: string }) => {
           minlength={3}
           maxlength={255}
         />
-        <p class="text-sm text-gray-500 mt-1">
-          Username must be between 3-255 characters
-        </p>
+        <p class="text-sm text-gray-500 mt-1">{t("auth.usernameLength")}</p>
       </div>
       <div class="mb-4">
         <label htmlFor="password" class="block mb-1 font-medium">
-          Password
+          {t("auth.password")}
         </label>
         <input
           id="password"
@@ -85,13 +84,11 @@ const RegisterForm = ({ error }: { error?: string }) => {
           required
           minlength={6}
         />
-        <p class="text-sm text-gray-500 mt-1">
-          Password must be at least 6 characters
-        </p>
+        <p class="text-sm text-gray-500 mt-1">{t("auth.passwordLength")}</p>
       </div>
       <div class="mb-6">
         <label htmlFor="confirmPassword" class="block mb-1 font-medium">
-          Confirm Password
+          {t("auth.confirmPassword")}
         </label>
         <input
           id="confirmPassword"
@@ -106,7 +103,7 @@ const RegisterForm = ({ error }: { error?: string }) => {
         type="submit"
         class="px-4 py-2 text-white bg-green-600 rounded hover:bg-green-700 focus:outline-none"
       >
-        Create Account
+        {t("auth.createAccount")}
       </button>
     </form>
   );
@@ -120,16 +117,18 @@ export const handleLoginPage = async (c: DefaultContext) => {
   return c.render(
     <Layout user={user}>
       <main>
-        <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Login</h1>
+        <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
+          {t("auth.login")}
+        </h1>
         <CredentialsForm />
         <div class="px-4 py-3 max-w-lg">
           <p class="text-gray-600">
-            Don't have an account?{" "}
+            {t("auth.dontHaveAccount")}{" "}
             <a
               href="/register"
               class="text-blue-600 hover:text-blue-800 underline"
             >
-              Create one here
+              {t("auth.createOneHere")}
             </a>
           </p>
         </div>
@@ -146,16 +145,18 @@ export const handleRegisterPage = async (c: DefaultContext) => {
   return c.render(
     <Layout user={user}>
       <main>
-        <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Create Account</h1>
+        <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
+          {t("auth.register")}
+        </h1>
         <RegisterForm />
         <div class="px-4 py-3 max-w-lg">
           <p class="text-gray-600">
-            Already have an account?{" "}
+            {t("auth.alreadyHaveAccount")}{" "}
             <a
               href="/login"
               class="text-blue-600 hover:text-blue-800 underline"
             >
-              Log in here
+              {t("auth.logInHere")}
             </a>
           </p>
         </div>
@@ -173,15 +174,15 @@ export const handleRegisterSubmit = async (c: Context) => {
       <Layout>
         <main>
           <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Create Account</h1>
-          <RegisterForm error="All fields are required" />
+          <RegisterForm error={t("error.allFieldsRequired")} />
           <div class="px-4 py-3 max-w-lg">
             <p class="text-gray-600">
-              Already have an account?{" "}
+              {t("auth.alreadyHaveAccount")}{" "}
               <a
                 href="/login"
                 class="text-blue-600 hover:text-blue-800 underline"
               >
-                Log in here
+                {t("auth.logInHere")}
               </a>
             </p>
           </div>
@@ -200,15 +201,15 @@ export const handleRegisterSubmit = async (c: Context) => {
       <Layout>
         <main>
           <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Create Account</h1>
-          <RegisterForm error="Username must be between 3-255 characters" />
+          <RegisterForm error={t("error.usernameLength")} />
           <div class="px-4 py-3 max-w-lg">
             <p class="text-gray-600">
-              Already have an account?{" "}
+              {t("auth.alreadyHaveAccount")}{" "}
               <a
                 href="/login"
                 class="text-blue-600 hover:text-blue-800 underline"
               >
-                Log in here
+                {t("auth.logInHere")}
               </a>
             </p>
           </div>
@@ -223,15 +224,15 @@ export const handleRegisterSubmit = async (c: Context) => {
       <Layout>
         <main>
           <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Create Account</h1>
-          <RegisterForm error="Password must be at least 6 characters" />
+          <RegisterForm error={t("error.passwordLength")} />
           <div class="px-4 py-3 max-w-lg">
             <p class="text-gray-600">
-              Already have an account?{" "}
+              {t("auth.alreadyHaveAccount")}{" "}
               <a
                 href="/login"
                 class="text-blue-600 hover:text-blue-800 underline"
               >
-                Log in here
+                {t("auth.logInHere")}
               </a>
             </p>
           </div>
@@ -246,15 +247,15 @@ export const handleRegisterSubmit = async (c: Context) => {
       <Layout>
         <main>
           <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Create Account</h1>
-          <RegisterForm error="Passwords do not match" />
+          <RegisterForm error={t("error.passwordsDoNotMatch")} />
           <div class="px-4 py-3 max-w-lg">
             <p class="text-gray-600">
-              Already have an account?{" "}
+              {t("auth.alreadyHaveAccount")}{" "}
               <a
                 href="/login"
                 class="text-blue-600 hover:text-blue-800 underline"
               >
-                Log in here
+                {t("auth.logInHere")}
               </a>
             </p>
           </div>
@@ -276,15 +277,15 @@ export const handleRegisterSubmit = async (c: Context) => {
             <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
               Create Account
             </h1>
-            <RegisterForm error="Username already exists" />
+            <RegisterForm error={t("error.usernameExists")} />
             <div class="px-4 py-3 max-w-lg">
               <p class="text-gray-600">
-                Already have an account?{" "}
+                {t("auth.alreadyHaveAccount")}{" "}
                 <a
                   href="/login"
                   class="text-blue-600 hover:text-blue-800 underline"
                 >
-                  Log in here
+                  {t("auth.logInHere")}
                 </a>
               </p>
             </div>
@@ -315,15 +316,15 @@ export const handleRegisterSubmit = async (c: Context) => {
       <Layout>
         <main>
           <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Create Account</h1>
-          <RegisterForm error="An error occurred while creating your account. Please try again." />
+          <RegisterForm error={t("error.accountCreationError")} />
           <div class="px-4 py-3 max-w-lg">
             <p class="text-gray-600">
-              Already have an account?{" "}
+              {t("auth.alreadyHaveAccount")}{" "}
               <a
                 href="/login"
                 class="text-blue-600 hover:text-blue-800 underline"
               >
-                Log in here
+                {t("auth.logInHere")}
               </a>
             </p>
           </div>
@@ -340,8 +341,10 @@ export const handleLoginSubmit = async (c: Context) => {
     return c.render(
       <Layout>
         <main>
-          <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Login</h1>
-          <CredentialsForm error="Username and password are required" />
+          <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
+            {t("auth.login")}
+          </h1>
+          <CredentialsForm error={t("error.usernamePasswordRequired")} />
         </main>
       </Layout>,
     );
@@ -355,8 +358,10 @@ export const handleLoginSubmit = async (c: Context) => {
     return c.render(
       <Layout>
         <main>
-          <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Login</h1>
-          <CredentialsForm error="Invalid username or password" />
+          <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
+            {t("auth.login")}
+          </h1>
+          <CredentialsForm error={t("error.invalidCredentials")} />
         </main>
       </Layout>,
     );
