@@ -22,6 +22,9 @@ RUN mkdir -p public && npm run build
 # Copy built CSS to dist/public for production
 RUN mkdir -p dist/public && cp public/styles.css dist/public/styles.css
 
+# Verify the CSS file was created and copied correctly
+RUN ls -la public/ && ls -la dist/public/ && echo "CSS file size:" && wc -c dist/public/styles.css
+
 # Production stage
 FROM node:18-alpine AS runner
 
