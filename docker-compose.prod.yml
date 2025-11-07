@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # PostgreSQL Database (Production)
@@ -11,12 +11,15 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_this_password}
     volumes:
       - postgres_data_prod:/var/lib/postgresql/data
-      - ./dummy.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     networks:
       - wikibricks-network
     restart: always
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wikibricks_user} -d wikibricks"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-wikibricks_user} -d wikibricks",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -39,7 +42,15 @@ services:
       - wikibricks-network
     restart: always
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3000",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
