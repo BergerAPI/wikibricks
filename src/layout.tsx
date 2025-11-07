@@ -8,7 +8,7 @@ import { LanguageSwitcher } from "./components/language-switcher";
 console.log("Current working directory:", process.cwd());
 // contents of the cwd
 console.log("Contents of the current working directory:");
-fs.readdirSync(process.cwd()).forEach((file) => {
+fs.readdirSync(process.cwd() + "/public").forEach((file) => {
   console.log(file);
 });
 
@@ -16,7 +16,7 @@ fs.readdirSync(process.cwd()).forEach((file) => {
 const styles =
   process.env.NODE_ENV === "production"
     ? fs.readFileSync("/app/dist/public/styles.css", "utf-8")
-    : fs.readFileSync("./public/styles.css", "utf-8");
+    : fs.readFileSync("/app/public/styles.css", "utf-8");
 
 export const Layout = ({
   children,
