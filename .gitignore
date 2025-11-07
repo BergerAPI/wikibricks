@@ -30,3 +30,4 @@ public/styles.css
 setup-vps.sh
 wikibricks.service
 deploy.yml
+dist
