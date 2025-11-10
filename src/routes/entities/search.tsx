@@ -48,7 +48,7 @@ export const handleSearchPage = async (c: DefaultContext) => {
         <div class="flex justify-between items-center pb-2 mb-3 border-b">
           <h1 class="text-3xl font-serif">{t("entities.title")}</h1>
           <div class="space-x-2">
-            {user.permission_level > PermissionLevel.MODERATOR && (
+            {(user.permission_level ?? 0) > PermissionLevel.MODERATOR && (
               <a href="/changes">{t("entities.changeRequests")}</a>
             )}
             <a href="/entities/new">{t("action.addEntity")}</a>
