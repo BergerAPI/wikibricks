@@ -14,7 +14,8 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
 
   const brands = await sql<{ id: string; name: string }[]>`
         SELECT e.created_at, e.type, e.name, e.id FROM entities e
-            WHERE e.type = 'brand'
+        JOIN entity_versions v ON e.head_version_id = v.id
+        WHERE e.type = 'brand'
     `;
 
   return c.render(
