@@ -310,12 +310,14 @@ document.getElementById('save').addEventListener('click', async () => {
               dangerouslySetInnerHTML={{
                 __html: `
 const reviewVersion = (type) => {
+    const reviewMessage = document.getElementById('review_message').value;
+
     fetch("/entities/${entity.id}/${entity.version_id}", {
         method: 'PATCH',
         redirect: "follow",
         body: JSON.stringify({
             type,
-            reviewMessage: "" + document.getElementById('review_message').value
+            reviewMessage: reviewMessage.length > 0 ? reviewMessage : "No Change Message"
         }),
         headers: {
             'Content-Type': 'application/json'
