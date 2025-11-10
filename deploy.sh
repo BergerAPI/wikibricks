@@ -112,7 +112,7 @@ update_code() {
     git stash push -m "Deploy script stash $(date)"
 
     # Pull latest changes
-    git pull origin main
+    git pull origin release
 
     if [ $? -eq 0 ]; then
         log INFO "Code updated successfully"
