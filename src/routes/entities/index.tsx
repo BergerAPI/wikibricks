@@ -137,7 +137,7 @@ const getEntity = async (entityId: string, version?: number) => {
   if (!mapping) return null;
 
   return await sql
-    .begin(async (sql) => {
+    .begin(async (_) => {
       return version
         ? await mapping.versionQuery(entityId, version)
         : await mapping.defaultQuery(entityId);
@@ -315,7 +315,7 @@ const reviewVersion = (type) => {
         redirect: "follow",
         body: JSON.stringify({
             type,
-            reviewMessage: document.getElementById('review_message').value
+            reviewMessage: "" + document.getElementById('review_message').value
         }),
         headers: {
             'Content-Type': 'application/json'
@@ -374,7 +374,7 @@ export const handleEntityPageSubmit = async (c: DefaultContext) => {
 
   const { changeMessage, ...data } = await c.req.json();
 
-  if (!changeMessage || Object.keys(data).length === 0) {
+  if (!changeMessage) {
     return c.body("Bad Request", 400);
   }
 
