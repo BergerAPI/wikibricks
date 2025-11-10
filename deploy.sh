@@ -64,10 +64,6 @@ check_prerequisites() {
         missing_deps+=("git")
     fi
 
-    if ! command -v pg_dump &> /dev/null; then
-        missing_deps+=("postgresql-client")
-    fi
-
     if [ ${#missing_deps[@]} -ne 0 ]; then
         log ERROR "Missing dependencies: ${missing_deps[*]}"
         log INFO "Please install missing dependencies and run again"
