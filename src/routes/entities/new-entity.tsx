@@ -12,6 +12,10 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
 
   const infoFields = getInfoFields(t);
 
+  const brands = await sql<{ id: string; name: string }[]>`
+    SELECT id, name FROM brands
+  `;
+
   return c.render(
     <Layout context={c} user={user}>
       <main>
@@ -80,6 +84,28 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
                     inputType = def.type === "number" ? "number" : "text";
                   }
 
+                  // Special case for brands
+                  if (key === "brand_id") {
+                    return (
+                      <label htmlFor={key} class="block mb-3">
+                        <span class="font-semibold">{fieldLabel}</span>
+
+                        <select
+                          id={key}
+                          field={key}
+                          class="border p-2 rounded w-full"
+                        >
+                          <option value="">Select a brand</option>
+                          {brands.map((brand) => (
+                            <option key={brand.id} value={brand.id}>
+                              {brand.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    );
+                  }
+
                   return (
                     <label htmlFor={key} class="block mb-3">
                       <span class="font-semibold">{fieldLabel}</span>
@@ -111,7 +137,24 @@ document.getElementById("submit_button").addEventListener("click", () => {
         // Check if the element is visible by verifying its offsetParent is not null
         if (it.offsetParent !== null) {
             const field = it.getAttribute('field');
-            data[field] = it.value;
+            let value = it.value;
+
+            // Special handling for select fields, particularly brand_id
+            if (it.tagName === 'SELECT') {
+                // For select fields, ensure we get the selected value
+                const selectedOption = it.options[it.selectedIndex];
+                value = selectedOption ? selectedOption.value : '';
+
+                // Convert to number if this is brand_id or other numeric fields
+                if (field === 'brand_id' && value !== '') {
+                    value = parseInt(value, 10);
+                }
+            } else if (field === 'pieces' && value !== '') {
+                // Convert pieces to number as well
+                value = parseInt(value, 10);
+            }
+
+            data[field] = value;
         }
     });
 
