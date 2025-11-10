@@ -13,8 +13,9 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
   const infoFields = getInfoFields(t);
 
   const brands = await sql<{ id: string; name: string }[]>`
-    SELECT id, name FROM brands
-  `;
+        SELECT e.created_at, e.type, e.name, e.id FROM entities e
+            WHERE e.type = 'brand'
+    `;
 
   return c.render(
     <Layout context={c} user={user}>
