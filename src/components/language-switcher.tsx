@@ -1,7 +1,8 @@
-import { t, getCurrentLanguage, getAvailableLanguages } from "../translation";
+import { useTranslation, getAvailableLanguages } from "../translation";
+import { DefaultContext } from "../utils";
 
-export const LanguageSwitcher = () => {
-  const currentLang = getCurrentLanguage();
+export const LanguageSwitcher = ({ context }: { context: DefaultContext }) => {
+  const { language: currentLang } = useTranslation(context);
   const availableLanguages = getAvailableLanguages();
 
   return (

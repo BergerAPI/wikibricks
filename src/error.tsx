@@ -2,9 +2,11 @@ import type { StatusCode } from "hono/utils/http-status";
 import type { User } from "./database";
 import { Layout } from "./layout";
 import type { DefaultContext } from "./utils";
-import { t } from "./translation";
+import { useTranslation } from "./translation";
 
 const ErrorPage = ({ context }: { context: DefaultContext }) => {
+  const { t } = useTranslation(context);
+
   const statusCode = context.res.status || 500;
   const title =
     statusCode === 404
@@ -16,7 +18,7 @@ const ErrorPage = ({ context }: { context: DefaultContext }) => {
       : t("error.unexpectedErrorMessage");
 
   return (
-    <Layout user={context.get("user")}>
+    <Layout context={context} user={context.get("user")}>
       <main>
         <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Error:{title}</h1>
         <p class="pb-2">{message}</p>

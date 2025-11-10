@@ -1,7 +1,7 @@
 import { Table, TableHead } from "../../components/table";
 import { sql, type EntityVersion } from "../../database";
 import { Layout } from "../../layout";
-import { t } from "../../translation";
+import { useTranslation } from "../../translation";
 import type { DefaultContext } from "../../utils";
 
 type VersionWithUser = EntityVersion & {
@@ -12,6 +12,7 @@ type VersionWithUser = EntityVersion & {
 export const handleEntityHistoryPage = async (c: DefaultContext) => {
   const user = c.get("user");
   const entityId = c.req.param("id");
+  const { t } = useTranslation(c);
 
   // Fetch entity versions with usernames
   const [[entityInfo], versions] = await Promise.all([
@@ -37,7 +38,7 @@ export const handleEntityHistoryPage = async (c: DefaultContext) => {
   );
 
   return c.render(
-    <Layout user={user}>
+    <Layout context={c} user={user}>
       <main>
         <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
           {t("entity.history.title")} {entityInfo.name}

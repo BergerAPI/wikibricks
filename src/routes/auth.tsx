@@ -3,9 +3,15 @@ import { Layout } from "../layout";
 import { deleteCookie, setCookie } from "hono/cookie";
 import { sql, type User } from "../database";
 import { signUser, type DefaultContext, PermissionLevel } from "../utils";
-import { t } from "../translation";
+import { TranslationFunctions, useTranslation } from "../translation";
 
-const CredentialsForm = ({ error }: { error?: string }) => {
+const CredentialsForm = ({
+  error,
+  t,
+}: {
+  error?: string;
+  t: TranslationFunctions["t"];
+}) => {
   return (
     <form method="post" class="px-4 py-3 max-w-lg">
       {error && (
@@ -48,7 +54,13 @@ const CredentialsForm = ({ error }: { error?: string }) => {
   );
 };
 
-const RegisterForm = ({ error }: { error?: string }) => {
+const RegisterForm = ({
+  error,
+  t,
+}: {
+  error?: string;
+  t: TranslationFunctions["t"];
+}) => {
   return (
     <form method="post" class="px-4 py-3 max-w-lg">
       {error && (
@@ -111,16 +123,17 @@ const RegisterForm = ({ error }: { error?: string }) => {
 
 export const handleLoginPage = async (c: DefaultContext) => {
   const user = c.get("user");
+  const { t } = useTranslation(c);
 
   if (user) return c.redirect("/");
 
   return c.render(
-    <Layout user={user}>
+    <Layout context={c} user={user}>
       <main>
         <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
           {t("auth.login")}
         </h1>
-        <CredentialsForm />
+        <CredentialsForm t={t} />
         <div class="px-4 py-3 max-w-lg">
           <p class="text-gray-600">
             {t("auth.dontHaveAccount")}{" "}
@@ -139,16 +152,17 @@ export const handleLoginPage = async (c: DefaultContext) => {
 
 export const handleRegisterPage = async (c: DefaultContext) => {
   const user = c.get("user");
+  const { t } = useTranslation(c);
 
   if (user) return c.redirect("/");
 
   return c.render(
-    <Layout user={user}>
+    <Layout context={c}>
       <main>
         <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
           {t("auth.register")}
         </h1>
-        <RegisterForm />
+        <RegisterForm t={t} />
         <div class="px-4 py-3 max-w-lg">
           <p class="text-gray-600">
             {t("auth.alreadyHaveAccount")}{" "}
@@ -167,14 +181,15 @@ export const handleRegisterPage = async (c: DefaultContext) => {
 
 export const handleRegisterSubmit = async (c: Context) => {
   const { username, password, confirmPassword } = await c.req.parseBody();
+  const { t } = useTranslation(c);
 
   // Validation
   if (!username || !password || !confirmPassword) {
     return c.render(
-      <Layout>
+      <Layout context={c}>
         <main>
           <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Create Account</h1>
-          <RegisterForm error={t("error.allFieldsRequired")} />
+          <RegisterForm t={t} error={t("error.allFieldsRequired")} />
           <div class="px-4 py-3 max-w-lg">
             <p class="text-gray-600">
               {t("auth.alreadyHaveAccount")}{" "}
@@ -198,10 +213,10 @@ export const handleRegisterSubmit = async (c: Context) => {
   // Check username length
   if (usernameStr.length < 3 || usernameStr.length > 255) {
     return c.render(
-      <Layout>
+      <Layout context={c}>
         <main>
           <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Create Account</h1>
-          <RegisterForm error={t("error.usernameLength")} />
+          <RegisterForm t={t} error={t("error.usernameLength")} />
           <div class="px-4 py-3 max-w-lg">
             <p class="text-gray-600">
               {t("auth.alreadyHaveAccount")}{" "}
@@ -221,10 +236,10 @@ export const handleRegisterSubmit = async (c: Context) => {
   // Check password length
   if (passwordStr.length < 6) {
     return c.render(
-      <Layout>
+      <Layout context={c}>
         <main>
           <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Create Account</h1>
-          <RegisterForm error={t("error.passwordLength")} />
+          <RegisterForm t={t} error={t("error.passwordLength")} />
           <div class="px-4 py-3 max-w-lg">
             <p class="text-gray-600">
               {t("auth.alreadyHaveAccount")}{" "}
@@ -244,10 +259,10 @@ export const handleRegisterSubmit = async (c: Context) => {
   // Check password confirmation
   if (passwordStr !== confirmPasswordStr) {
     return c.render(
-      <Layout>
+      <Layout context={c}>
         <main>
           <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Create Account</h1>
-          <RegisterForm error={t("error.passwordsDoNotMatch")} />
+          <RegisterForm t={t} error={t("error.passwordsDoNotMatch")} />
           <div class="px-4 py-3 max-w-lg">
             <p class="text-gray-600">
               {t("auth.alreadyHaveAccount")}{" "}
@@ -272,12 +287,12 @@ export const handleRegisterSubmit = async (c: Context) => {
 
     if (existingUser) {
       return c.render(
-        <Layout>
+        <Layout context={c}>
           <main>
             <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
               Create Account
             </h1>
-            <RegisterForm error={t("error.usernameExists")} />
+            <RegisterForm t={t} error={t("error.usernameExists")} />
             <div class="px-4 py-3 max-w-lg">
               <p class="text-gray-600">
                 {t("auth.alreadyHaveAccount")}{" "}
@@ -313,10 +328,10 @@ export const handleRegisterSubmit = async (c: Context) => {
   } catch (error) {
     console.error("Registration error:", error);
     return c.render(
-      <Layout>
+      <Layout context={c}>
         <main>
           <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Create Account</h1>
-          <RegisterForm error={t("error.accountCreationError")} />
+          <RegisterForm t={t} error={t("error.accountCreationError")} />
           <div class="px-4 py-3 max-w-lg">
             <p class="text-gray-600">
               {t("auth.alreadyHaveAccount")}{" "}
@@ -336,15 +351,16 @@ export const handleRegisterSubmit = async (c: Context) => {
 
 export const handleLoginSubmit = async (c: Context) => {
   const { username, password } = await c.req.parseBody();
+  const { t } = useTranslation(c);
 
   if (!username || !password) {
     return c.render(
-      <Layout>
+      <Layout context={c} user={c.get("user")}>
         <main>
           <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
             {t("auth.login")}
           </h1>
-          <CredentialsForm error={t("error.usernamePasswordRequired")} />
+          <CredentialsForm t={t} error={t("error.usernamePasswordRequired")} />
         </main>
       </Layout>,
     );
@@ -356,12 +372,12 @@ export const handleLoginSubmit = async (c: Context) => {
 
   if (!user || user.password !== password) {
     return c.render(
-      <Layout>
+      <Layout context={c} user={user}>
         <main>
           <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
             {t("auth.login")}
           </h1>
-          <CredentialsForm error={t("error.invalidCredentials")} />
+          <CredentialsForm t={t} error={t("error.invalidCredentials")} />
         </main>
       </Layout>,
     );

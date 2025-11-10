@@ -1,3 +1,6 @@
+import { Context } from "hono/jsx";
+import { DefaultContext } from "./utils";
+
 export type Language = "en" | "de";
 
 export interface Translations {
@@ -422,16 +425,26 @@ const translations: Record<Language, Translations> = {
   },
 };
 
-// Current language state
-let currentLanguage: Language = "en";
+export type TranslationFunctions = ReturnType<typeof useTranslation>;
+
+export const useTranslation = (c: DefaultContext) => {
+  const language: Language = "de";
+
+  return {
+    language,
+    t: (key: keyof Translations, variables?: Record<string, string>) =>
+      t(key, language, variables),
+    formatDate: (date: Date) => formatDate(date, language),
+    formatDateTime: (date: Date) => formatDateTime(date, language),
+  };
+};
 
 // Translation API with interpolation support
 export const t = (
   key: keyof Translations,
+  language: Language,
   variables?: Record<string, string>,
-  lang?: Language,
 ): string => {
-  const language = lang || currentLanguage;
   const translation = translations[language]?.[key];
 
   if (!translation) {
@@ -449,16 +462,6 @@ export const t = (
   }
 
   return translation;
-};
-
-// Set the current language
-export const setLanguage = (language: Language): void => {
-  currentLanguage = language;
-};
-
-// Get the current language
-export const getCurrentLanguage = (): Language => {
-  return currentLanguage;
 };
 
 // Get available languages
@@ -481,16 +484,16 @@ export const plural = (
 };
 
 // Date formatting with locale
-export const formatDate = (date: Date, lang?: Language): string => {
-  const language = lang || currentLanguage;
+export const formatDate = (date: Date, lang: Language): string => {
+  const language = lang;
   const locale = language === "de" ? "de-DE" : "en-US";
 
   return date.toLocaleDateString(locale);
 };
 
 // Date and time formatting with locale
-export const formatDateTime = (date: Date, lang?: Language): string => {
-  const language = lang || currentLanguage;
+export const formatDateTime = (date: Date, lang: Language): string => {
+  const language = lang;
   const locale = language === "de" ? "de-DE" : "en-US";
 
   return date.toLocaleString(locale);
@@ -499,8 +502,6 @@ export const formatDateTime = (date: Date, lang?: Language): string => {
 // Default export for convenience
 export default {
   t,
-  setLanguage,
-  getCurrentLanguage,
   getAvailableLanguages,
   isLanguageSupported,
   plural,

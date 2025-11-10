@@ -3,11 +3,12 @@ import { Table, TableHead } from "../../components/table";
 import { sql, type User } from "../../database";
 import { Layout } from "../../layout";
 import type { DefaultContext } from "../../utils";
-import { t } from "../../translation";
+import { useTranslation } from "../../translation";
 
 export const handleUserPage = async (c: DefaultContext) => {
   const currentUser = c.get("user");
   const userId = c.req.param("id");
+  const { t } = useTranslation(c);
 
   // Fetch user from database
   const [user] = await sql<User[]>`
@@ -39,7 +40,7 @@ export const handleUserPage = async (c: DefaultContext) => {
     `;
 
   return c.render(
-    <Layout user={currentUser}>
+    <Layout context={c} user={currentUser}>
       <main class="overflow-auto">
         <div class="flex justify-between items-center pb-2 mb-3 border-b">
           <h1 class="text-3xl font-serif">

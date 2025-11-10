@@ -2,10 +2,11 @@ import { type Context } from "hono";
 import { Layout } from "../layout";
 import type { DefaultContext } from "../utils";
 import { sql, type BrandView, type SetView, type WikiView } from "../database";
-import { t } from "../translation";
+import { useTranslation } from "../translation";
 
 export const handleRootPage = async (c: DefaultContext) => {
   const user = c.get("user");
+  const { t } = useTranslation(c);
 
   const [sets, brands, wikis] = await sql.begin(async (sql) => {
     const sets = await sql<SetView[]>`SELECT * FROM set_view LIMIT 3;`;
@@ -16,7 +17,7 @@ export const handleRootPage = async (c: DefaultContext) => {
   });
 
   return c.render(
-    <Layout user={user}>
+    <Layout context={c} user={user}>
       <main>
         <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
           {t("site.tagline")}

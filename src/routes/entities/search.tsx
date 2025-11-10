@@ -2,10 +2,11 @@ import { Layout } from "../../layout";
 import { sql } from "../../database";
 import { PermissionLevel, type DefaultContext } from "../../utils";
 import { Table, TableHead } from "../../components/table";
-import { t } from "../../translation";
+import { useTranslation } from "../../translation";
 
 export const handleSearchPage = async (c: DefaultContext) => {
   const user = c.get("user");
+  const { t } = useTranslation(c);
 
   // Fetch and parse query parameters
   let page: any = c.req.query("page");
@@ -43,7 +44,7 @@ export const handleSearchPage = async (c: DefaultContext) => {
     `;
 
   return c.render(
-    <Layout user={user}>
+    <Layout context={c} user={user}>
       <main class="min-w-0">
         <div class="flex justify-between items-center pb-2 mb-3 border-b">
           <h1 class="text-3xl font-serif">{t("entities.title")}</h1>

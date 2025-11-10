@@ -1,8 +1,9 @@
 import type { PropsWithChildren } from "hono/jsx";
 import fs from "fs";
 import type { User } from "./database";
-import { t } from "./translation";
+import { t, useTranslation } from "./translation";
 import { LanguageSwitcher } from "./components/language-switcher";
+import { DefaultContext } from "./utils";
 
 const styles =
   process.env.NODE_ENV === "production"
@@ -13,10 +14,14 @@ export const Layout = ({
   children,
   title,
   user,
+  context,
 }: PropsWithChildren & {
   title?: string | undefined;
   user?: User | undefined;
+  context: DefaultContext;
 }) => {
+  const { t } = useTranslation(context);
+
   return (
     <html lang="en">
       <head>
@@ -56,7 +61,7 @@ export const Layout = ({
                 </div>
               </div>
               <div class="flex items-center space-x-2">
-                <LanguageSwitcher />
+                <LanguageSwitcher context={context} />
                 <nav class="space-x-2 [&>a]:text-sm">
                   {user === undefined ? (
                     <>

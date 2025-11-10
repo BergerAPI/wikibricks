@@ -2,7 +2,7 @@ import type { Context, Env } from "hono";
 import { sql, type User } from "./database";
 import { sign, verify } from "hono/jwt";
 import { getCookie } from "hono/cookie";
-import { setLanguage, type Language, isLanguageSupported } from "./translation";
+import { type Language, isLanguageSupported } from "./translation";
 
 // Passing values between routes using middleware and shared context
 export type Variables = {
@@ -83,7 +83,6 @@ export const detectLanguage = async (
   }
 
   // Set global language context
-  setLanguage(language as Language);
   c.set("language", language as Language);
 
   await next();

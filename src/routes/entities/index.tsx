@@ -9,7 +9,7 @@ import {
   type WikiView,
 } from "../../database";
 import { Layout } from "../../layout";
-import { t } from "../../translation";
+import { TranslationFunctions, useTranslation } from "../../translation";
 import { PermissionLevel, type DefaultContext } from "../../utils";
 
 /**
@@ -49,43 +49,44 @@ type InfoFields<
 /**
  * Defines the info fields for each entity type.
  */
-export const INFO_FIELDS: InfoFields = {
-  set: {
-    pieces: {
-      text: t("entity.pieces"),
-      type: "number",
-      value: (v, _) => v,
-    },
-    size: t("entity.size"),
-    theme: t("entity.theme"),
-    issued: t("entity.issued"),
-    brand_id: {
-      text: t("entity.brand"),
-      type: "number",
-      link: (value) => `/entities/${value}`,
-      value: (value, obj) => obj.brand_name || value,
-    },
-  },
-  brand: {
-    country: t("entity.country"),
-    website: {
-      text: t("entity.website"),
-      type: "string",
-      link: (value) => {
-        const full = value.startsWith("http") ? value : `https://${value}`;
-
-        try {
-          new URL(full);
-          return full;
-        } catch {
-          return "#";
-        }
+export const getInfoFields = (t: TranslationFunctions["t"]) =>
+  ({
+    set: {
+      pieces: {
+        text: t("entity.pieces"),
+        type: "number",
+        value: (v, _) => v,
       },
-      value: (value, _) => value,
+      size: t("entity.size"),
+      theme: t("entity.theme"),
+      issued: t("entity.issued"),
+      brand_id: {
+        text: t("entity.brand"),
+        type: "number",
+        link: (value) => `/entities/${value}`,
+        value: (value, obj) => obj.brand_name || value,
+      },
     },
-  },
-  wiki: {},
-};
+    brand: {
+      country: t("entity.country"),
+      website: {
+        text: t("entity.website"),
+        type: "string",
+        link: (value) => {
+          const full = value.startsWith("http") ? value : `https://${value}`;
+
+          try {
+            new URL(full);
+            return full;
+          } catch {
+            return "#";
+          }
+        },
+        value: (value, _) => value,
+      },
+    },
+    wiki: {},
+  }) as InfoFields;
 
 // Consolidate SQL query definitions per entity type to reduce duplications.
 const queryMapping = {
@@ -148,10 +149,12 @@ const EntityInfoBox = <T extends EntityType>({
   entity,
   fields,
   editable,
+  t,
 }: {
   entity: EntityViewType<T>;
   fields: EntityAttributes<T>;
   editable: boolean;
+  t: TranslationFunctions["t"];
 }) => {
   return (
     <InfoBox title={entity.name}>
@@ -199,6 +202,7 @@ const EntityInfoBox = <T extends EntityType>({
 export const handleEntityPage = async (c: DefaultContext) => {
   const user = c.get("user");
   const entityId = c.req.param("id");
+  const { t } = useTranslation(c);
 
   // Possible query parameters for versioned entities and edit mode
   const version = c.req.query("version");
@@ -215,10 +219,10 @@ export const handleEntityPage = async (c: DefaultContext) => {
   const isModerator = (user?.permission_level ?? 0) > PermissionLevel.MODERATOR;
 
   // Define info box fields based on entity type
-  const infoFields = INFO_FIELDS[entity.type];
+  const infoFields = getInfoFields(t)[entity.type];
 
   return c.render(
-    <Layout user={user}>
+    <Layout context={c} user={user}>
       <main class="overflow-auto">
         <div class="flex justify-between items-center pb-2 mb-3 border-b">
           <h1 class="text-3xl font-serif">
@@ -338,6 +342,7 @@ document.getElementById('reject').addEventListener('click', () => {
 
         {Object.keys(infoFields).length > 0 && (
           <EntityInfoBox
+            t={t}
             editable={edit}
             entity={entity}
             fields={infoFields as EntityAttributes<typeof entity.type>}

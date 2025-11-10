@@ -2,7 +2,7 @@ import { Table, TableHead } from "../components/table";
 import { sql, type EntityVersion, type SetView } from "../database";
 import { Layout } from "../layout";
 import { PermissionLevel, type DefaultContext } from "../utils";
-import { t } from "../translation";
+import { TranslationFunctions, useTranslation } from "../translation";
 
 type EntityVersionMetaData = EntityVersion & {
   entity_title: string;
@@ -10,7 +10,13 @@ type EntityVersionMetaData = EntityVersion & {
   user_id: string;
 };
 
-const ChangeTable = ({ changes }: { changes: EntityVersionMetaData[] }) => (
+const ChangeTable = ({
+  t,
+  changes,
+}: {
+  changes: EntityVersionMetaData[];
+  t: TranslationFunctions["t"];
+}) => (
   <Table>
     <TableHead>
       <th>{t("changes.set")}</th>
@@ -42,6 +48,7 @@ const ChangeTable = ({ changes }: { changes: EntityVersionMetaData[] }) => (
 
 export const handleSetChangesPage = async (c: DefaultContext) => {
   const user = c.get("user");
+  const { t } = useTranslation(c);
 
   if (!user || user.permission_level < PermissionLevel.MODERATOR) {
     return c.redirect("/");
@@ -61,13 +68,13 @@ export const handleSetChangesPage = async (c: DefaultContext) => {
     `;
 
   return c.render(
-    <Layout user={user}>
+    <Layout context={c} user={user}>
       <main>
         <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
           {t("changes.title")}
         </h1>
         <div class="min-w-full overflow-x-auto">
-          <ChangeTable changes={changes} />
+          <ChangeTable t={t} changes={changes} />
         </div>
       </main>
     </Layout>,
