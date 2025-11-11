@@ -22,7 +22,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
   return c.render(
     <Layout context={c} user={user}>
       <main>
-        <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Add New Entity</h1>
+        <h1 class="text-3xl font-serif pb-2 mb-3 border-b">{t("entities.addNew")}</h1>
 
         <div
           id="error"
@@ -31,7 +31,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
 
         <div>
           <label class="block mb-3">
-            <span class="font-semibold">Entity Type</span>
+            <span class="font-semibold">{t("entities.entityTypeLabel")}</span>
             <select
               class="mt-1 block w-full"
               field="entity_type"
@@ -49,7 +49,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
           </label>
 
           <label class="block mb-3">
-            <span class="font-semibold">Name</span>
+            <span class="font-semibold">{t("entities.nameLabel")}</span>
             <input
               id="name"
               field="name"
@@ -59,7 +59,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
           </label>
 
           <label class="block mb-3">
-            <span class="font-semibold">Description</span>
+            <span class="font-semibold">{t("entities.descriptionLabel")}</span>
             <textarea
               field="description"
               id="description"
@@ -69,7 +69,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
           </label>
 
           <label class="block mb-3">
-            <span class="font-semibold">Image</span>
+            <span class="font-semibold">{t("entities.imageLabel")}</span>
             <input
               type="file"
               accept="image/*"
@@ -113,7 +113,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
                           field={key}
                           class="border p-2 rounded w-full"
                         >
-                          <option value="">Select a brand</option>
+                          <option value="">{t("entities.selectBrand")}</option>
                           {brands.map((brand) => (
                             <option key={brand.id} value={brand.id}>
                               {brand.name}
@@ -142,7 +142,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
             </div>
           ))}
 
-          <button id="submit_button">Submit</button>
+          <button id="submit_button">{t("action.submit")}</button>
         </div>
 
         <script

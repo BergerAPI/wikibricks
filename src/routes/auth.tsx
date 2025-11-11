@@ -188,7 +188,9 @@ export const handleRegisterSubmit = async (c: Context) => {
     return c.render(
       <Layout context={c}>
         <main>
-          <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Create Account</h1>
+          <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
+            {t("auth.register")}
+          </h1>
           <RegisterForm t={t} error={t("error.allFieldsRequired")} />
           <div class="px-4 py-3 max-w-lg">
             <p class="text-gray-600">
@@ -215,7 +217,9 @@ export const handleRegisterSubmit = async (c: Context) => {
     return c.render(
       <Layout context={c}>
         <main>
-          <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Create Account</h1>
+          <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
+            {t("auth.register")}
+          </h1>
           <RegisterForm t={t} error={t("error.usernameLength")} />
           <div class="px-4 py-3 max-w-lg">
             <p class="text-gray-600">
@@ -238,7 +242,9 @@ export const handleRegisterSubmit = async (c: Context) => {
     return c.render(
       <Layout context={c}>
         <main>
-          <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Create Account</h1>
+          <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
+            {t("auth.register")}
+          </h1>
           <RegisterForm t={t} error={t("error.passwordLength")} />
           <div class="px-4 py-3 max-w-lg">
             <p class="text-gray-600">
@@ -261,7 +267,9 @@ export const handleRegisterSubmit = async (c: Context) => {
     return c.render(
       <Layout context={c}>
         <main>
-          <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Create Account</h1>
+          <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
+            {t("auth.register")}
+          </h1>
           <RegisterForm t={t} error={t("error.passwordsDoNotMatch")} />
           <div class="px-4 py-3 max-w-lg">
             <p class="text-gray-600">
@@ -290,7 +298,7 @@ export const handleRegisterSubmit = async (c: Context) => {
         <Layout context={c}>
           <main>
             <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
-              Create Account
+              {t("auth.register")}
             </h1>
             <RegisterForm t={t} error={t("error.usernameExists")} />
             <div class="px-4 py-3 max-w-lg">
@@ -330,7 +338,9 @@ export const handleRegisterSubmit = async (c: Context) => {
     return c.render(
       <Layout context={c}>
         <main>
-          <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Create Account</h1>
+          <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
+            {t("auth.register")}
+          </h1>
           <RegisterForm t={t} error={t("error.accountCreationError")} />
           <div class="px-4 py-3 max-w-lg">
             <p class="text-gray-600">

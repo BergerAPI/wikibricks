@@ -22,6 +22,7 @@ export interface Translations {
   "action.seeAll": string;
   "action.returnHome": string;
   "action.addEntity": string;
+  "action.submit": string;
 
   // Authentication
   "auth.login": string;
@@ -74,6 +75,12 @@ export interface Translations {
   "entities.advancedSearch": string;
   "entities.entityType": string;
   "entities.changeRequests": string;
+  "entities.addNew": string;
+  "entities.entityTypeLabel": string;
+  "entities.nameLabel": string;
+  "entities.descriptionLabel": string;
+  "entities.imageLabel": string;
+  "entities.selectBrand": string;
 
   // Entity Types
   "entityType.all": string;
@@ -199,6 +206,7 @@ const translations: Record<Language, Translations> = {
     "action.seeAll": "See all",
     "action.returnHome": "Return to Home",
     "action.addEntity": "Add Entity",
+    "action.submit": "Submit",
 
     // Authentication
     "auth.login": "Login",
@@ -257,6 +265,12 @@ const translations: Record<Language, Translations> = {
     "entities.advancedSearch": "Advanced search",
     "entities.entityType": "Entity Type:",
     "entities.changeRequests": "Change Requests",
+    "entities.addNew": "Add New Entity",
+    "entities.entityTypeLabel": "Entity Type",
+    "entities.nameLabel": "Name",
+    "entities.descriptionLabel": "Description",
+    "entities.imageLabel": "Image",
+    "entities.selectBrand": "Select a brand",
 
     // Entity Types
     "entityType.all": "All",
@@ -389,6 +403,7 @@ const translations: Record<Language, Translations> = {
     "action.seeAll": "Alle anzeigen",
     "action.returnHome": "Zur Startseite",
     "action.addEntity": "Element hinzufügen",
+    "action.submit": "Absenden",
 
     // Authentication
     "auth.login": "Anmelden",
@@ -449,6 +464,12 @@ const translations: Record<Language, Translations> = {
     "entities.advancedSearch": "Erweiterte Suche",
     "entities.entityType": "Elementtyp:",
     "entities.changeRequests": "Änderungsanfragen",
+    "entities.addNew": "Neu hinzufügen",
+    "entities.entityTypeLabel": "Elementtyp",
+    "entities.nameLabel": "Name",
+    "entities.descriptionLabel": "Beschreibung",
+    "entities.imageLabel": "Bild",
+    "entities.selectBrand": "Marke auswählen",
 
     // Entity Types
     "entityType.all": "Alle",
