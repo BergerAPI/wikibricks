@@ -202,7 +202,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
                   const formData = new FormData();
                   formData.append("file", file);
 
-                  const resp = await fetch("/api/upload-image", {
+                  const resp = await fetch("/images/upload", {
                     method: "POST",
                     body: formData,
                   });
