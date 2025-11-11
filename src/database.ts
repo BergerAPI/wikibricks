@@ -164,8 +164,6 @@ CREATE TABLE IF NOT EXISTS images (
     width INTEGER,
     height INTEGER,
     uploaded_by INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    entity_id INT REFERENCES entities(id) ON DELETE SET NULL,
-    version_id INT REFERENCES entity_versions(id) ON DELETE SET NULL,
     s3_bucket VARCHAR(255),
     s3_key VARCHAR(500),
     storage_type VARCHAR(10) DEFAULT 'local' CHECK (storage_type IN ('local', 's3')),
