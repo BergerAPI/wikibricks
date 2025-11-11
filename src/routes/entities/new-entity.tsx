@@ -362,7 +362,8 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
 
   if (!user) return c.body("Unauthorized", 401);
 
-  const { name, description, entity_type, ...data } = await c.req.json();
+  const { name, description, entity_type, image_id, ...data } =
+    await c.req.json();
 
   if (
     !name ||
@@ -401,14 +402,16 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
                     version_number,
                     created_by,
                     review_status,
-                    description
+                    description,
+                    image_id
                 )
                 SELECT
                     id,
                     1,
                     ${user.id.toString()},
                     'pending',
-                    ${description.toString()}
+                    ${description.toString()},
+                    ${image_id || null}
                 FROM new_entity
                 RETURNING id, entity_id
             ) SELECT entity_id, id FROM new_version;
