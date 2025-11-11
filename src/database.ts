@@ -172,7 +172,6 @@ CREATE TABLE IF NOT EXISTS images (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_image_entity ON images(entity_id);
 CREATE INDEX IF NOT EXISTS idx_image_version ON images(version_id);
 CREATE INDEX IF NOT EXISTS idx_image_storage ON images(storage_type, s3_bucket, s3_key);
 CREATE INDEX IF NOT EXISTS idx_image_uploader ON images(uploaded_by);
