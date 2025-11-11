@@ -31,3 +31,6 @@ setup-vps.sh
 wikibricks.service
 deploy.yml
 dist
+
+# uploads
+uploads/

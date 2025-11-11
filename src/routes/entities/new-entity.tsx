@@ -67,6 +67,31 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
             />
           </label>
 
+          <label class="block mb-3">
+            <span class="font-semibold">Image</span>
+            <input
+              type="file"
+              accept="image/*"
+              id="image_file"
+              class="border p-2 rounded w-full"
+            />
+            <input type="hidden" field="image_url" id="image_url" value="" />
+            <div
+              id="image_upload_progress"
+              class="mt-2 text-sm text-gray-600 hidden"
+            ></div>
+          </label>
+
+          <label class="block mb-3">
+            <span class="font-semibold">Price</span>
+            <input
+              field="price"
+              id="price"
+              value=""
+              class="border p-2 rounded w-full"
+            />
+          </label>
+
           {/* Tab contents */}
           {Object.keys(infoFields).map((id, index) => (
             <div
@@ -126,75 +151,201 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
             </div>
           ))}
 
+          <span id="progress" class="hidden">
+            Uploading...
+          </span>
           <button id="submit_button">Submit</button>
         </div>
 
         <script
           dangerouslySetInnerHTML={{
             __html: `
-document.getElementById("submit_button").addEventListener("click", () => {
-    const data = {};
-    // Only include fields that are visible (i.e. not in a hidden tab)
-    document.querySelectorAll("[field]").forEach(it => {
-        // Check if the element is visible by verifying its offsetParent is not null
-        if (it.offsetParent !== null) {
-            const field = it.getAttribute('field');
-            let value = it.value;
+              document.addEventListener("DOMContentLoaded", () => {
+                const fileInput = document.getElementById("image_file");
+                const imageUrlInput = document.getElementById("image_url");
+                const submitButton = document.getElementById("submit_button");
+                const progressDiv = document.getElementById("progress");
+                const errorDiv = document.getElementById("error");
+                const entityTypeSelect = document.getElementById("entity_type");
 
-            // Special handling for select fields, particularly brand_id
-            if (it.tagName === 'SELECT') {
-                // For select fields, ensure we get the selected value
-                const selectedOption = it.options[it.selectedIndex];
-                value = selectedOption ? selectedOption.value : '';
+                let uploadedImageUrl = "";
+                let isSubmitting = false;
 
-                // Convert to number if this is brand_id or other numeric fields
-                if (field === 'brand_id' && value !== '') {
-                    value = parseInt(value, 10);
+                // UI helpers
+                function showProgress(text) {
+                  if (!progressDiv) return;
+                  progressDiv.classList.remove("hidden");
+                  progressDiv.textContent = text;
                 }
-            } else if (field === 'pieces' && value !== '') {
-                // Convert pieces to number as well
-                value = parseInt(value, 10);
-            }
 
-            data[field] = value;
-        }
-    });
+                function hideProgress(delay = 0) {
+                  if (!progressDiv) return;
+                  if (delay > 0) {
+                    setTimeout(() => progressDiv.classList.add("hidden"), delay);
+                  } else {
+                    progressDiv.classList.add("hidden");
+                  }
+                }
 
-    fetch(\`/entities/new\`, {
-        method: 'POST',
-        redirect: "follow",
-        body: JSON.stringify(data),
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    }).then(async response => {
-        if (!response.ok) {
-            const body = await response.text();
-            let message = "An unexpected error occurred. Please try again, and contact support if the issue persists.";
-            if(response.status === 400) {
-                message = "Bad Request: " + body;
-            } else if(response.status === 500) {
-                message = "Server error: Our technical team has been notified. Please try again later.";
-            }
-            document.getElementById("error").innerHTML = message;
-            return;
-        }
+                function setError(message) {
+                  if (!errorDiv) return;
+                  errorDiv.innerHTML = message;
+                }
 
-        const body = await response.json();
+                // Upload the image using fetch and FormData.
+                // Note: fetch does not provide reliable upload progress events across browsers;
+                // we present an indeterminate "Uploading..." message instead.
+                async function uploadImage(file) {
+                  if (!file) throw new Error("No file provided for upload.");
 
-        if (body.id && body.entity_id)
-            window.location.href = "/entities/" + body.entity_id + "?version=" + body.id;
-    }).catch(() => {
-        document.getElementById("error").innerHTML = "Network error: Unable to connect to the server. Please check your connection and try again.";
-    });
-});
+                  showProgress("Uploading image...");
+                  const formData = new FormData();
+                  formData.append("file", file);
 
-document.getElementById("entity_type").addEventListener("change", () => {
-    const selected = document.getElementById("entity_type").value;
-    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-    const content = document.getElementById("tab-" + selected);
-    if(content) content.classList.remove('hidden');
-});
+                  const resp = await fetch("/api/upload-image", {
+                    method: "POST",
+                    body: formData,
+                  });
+
+                  if (!resp.ok) {
+                    const text = await resp.text().catch(() => "");
+                    throw new Error(
+                      "Image upload failed ("+resp.status+"):" + (text || resp.statusText)
+                    );
+                  }
+
+                  const json = await resp.json().catch(() => ({}));
+                  if (!json.url) throw new Error("Upload failed: no URL returned from server.");
+
+                  // Small UI delay so users see "Image uploaded!"
+                  showProgress("Image uploaded!");
+                  hideProgress(800);
+                  uploadedImageUrl = json.url;
+                  if (imageUrlInput) imageUrlInput.value = uploadedImageUrl;
+                  return uploadedImageUrl;
+                }
+
+                // Collect visible fields with attribute [field] and return an object.
+                function collectVisibleFields() {
+                  const data = {};
+                  document.querySelectorAll("[field]").forEach((el) => {
+                    // visible elements have offsetParent not null (simple visibility check)
+                    if (el.offsetParent === null) return;
+
+                    const field = el.getAttribute("field");
+                    if (!field) return;
+
+                    // Inputs:
+                    let value;
+                    const tag = el.tagName;
+                    const type = el.type ? el.type.toLowerCase() : "";
+
+                    if (tag === "SELECT") {
+                      const selected = el.options[el.selectedIndex];
+                      value = selected ? selected.value : "";
+                    } else if (type === "checkbox") {
+                      // for checkboxes keep boolean
+                      value = el.checked;
+                    } else {
+                      value = el.value;
+                    }
+
+                    // Convert numeric fields
+                    if (value !== "" && (field === "brand_id" || field === "pieces")) {
+                      const parsed = parseInt(value, 10);
+                      value = Number.isNaN(parsed) ? value : parsed;
+                    }
+
+                    data[field] = value;
+                  });
+
+                  // Ensure image_url (if set via upload or manual input) is included
+                  if (imageUrlInput && imageUrlInput.value) {
+                    data.image_url = imageUrlInput.value;
+                  }
+
+                  return data;
+                }
+
+                // Submit the entity JSON to the server.
+                async function submitEntity(data) {
+                  showProgress("Submitting...");
+                  const resp = await fetch("/entities/new", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data),
+                    redirect: "follow",
+                  });
+
+                  if (!resp.ok) {
+                    const body = await resp.text().catch(() => "");
+                    if (resp.status === 400) {
+                      throw new Error("Bad Request: " + (body || "Invalid request."));
+                    } else if (resp.status === 500) {
+                      throw new Error("Server error: Our technical team has been notified. Please try again later.");
+                    } else {
+                      throw new Error("An unexpected error occurred ("+resp.status+").");
+                    }
+                  }
+
+                  const json = await resp.json().catch(() => ({}));
+                  if (json.id && json.entity_id) {
+                    // Redirect to the created entity
+                    window.location.href = "/entities/"+json.entity_id;
+                  } else {
+                    throw new Error("Unexpected response from server when creating entity.");
+                  }
+                }
+
+                // Main click handler for submit button
+                submitButton?.addEventListener("click", async (ev) => {
+                  ev.preventDefault();
+                  if (isSubmitting) return; // prevent double submissions
+                  isSubmitting = true;
+                  submitButton.disabled = true;
+                  setError(""); // clear previous errors
+
+                  try {
+                    const file = fileInput?.files && fileInput.files[0];
+
+                    // If a file is selected and not yet uploaded, upload it first.
+                    // If image URL already present (uploadedImageUrl or input), skip upload.
+                    if (file && !uploadedImageUrl && !(imageUrlInput && imageUrlInput.value)) {
+                      try {
+                        await uploadImage(file);
+                      } catch (uploadErr) {
+                        setError(uploadErr.message || "Error uploading image. Please try again.");
+                        return;
+                      }
+                    }
+
+                    // Collect form fields and send entity create request
+                    const data = collectVisibleFields();
+                    await submitEntity(data);
+                    // If submitEntity didn't redirect, we'll reach here — hide progress.
+                    hideProgress();
+                  } catch (err) {
+                    // Network error or other error
+                    setError(
+                      err && err.message
+                        ? err.message
+                        : "Network error: Unable to connect to the server. Please check your connection and try again."
+                    );
+                    hideProgress();
+                  } finally {
+                    isSubmitting = false;
+                    submitButton.disabled = false;
+                  }
+                });
+
+                // Toggle tab content based on entity_type selection
+                entityTypeSelect?.addEventListener("change", () => {
+                  const selected = entityTypeSelect.value;
+                  document.querySelectorAll(".tab-content").forEach((el) => el.classList.add("hidden"));
+                  const content = document.getElementById("tab-" + selected);
+                  if (content) content.classList.remove("hidden");
+                });
+              });
                     `,
           }}
         />

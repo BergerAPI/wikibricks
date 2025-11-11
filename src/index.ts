@@ -25,6 +25,13 @@ import {
   handleNewEntitySubmit,
 } from "./routes/entities/new-entity";
 import { handleSearchPage } from "./routes/entities/search";
+import {
+  handleImageUploadSubmit,
+  handleImageServe,
+  handleImageInfo,
+  handleImagePage,
+  handleImageDelete,
+} from "./routes/images";
 
 (async () => {
   const app = new Hono<{ Variables: Variables }>();
@@ -59,6 +66,13 @@ import { handleSearchPage } from "./routes/entities/search";
 
   // User routes
   app.get("/users/:id", handleUserPage);
+
+  // Image routes
+  app.post("/images/upload", handleImageUploadSubmit);
+  app.get("/images/serve/:id", handleImageServe);
+  app.get("/images/:id", handleImagePage);
+  app.get("/images/:id/info", handleImageInfo);
+  app.delete("/images/:id", handleImageDelete);
 
   // Handling errors
   app.onError(handleError);

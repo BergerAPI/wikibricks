@@ -133,6 +133,50 @@ export interface Translations {
 
   // Demo
   "demo.title": string;
+
+  // Images
+  "images.uploadTitle": string;
+  "images.selectImage": string;
+  "images.uploadLimits": string;
+  "images.altText": string;
+  "images.altTextPlaceholder": string;
+  "images.altTextHelp": string;
+  "images.entityId": string;
+  "images.entityIdHelp": string;
+  "images.versionId": string;
+  "images.versionIdHelp": string;
+  "images.uploadButton": string;
+  "images.uploading": string;
+  "images.noFileSelected": string;
+  "images.fileTooLarge": string;
+  "images.uploadFailed": string;
+  "images.uploadSuccess": string;
+  "images.viewImage": string;
+  "images.preview": string;
+  "images.myImages": string;
+  "images.uploadNew": string;
+  "images.noImages": string;
+  "images.uploadFirst": string;
+  "images.details": string;
+  "images.filename": string;
+  "images.originalName": string;
+  "images.fileSize": string;
+  "images.dimensions": string;
+  "images.unknown": string;
+  "images.uploadedBy": string;
+  "images.unknownUser": string;
+  "images.uploadedAt": string;
+  "images.linkedEntity": string;
+  "images.viewFull": string;
+  "images.delete": string;
+  "images.confirmDelete": string;
+  "images.deleteSuccess": string;
+  "images.deleteFailed": string;
+
+  // Common
+  "common.optional": string;
+  "common.previous": string;
+  "common.next": string;
 }
 
 const translations: Record<Language, Translations> = {
@@ -277,6 +321,53 @@ const translations: Record<Language, Translations> = {
 
     // Demo
     "demo.title": "Translation Demo",
+
+    // Images
+    "images.uploadTitle": "Upload Image",
+    "images.selectImage": "Select Image",
+    "images.uploadLimits":
+      "Supported formats: JPEG, PNG, GIF, WebP, SVG, BMP. Max size: 10MB",
+    "images.altText": "Alt Text (optional)",
+    "images.altTextPlaceholder": "Describe the image for accessibility",
+    "images.altTextHelp":
+      "Alternative text helps users with screen readers understand the image",
+    "images.entityId": "Entity ID",
+    "images.entityIdHelp": "Link this image to a specific entity",
+    "images.versionId": "Version ID",
+    "images.versionIdHelp": "Link this image to a specific version",
+    "images.uploadButton": "Upload Image",
+    "images.uploading": "Uploading...",
+    "images.noFileSelected": "Please select a file to upload",
+    "images.fileTooLarge": "File size exceeds 10MB limit",
+    "images.uploadFailed": "Upload failed",
+    "images.uploadSuccess": "Image uploaded successfully! ID: ",
+    "images.viewImage": "View Image",
+    "images.preview": "Preview",
+    "images.myImages": "My Images",
+    "images.uploadNew": "Upload New Image",
+    "images.noImages": "You haven't uploaded any images yet",
+    "images.uploadFirst": "Upload Your First Image",
+    "images.details": "Image Details",
+    "images.filename": "Filename",
+    "images.originalName": "Original Name",
+    "images.fileSize": "File Size",
+    "images.dimensions": "Dimensions",
+    "images.unknown": "Unknown",
+    "images.uploadedBy": "Uploaded By",
+    "images.unknownUser": "Unknown User",
+    "images.uploadedAt": "Uploaded At",
+    "images.linkedEntity": "Linked Entity",
+    "images.viewFull": "View Full Size",
+    "images.delete": "Delete",
+    "images.confirmDelete":
+      "Are you sure you want to delete this image? This action cannot be undone.",
+    "images.deleteSuccess": "Image deleted successfully",
+    "images.deleteFailed": "Failed to delete image",
+
+    // Common
+    "common.optional": "optional",
+    "common.previous": "Previous",
+    "common.next": "Next",
   },
 
   de: {
@@ -422,6 +513,55 @@ const translations: Record<Language, Translations> = {
 
     // Demo
     "demo.title": "Übersetzungs-Demo",
+
+    // Images
+    "images.uploadTitle": "Bild Hochladen",
+    "images.selectImage": "Bild Auswählen",
+    "images.uploadLimits":
+      "Unterstützte Formate: JPEG, PNG, GIF, WebP, SVG, BMP. Max. Größe: 10MB",
+    "images.altText": "Alt-Text (optional)",
+    "images.altTextPlaceholder":
+      "Beschreiben Sie das Bild für die Barrierefreiheit",
+    "images.altTextHelp":
+      "Alternativer Text hilft Nutzern mit Bildschirmlesegeräten das Bild zu verstehen",
+    "images.entityId": "Entity-ID",
+    "images.entityIdHelp": "Dieses Bild mit einer bestimmten Entity verknüpfen",
+    "images.versionId": "Versions-ID",
+    "images.versionIdHelp":
+      "Dieses Bild mit einer bestimmten Version verknüpfen",
+    "images.uploadButton": "Bild Hochladen",
+    "images.uploading": "Wird hochgeladen...",
+    "images.noFileSelected": "Bitte wählen Sie eine Datei zum Hochladen aus",
+    "images.fileTooLarge": "Dateigröße überschreitet das 10MB-Limit",
+    "images.uploadFailed": "Upload fehlgeschlagen",
+    "images.uploadSuccess": "Bild erfolgreich hochgeladen! ID: ",
+    "images.viewImage": "Bild Anzeigen",
+    "images.preview": "Vorschau",
+    "images.myImages": "Meine Bilder",
+    "images.uploadNew": "Neues Bild Hochladen",
+    "images.noImages": "Sie haben noch keine Bilder hochgeladen",
+    "images.uploadFirst": "Ihr Erstes Bild Hochladen",
+    "images.details": "Bild-Details",
+    "images.filename": "Dateiname",
+    "images.originalName": "Ursprünglicher Name",
+    "images.fileSize": "Dateigröße",
+    "images.dimensions": "Abmessungen",
+    "images.unknown": "Unbekannt",
+    "images.uploadedBy": "Hochgeladen Von",
+    "images.unknownUser": "Unbekannter Benutzer",
+    "images.uploadedAt": "Hochgeladen Am",
+    "images.linkedEntity": "Verknüpfte Entity",
+    "images.viewFull": "Vollgröße Anzeigen",
+    "images.delete": "Löschen",
+    "images.confirmDelete":
+      "Sind Sie sicher, dass Sie dieses Bild löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+    "images.deleteSuccess": "Bild erfolgreich gelöscht",
+    "images.deleteFailed": "Löschen des Bildes fehlgeschlagen",
+
+    // Common
+    "common.optional": "optional",
+    "common.previous": "Zurück",
+    "common.next": "Weiter",
   },
 };
 
