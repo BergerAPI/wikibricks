@@ -138,11 +138,19 @@ export const handleImageServe = async (c: DefaultContext) => {
 
     const buffer = await imageStorage.readImageFile(image);
 
-    c.header("Content-Type", image.mime_type);
-    c.header("Content-Length", buffer.length.toString());
-    c.header("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
+    if (!buffer) {
+      return c.text("Image file not found", 404);
+    }
 
-    return c.body(buffer);
+    // Convert Buffer to Uint8Array for Response compatibility
+    return new Response(new Uint8Array(buffer), {
+      status: 200,
+      headers: {
+        "Content-Type": image.mime_type,
+        "Content-Length": buffer.length.toString(),
+        "Cache-Control": "public, max-age=31536000",
+      },
+    });
   } catch (error) {
     console.error("Image serve error:", error);
     return c.text("Failed to serve image", 500);
