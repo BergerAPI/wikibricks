@@ -61,7 +61,6 @@ export const Layout = ({
                 </div>
               </div>
               <div class="flex items-center space-x-2">
-                <LanguageSwitcher context={context} />
                 <nav class="space-x-2 [&>a]:text-sm">
                   {user === undefined ? (
                     <>
