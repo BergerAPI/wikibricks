@@ -92,14 +92,15 @@ export type EntityType = DataEntityType | RawEntityType;
 export type EntityViewType<T extends EntityType> = T extends "set"
   ? SetView
   : T extends "brand"
-    ? BrandView
-    : WikiView;
+  ? BrandView
+  : WikiView;
 
 export type EntityVersionView = {
   id: string;
   version_id: number;
   type: EntityType;
   name: string;
+  image_id: string
   description: string;
   previous_version: number;
   change_message: string;

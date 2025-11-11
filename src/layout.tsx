@@ -8,7 +8,7 @@ import { DefaultContext } from "./utils";
 const styles =
   process.env.NODE_ENV === "production"
     ? fs.readFileSync("/app/dist/public/styles.css", "utf8")
-    : "./public/styles.css";
+    : fs.readFileSync("./public/styles.css", "utf-8");
 
 export const Layout = ({
   children,

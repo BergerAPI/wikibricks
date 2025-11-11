@@ -82,16 +82,6 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
             ></div>
           </label>
 
-          <label class="block mb-3">
-            <span class="font-semibold">Price</span>
-            <input
-              field="price"
-              id="price"
-              value=""
-              class="border p-2 rounded w-full"
-            />
-          </label>
-
           {/* Tab contents */}
           {Object.keys(infoFields).map((id, index) => (
             <div
@@ -162,13 +152,12 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
             __html: `
               document.addEventListener("DOMContentLoaded", () => {
                 const fileInput = document.getElementById("image_file");
-                const imageUrlInput = document.getElementById("image_url");
                 const submitButton = document.getElementById("submit_button");
                 const progressDiv = document.getElementById("progress");
                 const errorDiv = document.getElementById("error");
                 const entityTypeSelect = document.getElementById("entity_type");
 
-                let uploadedImageUrl = "";
+                let uploadedImageId = "";
                 let isSubmitting = false;
 
                 // UI helpers
@@ -215,14 +204,13 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
                   }
 
                   const json = await resp.json().catch(() => ({}));
-                  if (!json.url) throw new Error("Upload failed: no URL returned from server.");
+                  if (!json.id) throw new Error("Upload failed: no URL returned from server.");
 
                   // Small UI delay so users see "Image uploaded!"
                   showProgress("Image uploaded!");
                   hideProgress(800);
-                  uploadedImageUrl = json.url;
-                  if (imageUrlInput) imageUrlInput.value = uploadedImageUrl;
-                  return uploadedImageUrl;
+                  uploadedImageId = json.id;
+                  return uploadedImageId;
                 }
 
                 // Collect visible fields with attribute [field] and return an object.
@@ -259,11 +247,6 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
                     data[field] = value;
                   });
 
-                  // Ensure image_url (if set via upload or manual input) is included
-                  if (imageUrlInput && imageUrlInput.value) {
-                    data.image_url = imageUrlInput.value;
-                  }
-
                   return data;
                 }
 
@@ -291,7 +274,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
                   const json = await resp.json().catch(() => ({}));
                   if (json.id && json.entity_id) {
                     // Redirect to the created entity
-                    window.location.href = "/entities/"+json.entity_id;
+                    window.location.href = "/entities/"+json.entity_id+"?version="+json.version_id;
                   } else {
                     throw new Error("Unexpected response from server when creating entity.");
                   }
@@ -309,8 +292,8 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
                     const file = fileInput?.files && fileInput.files[0];
 
                     // If a file is selected and not yet uploaded, upload it first.
-                    // If image URL already present (uploadedImageUrl or input), skip upload.
-                    if (file && !uploadedImageUrl && !(imageUrlInput && imageUrlInput.value)) {
+                    // If image URL already present (uploadedImageId or input), skip upload.
+                    if (file && !uploadedImageId) {
                       try {
                         await uploadImage(file);
                       } catch (uploadErr) {
@@ -321,7 +304,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
 
                     // Collect form fields and send entity create request
                     const data = collectVisibleFields();
-                    await submitEntity(data);
+                    await submitEntity({...data, image_id: uploadedImageId});
                     // If submitEntity didn't redirect, we'll reach here — hide progress.
                     hideProgress();
                   } catch (err) {
@@ -421,15 +404,15 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
     if (entity_type === "set") {
       await sql`
                 INSERT INTO sets ${sql({
-                  version_id: id,
-                  ...data,
-                })}`;
+        version_id: id,
+        ...data,
+      })}`;
     } else if (entity_type === "brand") {
       await sql`
                 INSERT INTO brands ${sql({
-                  version_id: id,
-                  ...data,
-                })}`;
+        version_id: id,
+        ...data,
+      })}`;
     } else if (entity_type === "wiki") {
       // No additional table insertion is needed for wiki entities.
     }

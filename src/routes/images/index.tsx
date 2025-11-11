@@ -94,7 +94,8 @@ export const handleImageUpload = async (c: DefaultContext) => {
 
   try {
     const formData = await c.req.formData();
-    const imageFile = formData.get("image") as File;
+    const body = await c.req.parseBody()
+    const imageFile = body["file"] as File;
     const altText = formData.get("alt_text") as string;
 
     if (!imageFile || imageFile.size === 0) {
