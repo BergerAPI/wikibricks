@@ -390,7 +390,7 @@ export const handleImageDelete = async (c: DefaultContext) => {
       return c.text("Permission denied", 403);
     }
 
-    await imageStorage.deleteImage(id, user.id);
+    await imageStorage.deleteImage(id);
 
     return c.text("Image deleted successfully", 200);
   } catch (error) {

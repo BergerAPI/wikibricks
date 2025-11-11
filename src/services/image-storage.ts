@@ -1,5 +1,5 @@
 import { sql, type Image } from "../database";
-import { writeFile, readFile, mkdir } from "fs/promises";
+import { writeFile, readFile, mkdir, unlink } from "fs/promises";
 import { existsSync } from "fs";
 import { join, extname } from "path";
 import { randomUUID } from "crypto";
@@ -107,19 +107,19 @@ export const uploadImage = async (
     // Save metadata to database
     const [image] = await sql<Image[]>`
       INSERT INTO images ${sql({
-        filename: uniqueFilename,
-        original_filename: originalFilename,
-        file_path: filePath,
-        file_size: buffer.length,
-        mime_type: mimetype,
-        width,
-        height,
-        uploaded_by: uploadedBy,
-        storage_type: "local",
-        alt_text: altText || null,
-        s3_bucket: null,
-        s3_key: null,
-      })}
+      filename: uniqueFilename,
+      original_filename: originalFilename,
+      file_path: filePath,
+      file_size: buffer.length,
+      mime_type: mimetype,
+      width,
+      height,
+      uploaded_by: uploadedBy,
+      storage_type: "local",
+      alt_text: altText || null,
+      s3_bucket: null,
+      s3_key: null,
+    })}
       RETURNING *
     `;
 
@@ -127,9 +127,8 @@ export const uploadImage = async (
   } catch (error) {
     // Clean up file if database insert fails
     try {
-      const fs = await import("fs/promises");
       if (existsSync(filePath)) {
-        await fs.unlink(filePath);
+        await unlink(filePath);
       }
     } catch {
       // Ignore cleanup errors
@@ -201,8 +200,10 @@ export const getImageUrl = (image: Image): string => {
 // Delete image (marks as deleted, doesn't actually delete file immediately)
 export const deleteImage = async (
   id: number,
-  userId: number,
 ): Promise<boolean> => {
+  if (!id)
+    return false
+
   // Check if user owns the image or is admin/moderator
   const [image] = await sql<Image[]>`
     SELECT * FROM images WHERE id = ${id} LIMIT 1
@@ -212,18 +213,17 @@ export const deleteImage = async (
     return false;
   }
 
-  // For now, only allow users to delete their own images
-  // In production, you'd check permission levels too
-  if (image.uploaded_by !== userId) {
-    throw new Error("Permission denied");
-  }
-
   await sql`
     DELETE FROM images WHERE id = ${id}
   `;
 
-  // TODO: Implement actual file deletion (maybe with a cleanup job)
-  return true;
+  const path = join(UPLOAD_DIR, image.filename)
+  if (image.storage_type === "local" && existsSync(path)) {
+    await unlink(path)
+    return true
+  }
+
+  return false;
 };
 
 // Get upload statistics for admin

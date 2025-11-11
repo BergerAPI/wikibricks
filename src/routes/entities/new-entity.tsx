@@ -1,6 +1,7 @@
 import { getInfoFields, type EntityAttributes } from ".";
 import { sql, type EntityType } from "../../database";
 import { Layout } from "../../layout";
+import { deleteImage } from "../../services/image-storage";
 import { useTranslation } from "../../translation";
 import type { DefaultContext } from "../../utils";
 
@@ -141,194 +142,94 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
             </div>
           ))}
 
-          <span id="progress" class="hidden">
-            Uploading...
-          </span>
           <button id="submit_button">Submit</button>
         </div>
 
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              document.addEventListener("DOMContentLoaded", () => {
-                const fileInput = document.getElementById("image_file");
-                const submitButton = document.getElementById("submit_button");
-                const progressDiv = document.getElementById("progress");
-                const errorDiv = document.getElementById("error");
-                const entityTypeSelect = document.getElementById("entity_type");
+document.addEventListener("DOMContentLoaded", () => {
+  const fileInput = document.getElementById("image_file");
+  const submitButton = document.getElementById("submit_button");
+  const errorEl = document.getElementById("error");
+  const entityTypeSelect = document.getElementById("entity_type");
 
-                let uploadedImageId = "";
-                let isSubmitting = false;
+  let imageId = "";
+  let isSubmitting = false;
 
-                // UI helpers
-                function showProgress(text) {
-                  if (!progressDiv) return;
-                  progressDiv.classList.remove("hidden");
-                  progressDiv.textContent = text;
-                }
+  const setError = (msg) => { if (errorEl) errorEl.innerHTML = msg; };
 
-                function hideProgress(delay = 0) {
-                  if (!progressDiv) return;
-                  if (delay > 0) {
-                    setTimeout(() => progressDiv.classList.add("hidden"), delay);
-                  } else {
-                    progressDiv.classList.add("hidden");
-                  }
-                }
+  async function uploadImage(file) {
+    if (!file) throw new Error("No file selected.");
+    const form = new FormData();
+    form.append("file", file);
 
-                function setError(message) {
-                  if (!errorDiv) return;
-                  errorDiv.innerHTML = message;
-                }
+    const res = await fetch("/images/upload", { method: "POST", body: form });
+    if (!res.ok) throw new Error("Upload failed ("+res.status+")");
 
-                // Upload the image using fetch and FormData.
-                // Note: fetch does not provide reliable upload progress events across browsers;
-                // we present an indeterminate "Uploading..." message instead.
-                async function uploadImage(file) {
-                  if (!file) throw new Error("No file provided for upload.");
+    const data = await res.json();
+    if (!data.id) throw new Error("Invalid upload response.");
+    imageId = data.id;
+    return imageId;
+  }
 
-                  showProgress("Uploading image...");
-                  const formData = new FormData();
-                  formData.append("file", file);
+  function collectFields() {
+    const result = {};
+    document.querySelectorAll("[field]").forEach((el) => {
+      if (el.offsetParent === null) return;
+      const key = el.getAttribute("field");
+      let value = el.type === "checkbox" ? el.checked : el.value;
+      if (["brand_id", "pieces"].includes(key)) {
+        const num = parseInt(value, 10);
+        if (!isNaN(num)) value = num;
+      }
+      result[key] = value;
+    });
+    return result;
+  }
 
-                  const resp = await fetch("/images/upload", {
-                    method: "POST",
-                    body: formData,
-                  });
+  async function submitEntity(data) {
+    const res = await fetch("/entities/new", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
 
-                  if (!resp.ok) {
-                    const text = await resp.text().catch(() => "");
-                    throw new Error(
-                      "Image upload failed ("+resp.status+"):" + (text || resp.statusText)
-                    );
-                  }
+    if (!res.ok) throw new Error("There was an error ("+await res.text()+")");
+    const json = await res.json();
+    if (json.entity_id) {
+      window.location.href = "/entities/"+json.entity_id+"?version="+json.version_id;
+    } else {
+      throw new Error("Unexpected response from server.");
+    }
+  }
 
-                  const json = await resp.json().catch(() => ({}));
-                  if (!json.id) throw new Error("Upload failed: no URL returned from server.");
+  submitButton?.addEventListener("click", async (e) => {
+    e.preventDefault();
+    if (isSubmitting) return;
 
-                  // Small UI delay so users see "Image uploaded!"
-                  showProgress("Image uploaded!");
-                  hideProgress(800);
-                  uploadedImageId = json.id;
-                  return uploadedImageId;
-                }
+    isSubmitting = true;
+    submitButton.disabled = true;
+    setError("");
 
-                // Collect visible fields with attribute [field] and return an object.
-                function collectVisibleFields() {
-                  const data = {};
-                  document.querySelectorAll("[field]").forEach((el) => {
-                    // visible elements have offsetParent not null (simple visibility check)
-                    if (el.offsetParent === null) return;
+    try {
+      const file = fileInput?.files?.[0];
+      if (file && !imageId) await uploadImage(file);
+      const fields = collectFields();
+      await submitEntity({ ...fields, image_id: imageId });
+    } catch (err) {
+      setError(err.message || "Network error. Please try again.");
+    } finally {
+      isSubmitting = false;
+      submitButton.disabled = false;
+    }
+  });
 
-                    const field = el.getAttribute("field");
-                    if (!field) return;
-
-                    // Inputs:
-                    let value;
-                    const tag = el.tagName;
-                    const type = el.type ? el.type.toLowerCase() : "";
-
-                    if (tag === "SELECT") {
-                      const selected = el.options[el.selectedIndex];
-                      value = selected ? selected.value : "";
-                    } else if (type === "checkbox") {
-                      // for checkboxes keep boolean
-                      value = el.checked;
-                    } else {
-                      value = el.value;
-                    }
-
-                    // Convert numeric fields
-                    if (value !== "" && (field === "brand_id" || field === "pieces")) {
-                      const parsed = parseInt(value, 10);
-                      value = Number.isNaN(parsed) ? value : parsed;
-                    }
-
-                    data[field] = value;
-                  });
-
-                  return data;
-                }
-
-                // Submit the entity JSON to the server.
-                async function submitEntity(data) {
-                  showProgress("Submitting...");
-                  const resp = await fetch("/entities/new", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(data),
-                    redirect: "follow",
-                  });
-
-                  if (!resp.ok) {
-                    const body = await resp.text().catch(() => "");
-                    if (resp.status === 400) {
-                      throw new Error("Bad Request: " + (body || "Invalid request."));
-                    } else if (resp.status === 500) {
-                      throw new Error("Server error: Our technical team has been notified. Please try again later.");
-                    } else {
-                      throw new Error("An unexpected error occurred ("+resp.status+").");
-                    }
-                  }
-
-                  const json = await resp.json().catch(() => ({}));
-                  if (json.id && json.entity_id) {
-                    // Redirect to the created entity
-                    window.location.href = "/entities/"+json.entity_id+"?version="+json.version_id;
-                  } else {
-                    throw new Error("Unexpected response from server when creating entity.");
-                  }
-                }
-
-                // Main click handler for submit button
-                submitButton?.addEventListener("click", async (ev) => {
-                  ev.preventDefault();
-                  if (isSubmitting) return; // prevent double submissions
-                  isSubmitting = true;
-                  submitButton.disabled = true;
-                  setError(""); // clear previous errors
-
-                  try {
-                    const file = fileInput?.files && fileInput.files[0];
-
-                    // If a file is selected and not yet uploaded, upload it first.
-                    // If image URL already present (uploadedImageId or input), skip upload.
-                    if (file && !uploadedImageId) {
-                      try {
-                        await uploadImage(file);
-                      } catch (uploadErr) {
-                        setError(uploadErr.message || "Error uploading image. Please try again.");
-                        return;
-                      }
-                    }
-
-                    // Collect form fields and send entity create request
-                    const data = collectVisibleFields();
-                    await submitEntity({...data, image_id: uploadedImageId});
-                    // If submitEntity didn't redirect, we'll reach here — hide progress.
-                    hideProgress();
-                  } catch (err) {
-                    // Network error or other error
-                    setError(
-                      err && err.message
-                        ? err.message
-                        : "Network error: Unable to connect to the server. Please check your connection and try again."
-                    );
-                    hideProgress();
-                  } finally {
-                    isSubmitting = false;
-                    submitButton.disabled = false;
-                  }
-                });
-
-                // Toggle tab content based on entity_type selection
-                entityTypeSelect?.addEventListener("change", () => {
-                  const selected = entityTypeSelect.value;
-                  document.querySelectorAll(".tab-content").forEach((el) => el.classList.add("hidden"));
-                  const content = document.getElementById("tab-" + selected);
-                  if (content) content.classList.remove("hidden");
-                });
-              });
+  entityTypeSelect?.addEventListener("change", () => {
+    document.querySelectorAll(".tab-content").forEach((el) => el.classList.add("hidden"));
+    document.getElementById("tab-" + entityTypeSelect.value)?.classList.remove("hidden");
+  });
+});
                     `,
           }}
         />
@@ -343,10 +244,13 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
 
   const infoFields = getInfoFields(t);
 
-  if (!user) return c.body("Unauthorized", 401);
-
   const { name, description, entity_type, image_id, ...data } =
     await c.req.json();
+
+  if (!user) {
+    deleteImage(image_id)
+    return c.body("Unauthorized", 401);
+  }
 
   if (
     !name ||
@@ -355,6 +259,8 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
     name.length < 3 ||
     description.length < 3
   ) {
+    deleteImage(image_id)
+
     return c.body(
       "Name and description are required and need to be at least 3 characters long.",
       400,
@@ -368,6 +274,8 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
 
   for (const [fieldKey] of Object.entries(typeInfo)) {
     if (data[fieldKey] !== undefined) continue;
+
+    deleteImage(image_id)
 
     return c.body("Bad Request", 400);
   }
