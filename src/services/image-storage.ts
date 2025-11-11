@@ -10,10 +10,7 @@ const ALLOWED_MIME_TYPES = [
   "image/jpeg",
   "image/jpg",
   "image/png",
-  "image/gif",
   "image/webp",
-  "image/bmp",
-  "image/svg+xml",
 ];
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "uploads/images";
 const MAX_UPLOADS_PER_USER_PER_HOUR = 20;
