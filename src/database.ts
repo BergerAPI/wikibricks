@@ -14,7 +14,7 @@ export type User = {
 /**
  * Represents all possible values of the entity version review_status row
  */
-export type ReviewStatus = 'pending' | 'approved' | 'rejected';
+export type ReviewStatus = "pending" | "approved" | "rejected";
 
 /**
  * A column in the entity versions table
@@ -40,7 +40,7 @@ export type Brand = {
   country: string;
   website: string;
   created_at: Date;
-}
+};
 
 /**
  * A column in the sets table
@@ -54,19 +54,46 @@ export type Set = {
   manufacturer_id: string;
   brand_id: number;
   created_at: Date;
-}
+};
+
+/**
+ * A column in the images table
+ */
+export type Image = {
+  id: number;
+  filename: string;
+  original_filename: string;
+  file_path: string;
+  file_size: number;
+  mime_type: string;
+  width: number;
+  height: number;
+  uploaded_by: number;
+  entity_id: number | null;
+  version_id: number | null;
+  s3_bucket: string | null;
+  s3_key: string | null;
+  storage_type: "local" | "s3";
+  alt_text: string | null;
+  created_at: Date;
+  updated_at: Date;
+};
 
 /**
  * Possible types of entities
  */
-export type DataEntityType = 'set' | 'brand';
-export type RawEntityType = 'wiki'
+export type DataEntityType = "set" | "brand";
+export type RawEntityType = "wiki";
 export type EntityType = DataEntityType | RawEntityType;
 
 /**
  * Conjuction of all possible views for each entity type
  */
-export type EntityViewType<T extends EntityType> = (T extends 'set' ? SetView : (T extends 'brand' ? BrandView : WikiView));
+export type EntityViewType<T extends EntityType> = T extends "set"
+  ? SetView
+  : T extends "brand"
+    ? BrandView
+    : WikiView;
 
 export type EntityVersionView = {
   id: string;
@@ -84,7 +111,7 @@ export type EntityVersionView = {
   version_number: string;
   version_created_at: string;
   created_by: string;
-}
+};
 
 /**
  * A column returned by the set_view view which joins entities, entity_versions, and sets
@@ -127,6 +154,31 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE INDEX IF NOT EXISTS idx_user ON users(username);
 
+CREATE TABLE IF NOT EXISTS images (
+    id SERIAL PRIMARY KEY,
+    filename VARCHAR(255) NOT NULL,
+    original_filename VARCHAR(255) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    file_size INTEGER NOT NULL,
+    mime_type VARCHAR(100) NOT NULL,
+    width INTEGER,
+    height INTEGER,
+    uploaded_by INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    entity_id INT REFERENCES entities(id) ON DELETE SET NULL,
+    version_id INT REFERENCES entity_versions(id) ON DELETE SET NULL,
+    s3_bucket VARCHAR(255),
+    s3_key VARCHAR(500),
+    storage_type VARCHAR(10) DEFAULT 'local' CHECK (storage_type IN ('local', 's3')),
+    alt_text TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_image_entity ON images(entity_id);
+CREATE INDEX IF NOT EXISTS idx_image_version ON images(version_id);
+CREATE INDEX IF NOT EXISTS idx_image_storage ON images(storage_type, s3_bucket, s3_key);
+CREATE INDEX IF NOT EXISTS idx_image_uploader ON images(uploaded_by);
+
 CREATE TABLE IF NOT EXISTS entities (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) UNIQUE,
@@ -145,6 +197,7 @@ CREATE TABLE IF NOT EXISTS entity_versions (
     created_by INT REFERENCES users(id) ON DELETE SET NULL,
     previous_version INT REFERENCES entity_versions(id) ON DELETE SET NULL DEFAULT NULL,
     description TEXT,
+    image_id INT REFERENCES images(id) ON DELETE SET NULL DEFAULT NULL,
 
     -- Informations about changes in this version by the author
     change_message TEXT DEFAULT '',
@@ -201,6 +254,7 @@ SELECT
     v.reviewed_at as reviewed_at,
     v.reviewed_by as reviewed_by,
     v.review_comment as review_comment,
+    v.image_id as image_id,
     s.pieces AS pieces,
     s.issued AS issued,
     s.theme AS theme,
@@ -229,6 +283,7 @@ SELECT
     v.reviewed_at as reviewed_at,
     v.reviewed_by as reviewed_by,
     v.review_comment as review_comment,
+    v.image_id as image_id,
     b.country AS country,
     b.website AS website
 FROM entity_versions v
@@ -252,7 +307,8 @@ SELECT
     v.review_status as review_status,
     v.reviewed_at as reviewed_at,
     v.reviewed_by as reviewed_by,
-    v.review_comment as review_comment
+    v.review_comment as review_comment,
+    v.image_id as image_id
 FROM entity_versions v
 JOIN entities e ON v.entity_id = e.id
 WHERE e.type = 'wiki';
