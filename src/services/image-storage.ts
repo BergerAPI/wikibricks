@@ -195,11 +195,8 @@ export const getImageUrl = (image: Image): string => {
 };
 
 // Delete image (marks as deleted, doesn't actually delete file immediately)
-export const deleteImage = async (
-  id: number,
-): Promise<boolean> => {
-  if (!id)
-    return false
+export const deleteImage = async (id: number): Promise<boolean> => {
+  if (!id) return false;
 
   // Check if user owns the image or is admin/moderator
   const [image] = await sql<Image[]>`
