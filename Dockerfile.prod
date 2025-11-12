@@ -41,6 +41,9 @@ COPY --from=builder /app/dist dist
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S appuser -u 1001 -G nodejs
 
+# Create data directory for uploads
+RUN mkdir -p /app/data
+
 # Change ownership of app directory
 RUN chown -R appuser:nodejs /app
 
