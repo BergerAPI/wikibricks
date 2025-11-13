@@ -27,7 +27,7 @@ open http://localhost:3000
   - [ ] Ban users
   - [ ] Force create pages
   - [ ] Modify users
-- [ ] Argon2 for Passwords
+- [x] Bcrypt for Passwords
 - [x] Deploy to VPS
 - [ ] CI/CD
   - [ ] View commit on production build

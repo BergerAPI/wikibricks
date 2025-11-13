@@ -12,6 +12,7 @@
     "@aws-sdk/s3-request-presigner": "^3.929.0",
     "@hono/node-server": "^1.13.7",
     "@tailwindcss/cli": "^4.0.3",
+    "bcryptjs": "^3.0.3",
     "dotenv": "^16.4.7",
     "hono": "^4.6.17",
     "postgres": "^3.4.5",

@@ -17,7 +17,7 @@ export const Layout = ({
   context,
 }: PropsWithChildren & {
   title?: string | undefined;
-  user?: User | undefined;
+  user?: User | null | undefined;
   context: DefaultContext;
 }) => {
   const { t } = useTranslation(context);
@@ -62,7 +62,7 @@ export const Layout = ({
               </div>
               <div class="flex items-center space-x-2">
                 <nav class="space-x-2 [&>a]:text-sm">
-                  {user === undefined ? (
+                  {(user === undefined || user === null) ? (
                     <>
                       <a href="/register">{t("nav.register")}</a>
                       <a href="/login">{t("nav.login")}</a>
