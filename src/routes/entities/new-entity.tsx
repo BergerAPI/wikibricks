@@ -198,7 +198,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!res.ok) throw new Error("There was an error ("+await res.text()+")");
     const json = await res.json();
     if (json.entity_id) {
-      window.location.href = "/entities/"+json.entity_id+"?version="+json.version_id;
+      window.location.href = "/entities/"+json.entity_id+"?version="+json.id;
     } else {
       throw new Error("Unexpected response from server.");
     }
