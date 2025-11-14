@@ -120,9 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <p>
                 {t("footer.content")} {t("footer.termsPrivacy")}
               </p>
-              <p class="text-xs text-gray-500 mt-1">
-                {t("footer.version")}: {shortCommitId}
-              </p>
+              <p class="text-xs text-gray-500 mt-1">{shortCommitId}</p>
             </div>
           </footer>
         </div>
