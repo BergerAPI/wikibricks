@@ -26,9 +26,9 @@ export const handleSearchPage = async (c: DefaultContext) => {
   }
   const whereClause = filters.length
     ? sql`WHERE ${filters.reduce(
-      (acc, cur, idx) => (idx === 0 ? cur : sql`${acc} AND ${cur}`),
-      sql``,
-    )}`
+        (acc, cur, idx) => (idx === 0 ? cur : sql`${acc} AND ${cur}`),
+        sql``,
+      )}`
     : sql``;
 
   const [totalCount] = await sql<{ count: number }[]>`
@@ -52,7 +52,9 @@ export const handleSearchPage = async (c: DefaultContext) => {
             {(user ? user.permission_level : 0) > PermissionLevel.MODERATOR && (
               <a href="/changes">{t("entities.changeRequests")}</a>
             )}
-            <a href="/entities/new">{t("action.addEntity")}</a>
+            {(user ? user.permission_level : 0) > PermissionLevel.MODERATOR && (
+              <a href="/entities/new">{t("action.addEntity")}</a>
+            )}
           </div>
         </div>
         <form

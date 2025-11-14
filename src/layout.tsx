@@ -62,7 +62,7 @@ export const Layout = ({
               </div>
               <div class="flex items-center space-x-2">
                 <nav class="space-x-2 [&>a]:text-sm">
-                  {(user === undefined || user === null) ? (
+                  {user === undefined || user === null ? (
                     <>
                       <a href="/register">{t("nav.register")}</a>
                       <a href="/login">{t("nav.login")}</a>
@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   searchButton.addEventListener('click', () => {
     const query = searchInput.value;
-    window.location.href = "/search?name=" + encodeURIComponent(query) + "&entity_type=all";
+    window.location.href = "/entities/search?name=" + encodeURIComponent(query) + "&entity_type=all";
   });
 
   logoutButton.addEventListener('click', () => {
