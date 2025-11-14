@@ -81,6 +81,7 @@ export interface Translations {
   "entities.descriptionLabel": string;
   "entities.imageLabel": string;
   "entities.selectBrand": string;
+  "entities.selectTheme": string
 
   // Entity Types
   "entityType.all": string;
@@ -271,6 +272,7 @@ const translations: Record<Language, Translations> = {
     "entities.descriptionLabel": "Description",
     "entities.imageLabel": "Image",
     "entities.selectBrand": "Select a brand",
+    "entities.selectTheme": "Select a theme",
 
     // Entity Types
     "entityType.all": "All",
@@ -470,6 +472,7 @@ const translations: Record<Language, Translations> = {
     "entities.descriptionLabel": "Beschreibung",
     "entities.imageLabel": "Bild",
     "entities.selectBrand": "Marke auswählen",
+    "entities.selectTheme": "Thema auswählen",
 
     // Entity Types
     "entityType.all": "Alle",

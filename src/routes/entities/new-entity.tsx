@@ -1,9 +1,48 @@
+import { ReactElement } from "hono/jsx";
 import { getInfoFields, type EntityAttributes } from ".";
+import { categories, Category } from "../../categories";
 import { sql, type EntityType } from "../../database";
 import { Layout } from "../../layout";
 import { deleteImage } from "../../services/image-storage";
 import { useTranslation } from "../../translation";
 import type { DefaultContext } from "../../utils";
+import { JSX } from "hono/jsx/jsx-runtime";
+
+const buildOptions = (
+  categories: Category[],
+  depth: number = 0,
+  path: string[] = []
+): JSX.Element[] => {
+  return categories.flatMap((cat) => {
+    const colors = ["bg-neutral-400", "bg-neutral-300", "bg-neutral-200", "bg-neutral-100"]
+    const hasChildren = cat.children && cat.children.length > 0;
+    const fullPath = [...path, cat.name].join(" › ");
+
+    const option = (
+      <option
+        key={cat.id}
+        value={cat.id}
+        disabled={hasChildren}
+        data-depth={depth}
+        data-full-path={fullPath}
+        style={{
+          fontWeight: hasChildren ? "bold" : "normal",
+        }}
+        class={hasChildren ? colors[depth] : ""}
+      >
+        {cat.name}
+      </option>
+    );
+
+    // If parent, append children options recursively
+    return hasChildren
+      ? [
+        option,
+        ...buildOptions(cat.children!, depth + 1, [...path, cat.name]),
+      ]
+      : [option];
+  });
+};
 
 export const handleNewEntityPage = async (c: DefaultContext) => {
   const user = c.get("user");
@@ -122,6 +161,21 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
                         </select>
                       </label>
                     );
+                  }
+
+                  if (key === "theme") {
+                    return <label htmlFor={key} class="block mb-3">
+                      <span class="font-semibold">{fieldLabel}</span>
+
+                      <select
+                        id={key}
+                        field={key}
+                        class="border p-2 rounded w-full"
+                      >
+                        <option value="">{t("entities.selectTheme")}</option>
+                        {buildOptions(categories)}
+                      </select>
+                    </label>
                   }
 
                   return (

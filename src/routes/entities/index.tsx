@@ -1,3 +1,4 @@
+import { flattendLeafCategories } from "../../categories";
 import { InfoBox, InfoBoxImage, InfoBoxRow } from "../../components/info-box";
 import {
   sql,
@@ -58,7 +59,11 @@ export const getInfoFields = (t: TranslationFunctions["t"]) =>
         value: (v, _) => v,
       },
       size: t("entity.size"),
-      theme: t("entity.theme"),
+      theme: {
+        text: t("entity.theme"),
+        type: "string",
+        value: (value) => flattendLeafCategories.find(it => it.id === value)?.name ?? "Error"
+      },
       issued: t("entity.issued"),
       brand_id: {
         text: t("entity.brand"),
@@ -159,7 +164,7 @@ const EntityInfoBox = <T extends EntityType>({
   return (
     <InfoBox title={entity.name}>
       <InfoBoxImage
-        src={`/images/serve/${entity.image_id}`}
+        src={entity.image_id !== null ? `/images/serve/${entity.image_id}` : "https://placehold.co/800x800"}
         alt={t("entity.imageOf", { name: entity.name })}
       />
 
