@@ -27,7 +27,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.prod
-    container_name: wikibricks-app-prod
     environment:
       - NODE_ENV=production
       - DB_CONN=postgresql://${POSTGRES_USER:-wikibricks_user}:${POSTGRES_PASSWORD:-change_this_password}@postgres:5432/wikibricks
