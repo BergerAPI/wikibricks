@@ -1,6 +1,9 @@
 # Production Dockerfile with multi-stage build
 FROM node:18-alpine AS builder
 
+# Accept build argument for commit ID
+ARG COMMIT_ID=unknown
+
 # Set working directory
 WORKDIR /app
 
@@ -33,6 +36,7 @@ RUN npm ci --only=production && npm cache clean --force
 
 # Set environment variable before copying application
 ENV NODE_ENV=production
+ENV COMMIT_ID=${COMMIT_ID}
 
 # Copy compiled application and assets from builder stage
 COPY --from=builder /app/dist dist

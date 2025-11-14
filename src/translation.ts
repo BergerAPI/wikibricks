@@ -81,7 +81,7 @@ export interface Translations {
   "entities.descriptionLabel": string;
   "entities.imageLabel": string;
   "entities.selectBrand": string;
-  "entities.selectTheme": string
+  "entities.selectTheme": string;
 
   // Entity Types
   "entityType.all": string;
@@ -109,6 +109,7 @@ export interface Translations {
   // Footer
   "footer.content": string;
   "footer.termsPrivacy": string;
+  "footer.version": string;
 
   // Entity History
   "entity.history.title": string;
@@ -301,6 +302,7 @@ const translations: Record<Language, Translations> = {
     "footer.content":
       "Content is available under CC BY-SA unless otherwise noted.",
     "footer.termsPrivacy": "Terms of Use | Privacy Policy",
+    "footer.version": "Version",
 
     // Entity History
     "entity.history.title": "Version History:",
@@ -501,6 +503,7 @@ const translations: Record<Language, Translations> = {
     "footer.content":
       "Inhalt ist unter CC BY-SA verfügbar, sofern nicht anders vermerkt.",
     "footer.termsPrivacy": "Nutzungsbedingungen | Datenschutzrichtlinie",
+    "footer.version": "Version",
 
     // Entity History
     "entity.history.title": "Versionshistorie:",

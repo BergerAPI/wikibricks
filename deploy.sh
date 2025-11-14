@@ -128,11 +128,22 @@ build_images() {
 
     cd "$SCRIPT_DIR"
 
-    # Build the production image
-    docker compose -f "$COMPOSE_FILE" build --no-cache
+    # Get current commit ID and metadata
+    local commit_id=$(git rev-parse HEAD)
+    local short_commit_id=$(git rev-parse --short HEAD)
+    local commit_message=$(git log -1 --pretty=format:"%s")
+    local commit_author=$(git log -1 --pretty=format:"%an")
+    local commit_date=$(git log -1 --pretty=format:"%ad" --date=short)
+
+    log INFO "Building with commit: $short_commit_id"
+    log INFO "Commit message: $commit_message"
+    log INFO "Author: $commit_author ($commit_date)"
+
+    # Build the production image with commit ID as build arg
+    COMMIT_ID="$commit_id" docker compose -f "$COMPOSE_FILE" build --no-cache
 
     if [ $? -eq 0 ]; then
-        log INFO "Images built successfully"
+        log INFO "Images built successfully with commit $short_commit_id"
     else
         log ERROR "Failed to build images"
         return 1
@@ -284,9 +295,11 @@ deploy() {
 
     local end_time=$(date +%s)
     local duration=$((end_time - start_time))
+    local short_commit_id=$(git rev-parse --short HEAD)
 
     log INFO "Deployment completed successfully in ${duration}s"
-    send_notification "SUCCESS" "Deployment completed in ${duration}s"
+    log INFO "Deployed commit: $short_commit_id"
+    send_notification "SUCCESS" "Deployment completed in ${duration}s (commit: $short_commit_id)"
 }
 
 # Show usage

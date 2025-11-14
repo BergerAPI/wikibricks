@@ -1,9 +1,20 @@
 import type { PropsWithChildren } from "hono/jsx";
 import fs from "fs";
 import type { User } from "./database";
-import { t, useTranslation } from "./translation";
-import { LanguageSwitcher } from "./components/language-switcher";
+import { useTranslation } from "./translation";
 import { DefaultContext } from "./utils";
+
+// Get commit ID from environment with development fallback
+const getCommitId = () => {
+  const commitId = process.env.COMMIT_ID;
+  if (commitId && commitId !== "unknown") {
+    return commitId.length > 7 ? commitId.substring(0, 7) : commitId;
+  }
+
+  return "unknown";
+};
+
+const shortCommitId = getCommitId();
 
 const styles =
   process.env.NODE_ENV === "production"
@@ -108,6 +119,9 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="container mx-auto text-center text-sm text-gray-600">
               <p>
                 {t("footer.content")} {t("footer.termsPrivacy")}
+              </p>
+              <p class="text-xs text-gray-500 mt-1">
+                {t("footer.version")}: {shortCommitId}
               </p>
             </div>
           </footer>
