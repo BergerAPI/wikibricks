@@ -52,7 +52,7 @@ export const handleSearchPage = async (c: DefaultContext) => {
             {(user ? user.permission_level : 0) > PermissionLevel.MODERATOR && (
               <a href="/changes">{t("entities.changeRequests")}</a>
             )}
-            {(user ? user.permission_level : 0) > PermissionLevel.MODERATOR && (
+            {user !== undefined && (
               <a href="/entities/new">{t("action.addEntity")}</a>
             )}
           </div>
