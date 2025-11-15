@@ -121,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 {t("footer.content")} {t("footer.termsPrivacy")}
               </p>
               <p class="text-xs text-gray-500 mt-1">
-                {t("footer.version")}:
+                {t("footer.version")}:{" "}
                 <a
                   href={`${process.env.GITHUB_URL ?? "https://github.com/BergerAPI/wikibricks"}/commit/${shortCommitId}`}
                   class="underline text-gray-500 hover:text-gray-800"
@@ -129,7 +129,6 @@ document.addEventListener('DOMContentLoaded', () => {
                   rel="noopener noreferrer"
                   title="View commit on GitHub"
                 >
-                  {" "}
                   #{shortCommitId}
                 </a>
               </p>
