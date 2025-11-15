@@ -19,6 +19,9 @@ RUN npm ci
 # Copy source code and config files
 COPY . .
 
+# Set commit ID as an environment variable for the build process
+ENV COMMIT_ID=${COMMIT_ID}
+
 # Create public directory and build TypeScript and CSS
 RUN mkdir -p public && npm run build
 
@@ -34,7 +37,10 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci --only=production && npm cache clean --force
 
-# Set environment variable before copying application
+# Accept build argument in the runner stage
+ARG COMMIT_ID
+
+# Set environment variables before copying application
 ENV NODE_ENV=production
 ENV COMMIT_ID=${COMMIT_ID}
 
