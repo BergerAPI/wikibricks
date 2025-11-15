@@ -33,7 +33,6 @@ services:
       - NODE_ENV=production
       - DB_CONN=postgresql://${POSTGRES_USER:-wikibricks_user}:${POSTGRES_PASSWORD:-change_this_password}@postgres:5432/wikibricks
       - UPLOAD_DIR=/app/data
-      - COMMIT_ID=${COMMIT_ID:-unknown}
     ports:
       - "3000:3000"
     depends_on:
