@@ -124,11 +124,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 {t("footer.version")}:
                 <a
                   href={`${process.env.GITHUB_URL ?? "https://github.com/BergerAPI/wikibricks"}/commit/${shortCommitId}`}
-                  class="underline hover:text-gray-800"
+                  class="underline text-gray-500 hover:text-gray-800"
                   target="_blank"
                   rel="noopener noreferrer"
                   title="View commit on GitHub"
                 >
+                  {" "}
                   #{shortCommitId}
                 </a>
               </p>
