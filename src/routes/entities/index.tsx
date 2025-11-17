@@ -10,6 +10,7 @@ import {
   type WikiView,
 } from "../../database";
 import { Layout } from "../../layout";
+import { deleteImage } from "../../services/image-storage";
 import { TranslationFunctions, useTranslation } from "../../translation";
 import { PermissionLevel, type DefaultContext } from "../../utils";
 
@@ -481,9 +482,16 @@ export const handleEntityVersionPatch = async (c: DefaultContext) => {
 
   if (type === "rejected") {
     // Deleting the entire entity if the first version was rejected
-    await sql`
-        DELETE FROM entities WHERE id = ${entity.id} AND head_version_id = null;
+    // First, attempt to delete the entity if head_version_id is null
+    const result = await sql`
+        DELETE FROM entities WHERE id = ${entity.id} AND head_version_id = null
+        RETURNING image_id;
     `;
+
+    // If the entity was deleted and it had an image, delete the image as well
+    if (result.length > 0 && result[0].image_id) {
+      await deleteImage(result[0].image_id);
+    }
 
     return c.body("OK", 200);
   }
