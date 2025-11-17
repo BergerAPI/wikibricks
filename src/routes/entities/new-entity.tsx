@@ -11,10 +11,15 @@ import { JSX } from "hono/jsx/jsx-runtime";
 const buildOptions = (
   categories: Category[],
   depth: number = 0,
-  path: string[] = []
+  path: string[] = [],
 ): JSX.Element[] => {
   return categories.flatMap((cat) => {
-    const colors = ["bg-neutral-400", "bg-neutral-300", "bg-neutral-200", "bg-neutral-100"]
+    const colors = [
+      "bg-neutral-400",
+      "bg-neutral-300",
+      "bg-neutral-200",
+      "bg-neutral-100",
+    ];
     const hasChildren = cat.children && cat.children.length > 0;
     const fullPath = [...path, cat.name].join(" › ");
 
@@ -36,10 +41,7 @@ const buildOptions = (
 
     // If parent, append children options recursively
     return hasChildren
-      ? [
-        option,
-        ...buildOptions(cat.children!, depth + 1, [...path, cat.name]),
-      ]
+      ? [option, ...buildOptions(cat.children!, depth + 1, [...path, cat.name])]
       : [option];
   });
 };
@@ -61,7 +63,9 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
   return c.render(
     <Layout context={c} user={user}>
       <main>
-        <h1 class="text-3xl font-serif pb-2 mb-3 border-b">{t("entities.addNew")}</h1>
+        <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
+          {t("entities.addNew")}
+        </h1>
 
         <div
           id="error"
@@ -141,6 +145,9 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
                     inputType = def.type === "number" ? "number" : "text";
                   }
 
+                  if (key === "issued")
+                    fieldLabel += " (YYYY oder DD.MM.YYYY oder MM.YYYY)";
+
                   // Special case for brands
                   if (key === "brand_id") {
                     return (
@@ -164,18 +171,20 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
                   }
 
                   if (key === "theme") {
-                    return <label htmlFor={key} class="block mb-3">
-                      <span class="font-semibold">{fieldLabel}</span>
+                    return (
+                      <label htmlFor={key} class="block mb-3">
+                        <span class="font-semibold">{fieldLabel}</span>
 
-                      <select
-                        id={key}
-                        field={key}
-                        class="border p-2 rounded w-full"
-                      >
-                        <option value="">{t("entities.selectTheme")}</option>
-                        {buildOptions(categories)}
-                      </select>
-                    </label>
+                        <select
+                          id={key}
+                          field={key}
+                          class="border p-2 rounded w-full"
+                        >
+                          <option value="">{t("entities.selectTheme")}</option>
+                          {buildOptions(categories)}
+                        </select>
+                      </label>
+                    );
                   }
 
                   return (
@@ -302,7 +311,7 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
     await c.req.json();
 
   if (!user) {
-    deleteImage(image_id)
+    deleteImage(image_id);
     return c.body("Unauthorized", 401);
   }
 
@@ -313,7 +322,7 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
     name.length < 3 ||
     description.length < 3
   ) {
-    deleteImage(image_id)
+    deleteImage(image_id);
 
     return c.body(
       "Name and description are required and need to be at least 3 characters long.",
@@ -327,9 +336,16 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
   if (!typeInfo) return c.body("Bad Request", 400);
 
   for (const [fieldKey] of Object.entries(typeInfo)) {
-    if (data[fieldKey] !== undefined) continue;
+    const info = typeInfo[fieldKey as keyof typeof typeInfo]!;
+    if (
+      data[fieldKey] !== undefined &&
+      (typeof info !== "string" && info.validate
+        ? info.validate(data[fieldKey] as never)
+        : true)
+    )
+      continue;
 
-    deleteImage(image_id)
+    deleteImage(image_id);
 
     return c.body("Bad Request", 400);
   }
@@ -366,15 +382,15 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
     if (entity_type === "set") {
       await sql`
                 INSERT INTO sets ${sql({
-        version_id: id,
-        ...data,
-      })}`;
+                  version_id: id,
+                  ...data,
+                })}`;
     } else if (entity_type === "brand") {
       await sql`
                 INSERT INTO brands ${sql({
-        version_id: id,
-        ...data,
-      })}`;
+                  version_id: id,
+                  ...data,
+                })}`;
     } else if (entity_type === "wiki") {
       // No additional table insertion is needed for wiki entities.
     }

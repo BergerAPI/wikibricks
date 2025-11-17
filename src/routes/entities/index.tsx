@@ -20,11 +20,12 @@ import { PermissionLevel, type DefaultContext } from "../../utils";
 type AttributeDefinition<T, K extends keyof T> =
   | string
   | {
-    text: string;
-    type: "number" | "string";
-    link?: (value: T[K]) => string;
-    value: (value: T[K], obj: T) => T[K];
-  };
+      text: string;
+      type: "number" | "string";
+      link?: (value: T[K]) => string;
+      validate?: (value: T[K]) => boolean;
+      value: (value: T[K], obj: T) => T[K];
+    };
 
 /**
  * Defines a mapping of entity attribute keys to attribute definitions.
@@ -44,8 +45,8 @@ type InfoFields<
     set: { brand_name?: string };
   },
 > = {
-    [K in EntityType]: EntityAttributes<K, K extends keyof Extra ? Extra[K] : {}>;
-  };
+  [K in EntityType]: EntityAttributes<K, K extends keyof Extra ? Extra[K] : {}>;
+};
 
 /**
  * Defines the info fields for each entity type.
@@ -62,9 +63,24 @@ export const getInfoFields = (t: TranslationFunctions["t"]) =>
       theme: {
         text: t("entity.theme"),
         type: "string",
-        value: (value) => flattendLeafCategories.find(it => it.id === value)?.name ?? "Error"
+        validate: (value) =>
+          flattendLeafCategories.find((it) => it.id === value) !== undefined,
+        value: (value) =>
+          flattendLeafCategories.find((it) => it.id === value)?.name ?? "Error",
       },
-      issued: t("entity.issued"),
+      issued: {
+        text: t("entity.issued"),
+        type: "string",
+        value: (value) => value,
+        validate: (value) =>
+          typeof value === "string" &&
+          // YYYY
+          (/^\d{4}$/.test(value) ||
+            // DD.MM.YYYY
+            /^\d{2}\.\d{2}\.\d{4}$/.test(value) ||
+            // MM.YYYY
+            /^\d{2}\.\d{4}$/.test(value)),
+      },
       brand_id: {
         text: t("entity.brand"),
         type: "number",
@@ -164,7 +180,11 @@ const EntityInfoBox = <T extends EntityType>({
   return (
     <InfoBox title={entity.name}>
       <InfoBoxImage
-        src={entity.image_id !== null ? `/images/serve/${entity.image_id}` : "https://placehold.co/800x800"}
+        src={
+          entity.image_id !== null
+            ? `/images/serve/${entity.image_id}`
+            : "https://placehold.co/800x800"
+        }
         alt={t("entity.imageOf", { name: entity.name })}
       />
 
@@ -396,32 +416,32 @@ export const handleEntityPageSubmit = async (c: DefaultContext) => {
   await sql.begin(async (sql) => {
     const [{ id: newVersionId }] = await sql<{ id: number }[]>`
         INSERT INTO entity_versions ${sql({
-      entity_id: entityId,
-      version_number: entity.version_number + 1,
-      created_by: user.id,
-      change_message: changeMessage,
-      description: data.description,
-      review_status: "pending",
-    })}
+          entity_id: entityId,
+          version_number: entity.version_number + 1,
+          created_by: user.id,
+          change_message: changeMessage,
+          description: data.description,
+          review_status: "pending",
+        })}
             RETURNING id;
         `;
 
     if (["set", "brand"].includes(entity.type))
       await sql`
             INSERT INTO ${sql(
-        {
-          set: "sets",
-          brand: "brands",
-        }[entity.type as DataEntityType],
-      )} ${sql({
-        version_id: newVersionId,
-        ...Object.keys(data)
-          .filter((k) => k !== "description")
-          .filter(
-            (k) => data[k] !== undefined && data[k].toString().length > 0,
-          )
-          .reduce((acc, key) => ({ ...acc, [key]: data[key] }), {}),
-      })};
+              {
+                set: "sets",
+                brand: "brands",
+              }[entity.type as DataEntityType],
+            )} ${sql({
+              version_id: newVersionId,
+              ...Object.keys(data)
+                .filter((k) => k !== "description")
+                .filter(
+                  (k) => data[k] !== undefined && data[k].toString().length > 0,
+                )
+                .reduce((acc, key) => ({ ...acc, [key]: data[key] }), {}),
+            })};
             `;
   });
 
