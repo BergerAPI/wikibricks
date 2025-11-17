@@ -281,6 +281,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const fields = collectFields();
       await submitEntity({ ...fields, image_id: imageId });
     } catch (err) {
+      imageId = null;
       setError(err.message || "Network error. Please try again.");
     } finally {
       isSubmitting = false;
@@ -350,9 +351,12 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
     return c.body("Validation failed for " + fieldKey, 400);
   }
 
-  // Every created set by a user will be handles by a change and needs to be accepted by a moderator
-  const version = await sql.begin(async (sql) => {
-    const [{ id, entity_id }] = await sql<{ id: number; entity_id: number }[]>`
+  try {
+    // Every created set by a user will be handles by a change and needs to be accepted by a moderator
+    const version = await sql.begin(async (sql) => {
+      const [{ id, entity_id }] = await sql<
+        { id: number; entity_id: number }[]
+      >`
             WITH new_entity AS (
                 INSERT INTO entities (name, type)
                 VALUES (${name.toString()}, ${entity_type})
@@ -378,25 +382,29 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
             ) SELECT entity_id, id FROM new_version;
         `;
 
-    // Handling creation of the specific entity tables
-    if (entity_type === "set") {
-      await sql`
+      // Handling creation of the specific entity tables
+      if (entity_type === "set") {
+        await sql`
                 INSERT INTO sets ${sql({
                   version_id: id,
                   ...data,
                 })}`;
-    } else if (entity_type === "brand") {
-      await sql`
+      } else if (entity_type === "brand") {
+        await sql`
                 INSERT INTO brands ${sql({
                   version_id: id,
                   ...data,
                 })}`;
-    } else if (entity_type === "wiki") {
-      // No additional table insertion is needed for wiki entities.
-    }
+      } else if (entity_type === "wiki") {
+        // No additional table insertion is needed for wiki entities.
+      }
 
-    return { id, entity_id };
-  });
+      return { id, entity_id };
+    });
 
-  return c.json(version);
+    return c.json(version);
+  } catch (error) {
+    console.error(error);
+    return c.body("Something went wrong. " + (error as any).message);
+  }
 };

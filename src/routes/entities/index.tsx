@@ -479,7 +479,14 @@ export const handleEntityVersionPatch = async (c: DefaultContext) => {
         UPDATE entity_versions SET review_status = ${type}, reviewed_at = NOW(), reviewed_by = ${user.id}, review_comment = ${reviewMessage} WHERE id = ${entity.version_id} AND entity_id = ${entity.id}
     `;
 
-  if (type === "rejected") return c.body("OK", 200);
+  if (type === "rejected") {
+    // Deleting the entire entity if the first version was rejected
+    await sql`
+        DELETE FROM entities WHERE id = ${entity.id} AND head_version_id = null;
+    `;
+
+    return c.body("OK", 200);
+  }
 
   // Setting the HEAD-id when approved
   await sql`
