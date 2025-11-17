@@ -347,7 +347,7 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
 
     deleteImage(image_id);
 
-    return c.body("Bad Request", 400);
+    return c.body("Validation failed for " + fieldKey, 400);
   }
 
   // Every created set by a user will be handles by a change and needs to be accepted by a moderator
