@@ -405,6 +405,6 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
     return c.json(version);
   } catch (error) {
     console.error(error);
-    return c.body("Something went wrong. " + (error as any).message);
+    return c.body("Something went wrong. " + (error as any).message, 500);
   }
 };

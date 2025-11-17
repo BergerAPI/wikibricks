@@ -104,19 +104,19 @@ export const uploadImage = async (
     // Save metadata to database
     const [image] = await sql<Image[]>`
       INSERT INTO images ${sql({
-      filename: uniqueFilename,
-      original_filename: originalFilename,
-      file_path: filePath,
-      file_size: buffer.length,
-      mime_type: mimetype,
-      width,
-      height,
-      uploaded_by: uploadedBy,
-      storage_type: "local",
-      alt_text: altText || null,
-      s3_bucket: null,
-      s3_key: null,
-    })}
+        filename: uniqueFilename,
+        original_filename: originalFilename,
+        file_path: filePath,
+        file_size: buffer.length,
+        mime_type: mimetype,
+        width,
+        height,
+        uploaded_by: uploadedBy,
+        storage_type: "local",
+        alt_text: altText || null,
+        s3_bucket: null,
+        s3_key: null,
+      })}
       RETURNING *
     `;
 
@@ -195,7 +195,7 @@ export const getImageUrl = (image: Image): string => {
 };
 
 // Delete image (marks as deleted, doesn't actually delete file immediately)
-export const deleteImage = async (id: number): Promise<boolean> => {
+export const deleteImage = async (id: number | string): Promise<boolean> => {
   if (!id) return false;
 
   // Check if user owns the image or is admin/moderator
@@ -211,10 +211,10 @@ export const deleteImage = async (id: number): Promise<boolean> => {
     DELETE FROM images WHERE id = ${id}
   `;
 
-  const path = join(UPLOAD_DIR, image.filename)
+  const path = join(UPLOAD_DIR, image.filename);
   if (image.storage_type === "local" && existsSync(path)) {
-    await unlink(path)
-    return true
+    await unlink(path);
+    return true;
   }
 
   return false;
