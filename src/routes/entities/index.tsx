@@ -484,7 +484,7 @@ export const handleEntityVersionPatch = async (c: DefaultContext) => {
     // Deleting the entire entity if the first version was rejected
     // First, attempt to delete the entity if head_version_id is null
     const result = await sql`
-        DELETE FROM entities WHERE id = ${entity.id} AND head_version_id = null
+        DELETE FROM entities WHERE id = ${entity.id} AND head_version_id IS NULL
         RETURNING image_id;
     `;
 
