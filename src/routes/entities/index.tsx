@@ -355,7 +355,11 @@ const reviewVersion = (type) => {
             'Content-Type': 'application/json'
         }
     }).then(it => {
+      if (type === "approved") {
         window.location.href = "/entities/${entity.id}/history"
+      } else {
+        window.location.href = "/changes"
+      }
     });
 };
 
