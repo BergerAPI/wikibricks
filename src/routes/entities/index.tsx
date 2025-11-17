@@ -72,14 +72,20 @@ export const getInfoFields = (t: TranslationFunctions["t"]) =>
         text: t("entity.issued"),
         type: "string",
         value: (value) => value,
-        validate: (value) =>
-          typeof value === "string" &&
-          // YYYY
-          (/^\d{4}$/.test(value) ||
+        validate: (value) => {
+          if (typeof value !== "string") return false;
+          try {
+            // YYYY
+            if (/^\d{4}$/.test(value)) return true;
             // DD.MM.YYYY
-            /^\d{2}\.\d{2}\.\d{4}$/.test(value) ||
+            if (/^\d{2}\.\d{2}\.\d{4}$/.test(value)) return true;
             // MM.YYYY
-            /^\d{2}\.\d{4}$/.test(value)),
+            if (/^\d{2}\.\d{4}$/.test(value)) return true;
+            return false;
+          } catch {
+            return false;
+          }
+        },
       },
       brand_id: {
         text: t("entity.brand"),
