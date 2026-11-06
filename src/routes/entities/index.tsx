@@ -293,17 +293,18 @@ export const handleEntityPage = async (c: DefaultContext) => {
             <script
               dangerouslySetInnerHTML={{
                 __html: `
-// When the user clicks the save button
-document.getElementById('save').addEventListener('click', async () => {
-    const data = {}
+document.addEventListener('DOMContentLoaded', () => {
+  const fields = Array.from(document.querySelectorAll("[field]"));
+  const readField = (element) => element.nodeName === 'INPUT' ? element.value : element.innerText;
+  const initialValues = new Map(fields.map(field => [field, readField(field)]));
 
-    document.querySelectorAll("[field]").forEach(it => {
-        const field = it.getAttribute('field');
-
-        if (it.nodeName === 'INPUT')
-            data[field] = it.value;
-        else
-            data[field] = it.innerText;
+  document.getElementById('save').addEventListener('click', async () => {
+    const data = { baseVersionId: ${entity.version_id} };
+    fields.forEach(field => {
+      const value = readField(field);
+      if (value !== initialValues.get(field)) {
+        data[field.getAttribute('field')] = value;
+      }
     });
 
     const changeMessage = document.getElementById('change_message').value;
@@ -316,10 +317,12 @@ document.getElementById('save').addEventListener('click', async () => {
         headers: {
             'Content-Type': 'application/json'
         }
-    }).then(response => {
+    }).then(async response => {
+        if (response.status === 409) throw new Error(await response.text());
         if (!response.ok) throw new Error("Edit failed (" + response.status + ")");
         window.location.href = "/entities/${entity.id}/history"
     }).catch(error => alert(error.message));
+  });
 });
 `,
               }}
@@ -434,11 +437,15 @@ export const handleEntityPageSubmit = async (c: DefaultContext) => {
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     return c.body("Bad Request", 400);
   }
-  const { changeMessage, description, ...data } = parsed as Record<string, unknown>;
+  const { changeMessage, description, baseVersionId, ...data } =
+    parsed as Record<string, unknown>;
   if (
     typeof changeMessage !== "string" ||
     changeMessage.trim().length === 0 ||
     changeMessage.length > 2000 ||
+    (baseVersionId !== undefined &&
+      (typeof baseVersionId !== "number" || !Number.isInteger(baseVersionId) ||
+        baseVersionId < 1 || baseVersionId > 2147483647)) ||
     (description !== undefined &&
       (typeof description !== "string" || description.length > 20000))
   ) {
@@ -447,7 +454,11 @@ export const handleEntityPageSubmit = async (c: DefaultContext) => {
 
   try {
     return await sql.begin(async (tx) => {
-      if (!(await lockEntity(tx, entityId))) return c.notFound();
+      const current = await lockEntity(tx, entityId);
+      if (!current) return c.notFound();
+      if (baseVersionId !== undefined && baseVersionId !== current.head_version_id) {
+        return c.body("The page has changed. Reload before submitting your edit.", 409);
+      }
       const entity = await getEntity(entityId, undefined, tx);
       if (!entity) return c.notFound();
 
@@ -497,6 +508,11 @@ export const handleEntityPageSubmit = async (c: DefaultContext) => {
         SELECT COALESCE(MAX(version_number), 0) + 1 AS version_number
         FROM entity_versions WHERE entity_id = ${entityId}
       `;
+      const [image] = entity.image_id
+        ? await tx<{ id: number }[]>`
+            SELECT id FROM images WHERE id = ${entity.image_id} FOR KEY SHARE
+          `
+        : [];
       const [{ id: newVersionId }] = await tx<{ id: number }[]>`
         INSERT INTO entity_versions ${tx({
           entity_id: entityId,
@@ -505,7 +521,7 @@ export const handleEntityPageSubmit = async (c: DefaultContext) => {
           previous_version: entity.version_id,
           change_message: changeMessage,
           description: nextDescription,
-          image_id: entity.image_id,
+          image_id: image?.id ?? null,
           review_status: "pending",
         })}
         RETURNING id
@@ -575,6 +591,7 @@ export const handleEntityVersionPatch = async (c: DefaultContext) => {
     const result = await sql.begin(async (tx): Promise<{
       status: 200 | 404 | 409;
       removedImage?: Image;
+      message?: string;
     }> => {
       const current = await lockEntity(tx, entityId);
       if (!current) return { status: 404 };
@@ -585,10 +602,12 @@ export const handleEntityVersionPatch = async (c: DefaultContext) => {
 
       if (
         type === "approved" &&
-        entity.previous_version != null &&
-        entity.previous_version !== current.head_version_id
+        (entity.previous_version ?? null) !== current.head_version_id
       ) {
-        return { status: 409 };
+        return {
+          status: 409,
+          message: "This proposal cannot be applied to the current version. Resubmit the edit from the current version.",
+        };
       }
 
       const rejectInitial = type === "rejected" && current.head_version_id === null;
@@ -630,7 +649,7 @@ export const handleEntityVersionPatch = async (c: DefaultContext) => {
 
     if (result.status === 404) return c.notFound();
     if (result.status === 409) {
-      return c.body("The version or its base has changed. Reload before reviewing.", 409);
+      return c.body(result.message ?? "This version has already been reviewed. Reload to see the result.", 409);
     }
     if (result.removedImage) await removeImageFile(result.removedImage);
     return c.body("OK", 200);
