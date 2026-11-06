@@ -74,7 +74,7 @@ export const handleUserPage = async (c: DefaultContext) => {
                         </a>
                       </td>
                       <td>{activity.version_number}</td>
-                      <td>{activity.created_at.toLocaleDateString()}</td>
+                      <td>{new Date(activity.created_at).toLocaleDateString()}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -84,7 +84,7 @@ export const handleUserPage = async (c: DefaultContext) => {
 
           <InfoBox title={user.username}>
             <InfoBoxImage
-              src={`https://api.dicebear.com/7.x/identicon/svg?seed=${user.username}`}
+              src={`https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(user.username)}`}
               alt={`${t("user.imageOf")} ${user.username}`}
             />
 
@@ -93,7 +93,7 @@ export const handleUserPage = async (c: DefaultContext) => {
               {user.permission_level}
             </InfoBoxRow>
             <InfoBoxRow label={t("user.memberSince")}>
-              {user.created_at.toLocaleDateString()}
+              {new Date(user.created_at).toLocaleDateString()}
             </InfoBoxRow>
           </InfoBox>
         </div>

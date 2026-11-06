@@ -106,12 +106,15 @@ export const categories: Category[] = [
     },
 ];
 
+type FlatCategory = { id: string; name: string; depth: number; fullPath: string };
+type FlatLeafCategory = { id: string; name: string; fullPath: string };
+
 const flattenCategories = (
     categories: Category[],
     depth: number = 0,
     path: string[] = []
-): { id: string; name: string; depth: number; fullPath: string }[] => {
-    const result: any[] = [];
+): FlatCategory[] => {
+    const result: FlatCategory[] = [];
 
     for (const cat of categories) {
         const fullPath = [...path, cat.name].join(" › ");
@@ -136,8 +139,8 @@ const flattenCategories = (
 const flattenLeafCategories = (
     categories: Category[],
     path: string[] = []
-): { id: string; name: string; fullPath: string }[] => {
-    const result: any[] = [];
+): FlatLeafCategory[] => {
+    const result: FlatLeafCategory[] = [];
 
     for (const cat of categories) {
         const isLeaf = !cat.children || cat.children.length === 0;
@@ -159,6 +162,8 @@ const flattenLeafCategories = (
     return result;
 }
 
-// flattend for easier search
+// flattend for easier search (kept for backwards compat; prefer flattened*)
 export const flattendLeafCategories = flattenLeafCategories(categories)
 export const flattendCategories = flattenCategories(categories)
+export const flattenedLeafCategories = flattendLeafCategories;
+export const flattenedCategories = flattendCategories;

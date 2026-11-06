@@ -64,7 +64,8 @@ export const handleSetChangesPage = async (c: DefaultContext) => {
         JOIN entities e ON ev.entity_id = e.id
         LEFT JOIN users u ON ev.created_by = u.id
         WHERE ev.review_status = 'pending'
-        ORDER BY ev.version_number DESC
+        ORDER BY ev.created_at DESC, ev.id DESC
+        LIMIT 100
     `;
 
   return c.render(

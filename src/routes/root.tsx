@@ -1,20 +1,17 @@
 import { type Context } from "hono";
 import { Layout } from "../layout";
 import type { DefaultContext } from "../utils";
-import { sql, type BrandView, type SetView, type WikiView } from "../database";
+import { sql, type BrandView, type SetView } from "../database";
 import { useTranslation } from "../translation";
 
 export const handleRootPage = async (c: DefaultContext) => {
   const user = c.get("user");
   const { t } = useTranslation(c);
 
-  const [sets, brands, wikis] = await sql.begin(async (sql) => {
-    const sets = await sql<SetView[]>`SELECT * FROM set_view LIMIT 3;`;
-    const brands = await sql<BrandView[]>`SELECT * FROM brand_view LIMIT 3;`;
-    const wikis = await sql<WikiView[]>`SELECT * FROM wiki_view LIMIT 3;`;
-
-    return [sets, brands, wikis];
-  });
+  const [sets, brands] = await Promise.all([
+    sql<SetView[]>`SELECT * FROM set_view ORDER BY version_created_at DESC LIMIT 3;`,
+    sql<BrandView[]>`SELECT * FROM brand_view ORDER BY version_created_at DESC LIMIT 3;`,
+  ]);
 
   return c.render(
     <Layout context={c} user={user}>

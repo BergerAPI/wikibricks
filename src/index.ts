@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
+import { secureHeaders } from "hono/secure-headers";
 import { initDatabase } from "./database";
 import { handleRootPage } from "./routes/root";
 import { attemptAuthentication, detectLanguage, type Variables } from "./utils";
@@ -36,7 +37,14 @@ import {
 (async () => {
   const app = new Hono<{ Variables: Variables }>();
 
-  await initDatabase();
+  app.use(secureHeaders());
+
+  try {
+    await initDatabase();
+  } catch (err) {
+    console.error("Failed to initialize database:", err);
+    process.exit(1);
+  }
 
   app.use(detectLanguage);
   app.use(attemptAuthentication);
@@ -76,9 +84,12 @@ import {
 
   // Handling errors
   app.onError(handleError);
-  app.use(handleNotFound);
+  app.notFound(handleNotFound);
 
-  const port = 3000;
+  const port = Number(process.env.PORT ?? 3000);
+  if (!Number.isInteger(port) || port <= 0 || port > 65535) {
+    throw new Error(`Invalid PORT: ${process.env.PORT}`);
+  }
 
   console.log(`Server is running on http://localhost:${port}`);
 

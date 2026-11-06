@@ -1,11 +1,16 @@
 {
-  "name": "my-app",
+  "name": "wikibricks",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "tsc && npm run build:css",
     "build:css": "npx tailwindcss -i ./global.css -o ./public/styles.css --minify",
     "dev": "npm run build:css && tsx watch src/index.ts",
     "dev:css": "npx tailwindcss -i ./global.css -o ./public/styles.css --watch",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.929.0",

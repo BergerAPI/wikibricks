@@ -594,8 +594,16 @@ const translations: Record<Language, Translations> = {
 
 export type TranslationFunctions = ReturnType<typeof useTranslation>;
 
-export const useTranslation = (c: DefaultContext) => {
-  const language: Language = "de";
+export const useTranslation = (c: { get?: (key: string) => unknown }) => {
+  let language: Language = "de";
+  try {
+    const raw = c.get?.("language") as unknown;
+    if (typeof raw === "string" && isLanguageSupported(raw)) {
+      language = raw;
+    }
+  } catch {
+    // keep default when context has no language (e.g. plain Context)
+  }
 
   return {
     language,
@@ -607,6 +615,7 @@ export const useTranslation = (c: DefaultContext) => {
 };
 
 // Translation API with interpolation support
+const warnedMissingKeys = new Set<string>();
 export const t = (
   key: keyof Translations,
   language: Language,
@@ -615,16 +624,19 @@ export const t = (
   const translation = translations[language]?.[key];
 
   if (!translation) {
-    console.warn(
-      `Translation missing for key: ${key} in language: ${language}`,
-    );
+    if (!warnedMissingKeys.has(`${language}:${key}`)) {
+      warnedMissingKeys.add(`${language}:${key}`);
+      console.warn(
+        `Translation missing for key: ${key} in language: ${language}`,
+      );
+    }
     return translations["en"][key] || key;
   }
 
-  // Handle variable interpolation
+  // Handle variable interpolation (split/join avoids RegExp injection)
   if (variables) {
     return Object.entries(variables).reduce((text, [key, value]) => {
-      return text.replace(new RegExp(`\\{${key}\\}`, "g"), value);
+      return text.split(`{${key}}`).join(value);
     }, translation);
   }
 
@@ -652,18 +664,20 @@ export const plural = (
 
 // Date formatting with locale
 export const formatDate = (date: Date, lang: Language): string => {
-  const language = lang;
-  const locale = language === "de" ? "de-DE" : "en-US";
+  const d = date instanceof Date ? date : new Date(date);
+  if (isNaN(d.getTime())) return "";
+  const locale = lang === "de" ? "de-DE" : "en-US";
 
-  return date.toLocaleDateString(locale);
+  return d.toLocaleDateString(locale);
 };
 
 // Date and time formatting with locale
 export const formatDateTime = (date: Date, lang: Language): string => {
-  const language = lang;
-  const locale = language === "de" ? "de-DE" : "en-US";
+  const d = date instanceof Date ? date : new Date(date);
+  if (isNaN(d.getTime())) return "";
+  const locale = lang === "de" ? "de-DE" : "en-US";
 
-  return date.toLocaleString(locale);
+  return d.toLocaleString(locale);
 };
 
 // Default export for convenience

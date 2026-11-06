@@ -2,12 +2,39 @@ import { type Context } from "hono";
 import { Layout } from "../layout";
 import { deleteCookie, setCookie } from "hono/cookie";
 import { sql, type User } from "../database";
-import { signUser, type DefaultContext, PermissionLevel } from "../utils";
+import {
+  signUser,
+  type DefaultContext,
+  PermissionLevel,
+  isRateLimited,
+  isAdmin,
+} from "../utils";
 import { TranslationFunctions, Translations, useTranslation } from "../translation";
 import bcrypt from "bcryptjs";
 import { Child, JSX } from "hono/jsx";
 
 const SALT_ROUNDS = 12;
+// Constant-time dummy hash to mitigate user-enumeration via timing
+const DUMMY_HASH = "$2b$12$C6UzMDM.H6dfI/f/IKcEe.Qx8F5P5P5P5P5P5P5P5P5P5P5P5P5u";
+
+const isProduction = process.env.NODE_ENV === "production";
+
+const cookieOptions = {
+  httpOnly: true,
+  sameSite: "Strict" as const,
+  path: "/",
+  secure: isProduction,
+  maxAge: 7 * 24 * 60 * 60,
+};
+
+const isSafeRedirect = (target: string | undefined | null): target is string => {
+  if (!target) return false;
+  return (
+    target.startsWith("/") && !target.startsWith("//") && !target.includes(":")
+  );
+};
+
+const USERNAME_RE = /^[A-Za-z0-9._-]{3,32}$/;
 
 async function hashPassword(password: string) {
   return bcrypt.hash(password, SALT_ROUNDS);
@@ -31,12 +58,16 @@ const TextInput = ({
   label,
   type = "text",
   required = false,
+  autoComplete,
+  maxLength,
 }: {
   id: string;
   name: string;
   label: string;
   type?: string;
   required?: boolean;
+  autoComplete?: string;
+  maxLength?: number;
 }) => (
   <div class="mb-4">
     <label htmlFor={id} class="block mb-1 font-medium">
@@ -48,6 +79,8 @@ const TextInput = ({
       type={type}
       class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
       required={required}
+      autocomplete={autoComplete}
+      maxlength={maxLength}
     />
   </div>
 );
@@ -82,10 +115,10 @@ const CredentialsForm = ({
   t: TranslationFunctions["t"];
 }) => {
   return (
-    <form method="post" class="px-4 py-3 max-w-lg">
+    <form method="post" action="/login" class="px-4 py-3 max-w-lg">
       <ErrorBox message={error} />
-      <TextInput id="username" name="username" label={t("auth.username")} required />
-      <TextInput id="password" name="password" label={t("auth.password")} type="password" required />
+      <TextInput id="username" name="username" label={t("auth.username")} required autoComplete="username" maxLength={32} />
+      <TextInput id="password" name="password" label={t("auth.password")} type="password" required autoComplete="current-password" maxLength={128} />
       <ActionButton label={t("auth.loginButton")} />
     </form>
   );
@@ -100,11 +133,11 @@ const RegisterForm = ({
 }) => {
   // Simplified: only username, password, confirmPassword, minimal markup (no extra hints)
   return (
-    <form method="post" class="px-4 py-3 max-w-lg">
+    <form method="post" action="/register" class="px-4 py-3 max-w-lg">
       <ErrorBox message={error} />
-      <TextInput id="username" name="username" label={t("auth.username")} required />
-      <TextInput id="password" name="password" label={t("auth.password")} type="password" required />
-      <TextInput id="confirmPassword" name="confirmPassword" label={t("auth.confirmPassword")} type="password" required />
+      <TextInput id="username" name="username" label={t("auth.username")} required autoComplete="username" maxLength={32} />
+      <TextInput id="password" name="password" label={t("auth.password")} type="password" required autoComplete="new-password" maxLength={128} />
+      <TextInput id="confirmPassword" name="confirmPassword" label={t("auth.confirmPassword")} type="password" required autoComplete="new-password" maxLength={128} />
       <ActionButton label={t("auth.createAccount")} color="green" />
     </form>
   );
@@ -186,6 +219,13 @@ export const handleRegisterPage = async (c: DefaultContext) => {
 
 /* Submission handlers */
 export const handleRegisterSubmit = async (c: Context) => {
+  const currentUser = (c as { get?: (key: string) => unknown }).get?.(
+    "user",
+  ) as User | null | undefined;
+  const ip = c.req.header("x-forwarded-for") ?? "unknown";
+  if (!isAdmin(currentUser) && isRateLimited(`register:${ip}`, 10, 60 * 60 * 1000)) {
+    return c.text("Too many requests", 429);
+  }
   const { username, password, confirmPassword } = await c.req.parseBody();
   const { t } = useTranslation(c);
 
@@ -208,11 +248,15 @@ export const handleRegisterSubmit = async (c: Context) => {
     });
   }
 
-  const usernameStr = username.toString().trim();
-  const passwordStr = password.toString();
-  const confirmPasswordStr = confirmPassword.toString();
+  const usernameStr =
+    typeof username === "string" ? username.trim() : String(username).trim();
+  const passwordStr = typeof password === "string" ? password : String(password);
+  const confirmPasswordStr =
+    typeof confirmPassword === "string"
+      ? confirmPassword
+      : String(confirmPassword);
 
-  if (usernameStr.length < 3 || usernameStr.length > 255) {
+  if (!USERNAME_RE.test(usernameStr)) {
     return renderAuthPage(c, {
       titleKey: "auth.register",
       form: <RegisterForm t={t} error={t("error.usernameLength")} />,
@@ -230,7 +274,11 @@ export const handleRegisterSubmit = async (c: Context) => {
     });
   }
 
-  if (passwordStr.length < 6) {
+  if (
+    passwordStr.length < 8 ||
+    passwordStr.length > 128 ||
+    Buffer.byteLength(passwordStr, "utf8") > 72
+  ) {
     return renderAuthPage(c, {
       titleKey: "auth.register",
       form: <RegisterForm t={t} error={t("error.passwordLength")} />,
@@ -299,17 +347,26 @@ export const handleRegisterSubmit = async (c: Context) => {
     `;
 
     const token = await signUser(newUser);
-    setCookie(c, "auth", token, {
-      httpOnly: true,
-      sameSite: "Strict",
-    });
+    setCookie(c, "auth", token, cookieOptions);
 
     return c.redirect("/");
   } catch (error) {
     console.error("Registration error:", error);
+    // Unique violation (23505) means the username was taken in a race
+    const isUnique =
+      typeof error === "object" &&
+      error !== null &&
+      (error as { code?: string }).code === "23505";
     return renderAuthPage(c, {
       titleKey: "auth.register",
-      form: <RegisterForm t={t} error={t("error.accountCreationError")} />,
+      form: (
+        <RegisterForm
+          t={t}
+          error={t(
+            isUnique ? "error.usernameExists" : "error.accountCreationError",
+          )}
+        />
+      ),
       user: null,
       bottom: (
         <div class="px-4 py-3 max-w-lg">
@@ -326,6 +383,13 @@ export const handleRegisterSubmit = async (c: Context) => {
 };
 
 export const handleLoginSubmit = async (c: Context) => {
+  const currentUser = (c as { get?: (key: string) => unknown }).get?.(
+    "user",
+  ) as User | null | undefined;
+  const ip = c.req.header("x-forwarded-for") ?? "unknown";
+  if (!isAdmin(currentUser) && isRateLimited(`login:${ip}`, 20, 10 * 60 * 1000)) {
+    return c.text("Too many requests", 429);
+  }
   const { username, password } = await c.req.parseBody();
   const { t } = useTranslation(c);
 
@@ -333,18 +397,33 @@ export const handleLoginSubmit = async (c: Context) => {
     return renderAuthPage(c, {
       titleKey: "auth.login",
       form: <CredentialsForm t={t} error={t("error.usernamePasswordRequired")} />,
-      user: c.get("user"),
+      user: c.get("user") as User | null | undefined,
     });
   }
 
-  const usernameStr = username.toString();
-  const passwordStr = password.toString();
+  const usernameStr =
+    typeof username === "string" ? username.trim() : String(username).trim();
+  const passwordStr =
+    typeof password === "string" ? password : String(password);
+
+  if (
+    usernameStr.length === 0 ||
+    usernameStr.length > 64 ||
+    passwordStr.length > 128
+  ) {
+    return renderAuthPage(c, {
+      titleKey: "auth.login",
+      form: <CredentialsForm t={t} error={t("error.invalidCredentials")} />,
+      user: null,
+    });
+  }
 
   const [user] = await sql<User[]>`
     SELECT * FROM users WHERE username = ${usernameStr} LIMIT 1;
   `;
 
   if (!user) {
+    await verifyPassword(passwordStr, DUMMY_HASH).catch(() => false);
     return renderAuthPage(c, {
       titleKey: "auth.login",
       form: <CredentialsForm t={t} error={t("error.invalidCredentials")} />,
@@ -362,16 +441,13 @@ export const handleLoginSubmit = async (c: Context) => {
   }
 
   const token = await signUser(user);
-  setCookie(c, "auth", token, {
-    httpOnly: true,
-    sameSite: "Strict",
-  });
+  setCookie(c, "auth", token, cookieOptions);
 
   const redirect = c.req.query("redirect");
-  return c.redirect(redirect ?? "/");
+  return c.redirect(isSafeRedirect(redirect) ? redirect : "/");
 };
 
 export const handleLogoutSubmit = async (c: Context) => {
-  deleteCookie(c, "auth");
+  deleteCookie(c, "auth", { path: "/" });
   return c.redirect("/");
 };

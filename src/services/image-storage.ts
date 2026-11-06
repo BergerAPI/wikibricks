@@ -1,7 +1,7 @@
 import { sql, type Image } from "../database";
 import { writeFile, readFile, mkdir, unlink } from "fs/promises";
 import { existsSync } from "fs";
-import { join, extname } from "path";
+import { join } from "path";
 import { randomUUID } from "crypto";
 
 // Configuration constants
@@ -12,8 +12,16 @@ const ALLOWED_MIME_TYPES = [
   "image/png",
   "image/webp",
 ];
+const MIME_TO_EXT: Record<string, string> = {
+  "image/jpeg": ".jpg",
+  "image/jpg": ".jpg",
+  "image/png": ".png",
+  "image/webp": ".webp",
+  "image/gif": ".gif",
+};
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "uploads/images";
 const MAX_UPLOADS_PER_USER_PER_HOUR = 20;
+const MAX_ALT_TEXT_LENGTH = 500;
 
 // Ensure upload directory exists
 const ensureUploadDir = async () => {
@@ -36,14 +44,14 @@ const getImageDimensions = async (
 const checkRateLimit = async (userId: number): Promise<boolean> => {
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
-  const [result] = await sql<{ count: number }[]>`
+  const [result] = await sql<{ count: string }[]>`
     SELECT COUNT(*) as count
     FROM images
     WHERE uploaded_by = ${userId}
     AND created_at > ${oneHourAgo}
   `;
 
-  return result.count < MAX_UPLOADS_PER_USER_PER_HOUR;
+  return Number(result.count) < MAX_UPLOADS_PER_USER_PER_HOUR;
 };
 
 // Upload image parameters
@@ -53,13 +61,21 @@ export type UploadImageParams = {
   mimetype: string;
   uploadedBy: number;
   altText?: string;
+  permissionLevel?: number;
 };
 
 // Upload an image
 export const uploadImage = async (
   params: UploadImageParams,
 ): Promise<Image> => {
-  const { originalFilename, buffer, mimetype, uploadedBy, altText } = params;
+  const {
+    originalFilename,
+    buffer,
+    mimetype,
+    uploadedBy,
+    altText,
+    permissionLevel,
+  } = params;
 
   // Validation checks
   if (!buffer || buffer.length === 0) {
@@ -78,17 +94,25 @@ export const uploadImage = async (
     );
   }
 
-  // Check rate limit
-  const withinRateLimit = await checkRateLimit(uploadedBy);
-  if (!withinRateLimit) {
-    throw new Error(
-      `Upload rate limit exceeded. Maximum ${MAX_UPLOADS_PER_USER_PER_HOUR} uploads per hour.`,
-    );
+  // Check rate limit (admins skip)
+  const isUploaderAdmin = (permissionLevel ?? 0) >= 9;
+  if (!isUploaderAdmin) {
+    const withinRateLimit = await checkRateLimit(uploadedBy);
+    if (!withinRateLimit) {
+      throw new Error(
+        `Upload rate limit exceeded. Maximum ${MAX_UPLOADS_PER_USER_PER_HOUR} uploads per hour.`,
+      );
+    }
   }
 
-  // Generate unique filename
-  const fileExtension = extname(originalFilename) || ".jpg";
+  // Generate unique filename (extension derived from validated MIME, not user input)
+  const fileExtension = MIME_TO_EXT[mimetype] ?? ".jpg";
   const uniqueFilename = `${randomUUID()}${fileExtension}`;
+  const safeOriginal = originalFilename.slice(0, 255);
+  const safeAlt =
+    typeof altText === "string" && altText.length > 0
+      ? altText.slice(0, MAX_ALT_TEXT_LENGTH)
+      : null;
   const filePath = join(UPLOAD_DIR, uniqueFilename);
 
   try {
@@ -105,7 +129,7 @@ export const uploadImage = async (
     const [image] = await sql<Image[]>`
       INSERT INTO images ${sql({
         filename: uniqueFilename,
-        original_filename: originalFilename,
+        original_filename: safeOriginal,
         file_path: filePath,
         file_size: buffer.length,
         mime_type: mimetype,
@@ -113,7 +137,7 @@ export const uploadImage = async (
         height,
         uploaded_by: uploadedBy,
         storage_type: "local",
-        alt_text: altText || null,
+        alt_text: safeAlt,
         s3_bucket: null,
         s3_key: null,
       })}
@@ -147,7 +171,14 @@ export const getImageById = async (id: number): Promise<Image | null> => {
 // Read image file from storage
 export const readImageFile = async (image: Image): Promise<Buffer> => {
   if (image.storage_type === "local") {
-    return await readFile(image.file_path);
+    try {
+      return await readFile(image.file_path);
+    } catch (err: unknown) {
+      if ((err as { code?: string }).code === "ENOENT") {
+        throw new Error("Image file not found");
+      }
+      throw err;
+    }
   }
 
   // TODO: Implement S3 reading when needed
@@ -198,9 +229,12 @@ export const getImageUrl = (image: Image): string => {
 export const deleteImage = async (id: number | string): Promise<boolean> => {
   if (!id) return false;
 
+  const numericId = Number(id);
+  if (!Number.isInteger(numericId)) return false;
+
   // Check if user owns the image or is admin/moderator
   const [image] = await sql<Image[]>`
-    SELECT * FROM images WHERE id = ${id} LIMIT 1
+    SELECT * FROM images WHERE id = ${numericId} LIMIT 1
   `;
 
   if (!image) {
@@ -208,16 +242,22 @@ export const deleteImage = async (id: number | string): Promise<boolean> => {
   }
 
   await sql`
-    DELETE FROM images WHERE id = ${id}
+    DELETE FROM images WHERE id = ${numericId}
   `;
 
-  const path = join(UPLOAD_DIR, image.filename);
-  if (image.storage_type === "local" && existsSync(path)) {
-    await unlink(path);
-    return true;
+  if (image.storage_type === "local" && image.file_path) {
+    try {
+      if (existsSync(image.file_path)) {
+        await unlink(image.file_path);
+        return true;
+      }
+      return true;
+    } catch {
+      return true;
+    }
   }
 
-  return false;
+  return true;
 };
 
 // Get upload statistics for admin

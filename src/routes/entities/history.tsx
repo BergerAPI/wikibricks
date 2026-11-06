@@ -2,7 +2,7 @@ import { Table, TableHead } from "../../components/table";
 import { sql, type EntityVersion } from "../../database";
 import { Layout } from "../../layout";
 import { useTranslation } from "../../translation";
-import type { DefaultContext } from "../../utils";
+import { PermissionLevel, type DefaultContext } from "../../utils";
 
 type VersionWithUser = EntityVersion & {
   username: string;
@@ -27,14 +27,22 @@ export const handleEntityHistoryPage = async (c: DefaultContext) => {
             FROM entity_versions ev
             LEFT JOIN users u ON ev.created_by = u.id
             WHERE ev.entity_id = ${entityId}
-            ORDER BY ev.version_number DESC
+            ORDER BY ev.version_number DESC, ev.id DESC
+            LIMIT 100
         `,
   ]);
 
   if (!entityInfo) return c.notFound();
 
+  const isModerator =
+    (user?.permission_level ?? 0) >= PermissionLevel.MODERATOR;
+  const canSeePending = (v: VersionWithUser) =>
+    v.review_status !== "pending" ||
+    isModerator ||
+    (!!user && v.created_by === user.id);
+
   const proposedVersion = versions.filter(
-    (it) => it.review_status === "pending",
+    (it) => it.review_status === "pending" && canSeePending(it),
   );
 
   return c.render(
@@ -66,10 +74,10 @@ export const handleEntityHistoryPage = async (c: DefaultContext) => {
                           href={`/entities/${entityId}?version=${version.id}`}
                           class="text-primary hover:underline"
                         >
-                          {version.id}
+                          {version.version_number}
                         </a>
                       </td>
-                      <td>{version.created_at.toLocaleDateString()}</td>
+                      <td>{new Date(version.created_at).toLocaleDateString()}</td>
                       <td>
                         <a href={`/users/${version.user_id}`}>
                           {version.username}
@@ -106,10 +114,10 @@ export const handleEntityHistoryPage = async (c: DefaultContext) => {
                         href={`/entities/${entityId}?version=${version.id}`}
                         class="text-primary hover:underline"
                       >
-                        {version.id}
+                        {version.version_number}
                       </a>
                     </td>
-                    <td>{version.created_at.toLocaleDateString()}</td>
+                    <td>{new Date(version.created_at).toLocaleDateString()}</td>
                     <td>
                       <a href={`/users/${version.user_id}`}>
                         {version.username}

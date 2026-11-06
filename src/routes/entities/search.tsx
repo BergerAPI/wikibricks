@@ -9,20 +9,25 @@ export const handleSearchPage = async (c: DefaultContext) => {
   const { t } = useTranslation(c);
 
   // Fetch and parse query parameters
-  let page: any = c.req.query("page");
-  if (page && isNaN(Number(page))) return c.redirect("/entities/search");
-  page = Number(page) || 0;
+  const rawPage = c.req.query("page");
+  let page = Math.floor(Number(rawPage ?? 0));
+  if (!Number.isFinite(page) || page < 0) page = 0;
 
   // Default to "all" if no type is provided.
-  const entityType = c.req.query("entity_type") ?? "all";
-  const nameSearch = c.req.query("name") ?? "";
+  const rawType = c.req.query("entity_type") ?? "all";
+  const entityType = ["all", "set", "brand", "wiki"].includes(rawType)
+    ? rawType
+    : "all";
+  const rawSearch = c.req.query("name") ?? "";
+  const nameSearch = rawSearch.slice(0, 64);
 
   const filters = [];
   if (entityType !== "all") {
     filters.push(sql`e.type = ${entityType}`);
   }
   if (nameSearch && nameSearch.length > 0) {
-    filters.push(sql`e.name ILIKE ${`%${nameSearch}%`}`);
+    const escaped = nameSearch.replace(/[%_\\]/g, (m) => `\\${m}`);
+    filters.push(sql`e.name ILIKE ${`%${escaped}%`} ESCAPE '\\'`);
   }
   const whereClause = filters.length
     ? sql`WHERE ${filters.reduce(
@@ -31,17 +36,21 @@ export const handleSearchPage = async (c: DefaultContext) => {
       )}`
     : sql``;
 
-  const [totalCount] = await sql<{ count: number }[]>`
+  const [[totalCount], results] = await Promise.all([
+    sql<{ count: string }[]>`
         SELECT COUNT(*) AS count FROM entities e
             JOIN entity_versions v ON e.head_version_id = v.id
             ${whereClause}
-    `;
-  const results = await sql`
+    `,
+    sql`
         SELECT e.created_at, e.type, e.name, v.description, e.id FROM entities e
             JOIN entity_versions v ON e.head_version_id = v.id
             ${whereClause}
+            ORDER BY e.created_at DESC, e.id DESC
             LIMIT 10 OFFSET ${page * 10}
-    `;
+    `,
+  ]);
+  const total = Number((totalCount as { count: string }).count ?? 0);
 
   return c.render(
     <Layout context={c} user={user}>
@@ -49,7 +58,7 @@ export const handleSearchPage = async (c: DefaultContext) => {
         <div class="flex justify-between items-center pb-2 mb-3 border-b">
           <h1 class="text-3xl font-serif">{t("entities.title")}</h1>
           <div class="space-x-2">
-            {(user ? user.permission_level : 0) > PermissionLevel.MODERATOR && (
+            {(user ? user.permission_level : 0) >= PermissionLevel.MODERATOR && (
               <a href="/changes">{t("entities.changeRequests")}</a>
             )}
             {user !== undefined && (
@@ -141,7 +150,7 @@ export const handleSearchPage = async (c: DefaultContext) => {
                 {t("action.previous")}
               </a>
             )}
-            {results.length === 10 && page < totalCount.count / 10 && (
+            {results.length === 10 && (page + 1) * 10 < total && (
               <a
                 href={`/entities/search?page=${page + 1}&entity_type=${encodeURIComponent(entityType)}&name=${encodeURIComponent(nameSearch)}`}
               >

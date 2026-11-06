@@ -3,7 +3,6 @@ import { InfoBox, InfoBoxImage, InfoBoxRow } from "../../components/info-box";
 import {
   sql,
   type BrandView,
-  type DataEntityType,
   type EntityType,
   type EntityViewType,
   type SetView,
@@ -240,15 +239,20 @@ export const handleEntityPage = async (c: DefaultContext) => {
   const version = c.req.query("version");
   const edit = c.req.query("edit") !== undefined;
 
-  const entity = await getEntity(
-    entityId,
-    version ? parseInt(version) : undefined,
-  );
+  let versionNum: number | undefined;
+  if (version !== undefined) {
+    versionNum = parseInt(version, 10);
+    if (!Number.isInteger(versionNum)) return c.notFound();
+  }
+
+  const entity = await getEntity(entityId, versionNum);
 
   if (!entity) return c.notFound();
 
   const isProposedVersion = entity.review_status === "pending";
-  const isModerator = (user?.permission_level ?? 0) > PermissionLevel.MODERATOR;
+  const isModerator =
+    (user?.permission_level ?? 0) >= PermissionLevel.MODERATOR;
+  const canEdit = !!user && edit && !isProposedVersion;
 
   // Define info box fields based on entity type
   const infoFields = getInfoFields(t)[entity.type];
@@ -258,24 +262,26 @@ export const handleEntityPage = async (c: DefaultContext) => {
       <main class="overflow-auto">
         <div class="flex justify-between items-center pb-2 mb-3 border-b">
           <h1 class="text-3xl font-serif">
-            {!version ? entity.name : `${entity.name}: Version ${version}`}
+            {!version
+              ? entity.name
+              : `${entity.name}: Version ${entity.version_number}`}
           </h1>
           <div class="space-x-2">
             {!isProposedVersion &&
-              (edit ? (
+              (canEdit ? (
                 <a href={`/entities/${entity.id}`}>{t("entity.cancel")}</a>
-              ) : (
+              ) : user ? (
                 <a href={`/entities/${entity.id}?edit`}>
                   {t("entity.editPage")}
                 </a>
-              ))}
+              ) : null)}
             <a href={`/entities/${entity.id}/history`}>
               {t("entity.versionHistory")}
             </a>
           </div>
         </div>
 
-        {edit && !isProposedVersion && (
+        {canEdit && (
           <>
             <div class="mb-3 pb-2 border-b flex items-center gap-2">
               <label class="flex items-center flex-1 space-x-1">
@@ -381,23 +387,28 @@ document.getElementById('reject').addEventListener('click', () => {
         {Object.keys(infoFields).length > 0 && (
           <EntityInfoBox
             t={t}
-            editable={edit}
+            editable={canEdit}
             entity={entity}
             fields={infoFields as EntityAttributes<typeof entity.type>}
           />
         )}
 
         <div
-          dangerouslySetInnerHTML={{
-            __html: entity.description.replaceAll("\n", "<br />"),
-          }}
-          contenteditable={edit}
+          contenteditable={canEdit}
           field="description"
-          class="text-pretty [&>ul]:mt-2"
-        />
+          class="text-pretty [&>ul]:mt-2 whitespace-pre-wrap"
+        >
+          {entity.description}
+        </div>
       </main>
     </Layout>,
   );
+};
+
+const ALLOWED_EDIT_FIELDS: Record<string, string[]> = {
+  set: ["pieces", "issued", "theme", "size", "brand_id", "description"],
+  brand: ["country", "website", "description"],
+  wiki: ["description"],
 };
 
 export const handleEntityPageSubmit = async (c: DefaultContext) => {
@@ -410,51 +421,103 @@ export const handleEntityPageSubmit = async (c: DefaultContext) => {
 
   if (!entity) return c.notFound();
 
-  const { changeMessage, ...data } = await c.req.json();
+  let parsed: unknown;
+  try {
+    parsed = await c.req.json();
+  } catch {
+    return c.body("Bad Request", 400);
+  }
+  const { changeMessage, ...data } = (parsed ?? {}) as Record<string, unknown>;
 
-  if (!changeMessage) {
+  if (
+    typeof changeMessage !== "string" ||
+    changeMessage.trim().length === 0 ||
+    changeMessage.length > 2000
+  ) {
     return c.body("Bad Request", 400);
   }
 
+  const allowed = ALLOWED_EDIT_FIELDS[entity.type] ?? ["description"];
+  const filtered: Record<string, unknown> = {};
+  for (const key of allowed) {
+    const value = (data as Record<string, unknown>)[key];
+    if (value !== undefined && String(value).length > 0) {
+      filtered[key] = value;
+    }
+  }
+
+  if (typeof filtered.description !== "string") {
+    filtered.description = entity.description;
+  }
+  if (String(filtered.description).length > 20000) {
+    return c.body("Bad Request", 400);
+  }
+
+  // Reuse view validation for editable fields (without translation dependency)
+  const noT = ((key: string) => key) as Parameters<typeof getInfoFields>[0];
+  const infoFields = getInfoFields(noT)[entity.type as keyof ReturnType<typeof getInfoFields>] as Record<
+    string,
+    string | { validate?: (v: never) => boolean }
+  >;
+  for (const [key, value] of Object.entries(filtered)) {
+    if (key === "description") continue;
+    const def = infoFields[key];
+    if (!def) return c.body("Bad Request", 400);
+    if (
+      typeof def !== "string" &&
+      typeof def.validate === "function" &&
+      !def.validate(value as never)
+    ) {
+      return c.body("Bad Request", 400);
+    }
+  }
+
   // Update the entity with the new data
-  const modifiedFields = Object.entries(data).filter(([key, value]) => {
+  const modifiedFields = Object.entries(filtered).filter(([key, value]) => {
     const original = entity[key as keyof typeof entity];
-    return value !== (original?.toString() ?? "");
+    return String(value) !== (original?.toString() ?? "");
   });
 
   if (modifiedFields.length === 0) return c.body("Bad Request", 400);
 
-  await sql.begin(async (sql) => {
-    const [{ id: newVersionId }] = await sql<{ id: number }[]>`
-        INSERT INTO entity_versions ${sql({
+  const nextVersionNumber = Number(entity.version_number) + 1;
+  if (!Number.isInteger(nextVersionNumber)) return c.body("Bad Request", 400);
+
+  try {
+    await sql.begin(async (tx) => {
+      const [{ id: newVersionId }] = await tx<{ id: number }[]>`
+        INSERT INTO entity_versions ${tx({
           entity_id: entityId,
-          version_number: entity.version_number + 1,
+          version_number: nextVersionNumber,
           created_by: user.id,
           change_message: changeMessage,
-          description: data.description,
+          description: String(filtered.description),
           review_status: "pending",
         })}
             RETURNING id;
         `;
 
-    if (["set", "brand"].includes(entity.type))
-      await sql`
-            INSERT INTO ${sql(
-              {
-                set: "sets",
-                brand: "brands",
-              }[entity.type as DataEntityType],
-            )} ${sql({
+      const extra = Object.fromEntries(
+        Object.entries(filtered).filter(([k]) => k !== "description"),
+      );
+      if (entity.type === "set") {
+        await tx`
+            INSERT INTO sets ${tx({
               version_id: newVersionId,
-              ...Object.keys(data)
-                .filter((k) => k !== "description")
-                .filter(
-                  (k) => data[k] !== undefined && data[k].toString().length > 0,
-                )
-                .reduce((acc, key) => ({ ...acc, [key]: data[key] }), {}),
-            })};
-            `;
-  });
+              ...extra,
+            })}`;
+      } else if (entity.type === "brand") {
+        await tx`
+            INSERT INTO brands ${tx({
+              version_id: newVersionId,
+              ...extra,
+            })}`;
+      }
+    });
+  } catch (err) {
+    console.error("Entity update error:", err);
+    return c.body("Something went wrong", 500);
+  }
 
   return c.body("OK", 200);
 };
@@ -470,39 +533,61 @@ export const handleEntityVersionPatch = async (c: DefaultContext) => {
 
   if (!entityId || !versionId) return c.body("Bad Request", 400);
 
-  const entity = await getEntity(entityId, parseInt(versionId));
+  const versionNum = parseInt(versionId, 10);
+  if (!Number.isInteger(versionNum)) return c.body("Bad Request", 400);
+
+  const entity = await getEntity(entityId, versionNum);
 
   if (!entity) return c.notFound();
 
-  const { reviewMessage, type } = await c.req.json();
+  if (entity.review_status !== "pending") return c.body("Bad Request", 400);
 
-  if (!reviewMessage || !type || !["approved", "rejected"].includes(type))
+  let parsed: unknown;
+  try {
+    parsed = await c.req.json();
+  } catch {
+    return c.body("Bad Request", 400);
+  }
+  const { reviewMessage, type } = (parsed ?? {}) as Record<string, unknown>;
+
+  if (
+    typeof reviewMessage !== "string" ||
+    reviewMessage.length === 0 ||
+    reviewMessage.length > 2000 ||
+    !["approved", "rejected"].includes(String(type))
+  )
     return c.body("Bad Request", 400);
 
-  // Noting that the version has been review with the provided status
-  await sql`
-        UPDATE entity_versions SET review_status = ${type}, reviewed_at = NOW(), reviewed_by = ${user.id}, review_comment = ${reviewMessage} WHERE id = ${entity.version_id} AND entity_id = ${entity.id}
+  try {
+    await sql.begin(async (tx) => {
+      // Noting that the version has been review with the provided status
+      await tx`
+        UPDATE entity_versions SET review_status = ${String(type)}, reviewed_at = NOW(), reviewed_by = ${user.id}, review_comment = ${reviewMessage} WHERE id = ${entity.version_id} AND entity_id = ${entity.id} AND review_status = 'pending'
     `;
 
-  if (type === "rejected") {
-    // Deleting the entire entity if the first version was rejected
-    // First, attempt to delete the entity if head_version_id is null
-    const result = await sql`
+      if (type === "rejected") {
+        // Deleting the entire entity if the first version was rejected
+        // First, attempt to delete the entity if head_version_id is null
+        const result = await tx`
         DELETE FROM entities WHERE id = ${entity.id} AND head_version_id IS NULL;
     `;
 
-    // If the entity was deleted and it had an image, delete the image as well
-    if (result.length > 0 && entity.image_id) {
-      await deleteImage(entity.image_id);
-    }
+        // If the entity was deleted and it had an image, delete the image as well
+        if (result.count > 0 && entity.image_id) {
+          await deleteImage(entity.image_id);
+        }
+        return;
+      }
 
-    return c.body("OK", 200);
-  }
-
-  // Setting the HEAD-id when approved
-  await sql`
+      // Setting the HEAD-id when approved
+      await tx`
         UPDATE entities SET head_version_id = ${entity.version_id} WHERE id = ${entity.id}
     `;
+    });
+  } catch (err) {
+    console.error("Review update error:", err);
+    return c.body("Something went wrong", 500);
+  }
 
   return c.body("OK", 200);
 };

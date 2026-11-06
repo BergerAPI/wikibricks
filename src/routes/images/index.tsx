@@ -4,7 +4,15 @@ import { Layout } from "../../layout";
 import { TranslationFunctions, useTranslation } from "../../translation";
 import { PermissionLevel, type DefaultContext } from "../../utils";
 
-const UPLOAD_SCRIPT = (t: TranslationFunctions["t"]) => `
+const UPLOAD_SCRIPT = (t: TranslationFunctions["t"]) => {
+  const uploading = JSON.stringify(t("images.uploading"));
+  const noFile = JSON.stringify(t("images.noFileSelected"));
+  const tooLarge = JSON.stringify(t("images.fileTooLarge"));
+  const failed = JSON.stringify(t("images.uploadFailed"));
+  const successPrefix = JSON.stringify(t("images.uploadSuccess"));
+  const viewLabel = JSON.stringify(t("images.viewImage"));
+  const previewLabel = JSON.stringify(t("images.preview"));
+  return `
 document.getElementById('upload-form').addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -13,12 +21,12 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
     const submitButton = e.target.querySelector('button[type="submit"]');
 
     // Clear previous messages
-    errorDiv.innerHTML = '';
-    successDiv.innerHTML = '';
+    errorDiv.textContent = '';
+    successDiv.textContent = '';
 
     // Disable submit button
     submitButton.disabled = true;
-    submitButton.textContent = '${t("images.uploading")}';
+    submitButton.textContent = ${uploading};
 
     try {
         const formData = new FormData(e.target);
@@ -26,11 +34,11 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
 
         // Client-side validation
         if (!imageFile || imageFile.size === 0) {
-            throw new Error('${t("images.noFileSelected")}');
+            throw new Error(${noFile});
         }
 
         if (imageFile.size > 10 * 1024 * 1024) {
-            throw new Error('${t("images.fileTooLarge")}');
+            throw new Error(${tooLarge});
         }
 
         const response = await fetch('/images/upload', {
@@ -39,20 +47,24 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(errorText || '${t("images.uploadFailed")}');
+            throw new Error(${failed} + " (" + response.status + ")");
         }
 
         const result = await response.json();
-        successDiv.innerHTML = '${t("images.uploadSuccess")}' + result.id + '. <a href="/images/' + result.id + '" class="underline">${t("images.viewImage")}</a>';
+        successDiv.textContent = ${successPrefix} + result.id + '. ';
+        const link = document.createElement('a');
+        link.href = '/images/' + encodeURIComponent(result.id);
+        link.className = 'underline';
+        link.textContent = ${viewLabel};
+        successDiv.appendChild(link);
         e.target.reset();
 
     } catch (error) {
-        errorDiv.innerHTML = error.message;
+        errorDiv.textContent = error.message;
     } finally {
         // Re-enable submit button
         submitButton.disabled = false;
-        submitButton.textContent = '${t("images.uploadButton")}';
+        submitButton.textContent = ${JSON.stringify(t("images.uploadButton"))};
     }
 });
 
@@ -70,19 +82,26 @@ document.querySelector('input[name="image"]').addEventListener('change', (e) => 
             const preview = document.createElement('div');
             preview.id = 'image-preview';
             preview.className = 'mt-2 p-2 border rounded';
-            preview.innerHTML = \`
-                <p class="text-sm text-gray-600 mb-2">${t("images.preview")}:</p>
-                <img src="\${e.target.result}" alt="Preview" class="max-w-xs max-h-48 rounded shadow" />
-                <p class="text-xs text-gray-500 mt-1">
-                    \${file.name} (\${(file.size / 1024 / 1024).toFixed(2)} MB)
-                </p>
-            \`;
+            const label = document.createElement('p');
+            label.className = 'text-sm text-gray-600 mb-2';
+            label.textContent = ${previewLabel} + ':';
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.alt = 'Preview';
+            img.className = 'max-w-xs max-h-48 rounded shadow';
+            const meta = document.createElement('p');
+            meta.className = 'text-xs text-gray-500 mt-1';
+            meta.textContent = file.name + ' (' + (file.size / 1024 / 1024).toFixed(2) + ' MB)';
+            preview.appendChild(label);
+            preview.appendChild(img);
+            preview.appendChild(meta);
             e.target.closest('div').appendChild(preview);
         };
         reader.readAsDataURL(file);
     }
 });
             `;
+};
 
 // Handle image upload submission
 export const handleImageUpload = async (c: DefaultContext) => {
@@ -93,38 +112,48 @@ export const handleImageUpload = async (c: DefaultContext) => {
   }
 
   try {
-    const formData = await c.req.formData();
-    const body = await c.req.parseBody()
-    const imageFile = body["file"] as File;
-    const altText = formData.get("alt_text") as string;
+    const body = await c.req.parseBody();
+    const rawFile = body["file"] ?? body["image"];
+    const imageFile = Array.isArray(rawFile) ? rawFile[0] : rawFile as File;
+    const rawAlt = body["alt_text"];
+    const altText = typeof rawAlt === "string" ? rawAlt : undefined;
 
-    if (!imageFile || imageFile.size === 0) {
+    if (
+      !imageFile ||
+      typeof imageFile !== "object" ||
+      typeof (imageFile as File).size !== "number" ||
+      (imageFile as File).size === 0
+    ) {
       return c.text("No image file provided", 400);
     }
 
-    const buffer = Buffer.from(await imageFile.arrayBuffer());
+    const buffer = Buffer.from(await (imageFile as File).arrayBuffer());
 
     const image = await imageStorage.uploadImage({
-      originalFilename: imageFile.name,
+      originalFilename: (imageFile as File).name || "upload",
       buffer,
-      mimetype: imageFile.type,
+      mimetype: (imageFile as File).type || "application/octet-stream",
       uploadedBy: user.id,
       altText: altText || undefined,
+      permissionLevel: user.permission_level,
     });
 
     return c.json(image);
   } catch (error) {
     console.error("Image upload error:", error);
-    return c.text(
-      error instanceof Error ? error.message : "Upload failed",
-      400,
-    );
+    return c.text("Upload failed", 400);
   }
 };
 
 // Serve image files
+const SERVE_ALLOWLIST = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+]);
 export const handleImageServe = async (c: DefaultContext) => {
-  const id = parseInt(c.req.param("id"));
+  const id = parseInt(c.req.param("id"), 10);
 
   if (isNaN(id)) {
     return c.text("Invalid image ID", 400);
@@ -137,19 +166,30 @@ export const handleImageServe = async (c: DefaultContext) => {
       return c.text("Image not found", 404);
     }
 
-    const buffer = await imageStorage.readImageFile(image);
+    let buffer: Buffer;
+    try {
+      buffer = await imageStorage.readImageFile(image);
+    } catch {
+      return c.text("Image file not found", 404);
+    }
 
     if (!buffer) {
       return c.text("Image file not found", 404);
     }
 
+    const contentType = SERVE_ALLOWLIST.has(image.mime_type)
+      ? image.mime_type
+      : "application/octet-stream";
+
     // Convert Buffer to Uint8Array for Response compatibility
     return new Response(new Uint8Array(buffer), {
       status: 200,
       headers: {
-        "Content-Type": image.mime_type,
+        "Content-Type": contentType,
         "Content-Length": buffer.length.toString(),
         "Cache-Control": "public, max-age=31536000",
+        "X-Content-Type-Options": "nosniff",
+        "Content-Disposition": `inline; filename="${image.filename.replace(/"/g, "")}"`,
       },
     });
   } catch (error) {
@@ -160,7 +200,7 @@ export const handleImageServe = async (c: DefaultContext) => {
 
 // Get image metadata (GET /images/:id)
 export const handleImageInfo = async (c: DefaultContext) => {
-  const id = parseInt(c.req.param("id"));
+  const id = parseInt(c.req.param("id"), 10);
 
   if (isNaN(id)) {
     return c.json({ error: "Invalid image ID" }, 400);
@@ -200,7 +240,7 @@ export const handleImageInfo = async (c: DefaultContext) => {
 export const handleImagePage = async (c: DefaultContext) => {
   const user = c.get("user");
   const { t } = useTranslation(c);
-  const id = parseInt(c.req.param("id"));
+  const id = parseInt(c.req.param("id"), 10);
 
   if (isNaN(id)) {
     return c.text("Invalid image ID", 400);
@@ -332,21 +372,22 @@ export const handleImagePage = async (c: DefaultContext) => {
               dangerouslySetInnerHTML={{
                 __html: `
 document.getElementById('delete-btn').addEventListener('click', async () => {
-    if (!confirm('${t("images.confirmDelete")}')) return;
+    if (!confirm(${JSON.stringify(t("images.confirmDelete"))})) return;
 
     try {
         const response = await fetch('/images/${image.id}', {
-            method: 'DELETE'
+            method: 'DELETE',
+            credentials: 'same-origin'
         });
 
         if (response.ok) {
-            alert('${t("images.deleteSuccess")}');
-            window.location.href = '/images/my';
+            alert(${JSON.stringify(t("images.deleteSuccess"))});
+            window.location.href = '/';
         } else {
-            throw new Error(await response.text());
+            throw new Error('Request failed (' + response.status + ')');
         }
     } catch (error) {
-        alert('${t("images.deleteFailed")}: ' + error.message);
+        alert(${JSON.stringify(t("images.deleteFailed"))} + ': ' + error.message);
     }
 });
                 `,
@@ -365,7 +406,7 @@ document.getElementById('delete-btn').addEventListener('click', async () => {
 // Delete image (DELETE /images/:id)
 export const handleImageDelete = async (c: DefaultContext) => {
   const user = c.get("user");
-  const id = parseInt(c.req.param("id"));
+  const id = parseInt(c.req.param("id"), 10);
 
   if (!user) {
     return c.text("Unauthorized", 401);
@@ -395,9 +436,6 @@ export const handleImageDelete = async (c: DefaultContext) => {
     return c.text("Image deleted successfully", 200);
   } catch (error) {
     console.error("Image delete error:", error);
-    return c.text(
-      error instanceof Error ? error.message : "Failed to delete image",
-      500,
-    );
+    return c.text("Failed to delete image", 500);
   }
 };

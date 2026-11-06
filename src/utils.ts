@@ -6,8 +6,8 @@ import { type Language, isLanguageSupported } from "./translation";
 
 // Passing values between routes using middleware and shared context
 export type Variables = {
-  user: User;
-  language: Language;
+  user?: User | null;
+  language?: Language;
 };
 
 // Default context with Variables
@@ -15,7 +15,47 @@ export type DefaultContext<T extends Variables = Variables> = Context<{
   Variables: T;
 }>;
 
-const SECRET = "your-secret-here";
+const getSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (secret && secret.length >= 32) return secret;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("JWT_SECRET must be set to a string of at least 32 chars");
+  }
+  if (secret) return secret;
+  console.warn("JWT_SECRET not set, using insecure dev fallback");
+  return "dev-only-insecure-secret-change-me";
+};
+
+const SECRET = getSecret();
+
+// Simple in-memory rate limiter (per key, no hard dependency)
+const rateLimitBuckets = new Map<string, number[]>();
+export const isRateLimited = (
+  key: string,
+  max: number,
+  windowMs: number,
+): boolean => {
+  const now = Date.now();
+  const hits = (rateLimitBuckets.get(key) ?? []).filter(
+    (t) => now - t < windowMs,
+  );
+  if (hits.length >= max) {
+    rateLimitBuckets.set(key, hits);
+    return true;
+  }
+  hits.push(now);
+  rateLimitBuckets.set(key, hits);
+  return false;
+};
+
+// Function to sign a user jwt (JSON Web Token)
+export const signUser = async (user: User) => {
+  const now = Math.floor(Date.now() / 1000);
+  return sign(
+    { id: user.id, iat: now, exp: now + 7 * 24 * 60 * 60 },
+    SECRET,
+  );
+};
 
 // Permission levels for all users
 export enum PermissionLevel {
@@ -24,10 +64,9 @@ export enum PermissionLevel {
   ADMIN = 9,
 }
 
-// Function to sign a user jwt (JSON Web Token)
-export const signUser = async (user: User) => {
-  return sign({ id: user.id }, SECRET);
-};
+export const isAdmin = (
+  user?: { permission_level?: number } | null,
+): boolean => (user?.permission_level ?? 0) >= PermissionLevel.ADMIN;
 
 // Middleware to verify authentication
 export const attemptAuthentication = async (
@@ -42,17 +81,28 @@ export const attemptAuthentication = async (
 
   try {
     const payload = await verify(token, SECRET);
+    if (typeof payload.id !== "number" || !Number.isInteger(payload.id)) {
+      throw new Error("Invalid token payload");
+    }
     const [user] = await sql<
       User[]
-    >`SELECT * FROM users WHERE id = ${payload.id as any} LIMIT 1`;
+    >`SELECT * FROM users WHERE id = ${payload.id} LIMIT 1`;
 
     if (!user) {
+      const { deleteCookie } = await import("hono/cookie");
+      deleteCookie(c, "auth", { path: "/" });
       return await next();
     }
 
     c.set("user", user);
     await next();
   } catch {
+    try {
+      const { deleteCookie } = await import("hono/cookie");
+      deleteCookie(c, "auth", { path: "/" });
+    } catch {
+      // ignore
+    }
     return await next();
   }
 };

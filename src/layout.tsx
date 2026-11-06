@@ -16,10 +16,24 @@ const getCommitId = () => {
 
 const shortCommitId = getCommitId();
 
-const styles =
-  process.env.NODE_ENV === "production"
-    ? fs.readFileSync("/app/dist/public/styles.css", "utf8")
-    : fs.readFileSync("./public/styles.css", "utf-8");
+const loadStyles = () => {
+  try {
+    if (process.env.NODE_ENV === "production") {
+      return fs.readFileSync("/app/dist/public/styles.css", "utf8");
+    }
+    return fs.readFileSync("./public/styles.css", "utf-8");
+  } catch {
+    return "";
+  }
+};
+
+const styles = loadStyles();
+
+const getGithubUrl = () => {
+  const base =
+    process.env.GITHUB_URL ?? "https://github.com/BergerAPI/wikibricks";
+  return base.startsWith("https://") ? base : "https://github.com/BergerAPI/wikibricks";
+};
 
 export const Layout = ({
   children,
@@ -31,13 +45,14 @@ export const Layout = ({
   user?: User | null | undefined;
   context: DefaultContext;
 }) => {
-  const { t } = useTranslation(context);
+  const { t, language } = useTranslation(context);
 
   return (
-    <html lang="en">
+    <html lang={language}>
       <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="description" content={t("site.tagline")} />
         <meta http-equiv="X-UA-Compatible" content="ie=edge" />
         <style dangerouslySetInnerHTML={{ __html: styles }}></style>
         <title>{title ?? t("site.title")}</title>
@@ -96,16 +111,31 @@ document.addEventListener('DOMContentLoaded', () => {
   const searchButton = document.getElementById('search-button');
   const logoutButton = document.getElementById('logout-button');
 
-  searchButton.addEventListener('click', () => {
+  const goSearch = () => {
+    if (!searchInput || !searchButton) return;
     const query = searchInput.value;
     window.location.href = "/entities/search?name=" + encodeURIComponent(query) + "&entity_type=all";
-  });
+  };
 
-  logoutButton.addEventListener('click', () => {
-    fetch('/logout', { method: 'POST' })
-      .then(() => window.location.href = '/')
-      .catch(error => console.error('Logout failed:', error));
-  });
+  if (searchButton) {
+    searchButton.addEventListener('click', goSearch);
+  }
+  if (searchInput) {
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        goSearch();
+      }
+    });
+  }
+
+  if (logoutButton) {
+    logoutButton.addEventListener('click', () => {
+      fetch('/logout', { method: 'POST', credentials: 'same-origin' })
+        .then(() => window.location.href = '/')
+        .catch(error => console.error('Logout failed:', error));
+    });
+  }
 });
             `,
             }}
@@ -123,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <p class="text-xs text-gray-500 mt-1">
                 {t("footer.version")}:{" "}
                 <a
-                  href={`${process.env.GITHUB_URL ?? "https://github.com/BergerAPI/wikibricks"}/commit/${shortCommitId}`}
+                  href={`${getGithubUrl()}/commit/${shortCommitId}`}
                   class="underline text-gray-500 hover:text-gray-800"
                   target="_blank"
                   rel="noopener noreferrer"

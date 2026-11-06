@@ -29,10 +29,14 @@ services:
       dockerfile: Dockerfile.prod
       args:
         COMMIT_ID: ${COMMIT_ID:-unknown}
+    env_file:
+      - .env
     environment:
       - NODE_ENV=production
-      - DB_CONN=postgresql://${POSTGRES_USER:-wikibricks_user}:${POSTGRES_PASSWORD:-change_this_password}@postgres:5432/wikibricks
+      - DB_CONN=postgresql://${POSTGRES_USER:?set POSTGRES_USER}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/wikibricks
       - UPLOAD_DIR=/app/data
+      - JWT_SECRET=${JWT_SECRET:?set JWT_SECRET}
+      - GITHUB_URL=${GITHUB_URL:-https://github.com/BergerAPI/wikibricks}
     ports:
       - "3000:3000"
     depends_on:

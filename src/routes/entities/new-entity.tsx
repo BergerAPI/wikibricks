@@ -58,6 +58,8 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
         SELECT e.created_at, e.type, e.name, e.id FROM entities e
         JOIN entity_versions v ON e.head_version_id = v.id
         WHERE e.type = 'brand'
+        ORDER BY e.name ASC
+        LIMIT 500
     `;
 
   return c.render(
@@ -220,7 +222,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let imageId = "";
   let isSubmitting = false;
 
-  const setError = (msg) => { if (errorEl) errorEl.innerHTML = msg; };
+  const setError = (msg) => { if (errorEl) errorEl.textContent = msg; };
 
   async function uploadImage(file) {
     if (!file) throw new Error("No file selected.");
@@ -258,7 +260,7 @@ document.addEventListener("DOMContentLoaded", () => {
       body: JSON.stringify(data),
     });
 
-    if (!res.ok) throw new Error("There was an error ("+await res.text()+")");
+    if (!res.ok) throw new Error("There was an error ("+res.status+")");
     const json = await res.json();
     if (json.entity_id) {
       window.location.href = "/entities/"+json.entity_id+"?version="+json.id;
@@ -308,48 +310,87 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
 
   const infoFields = getInfoFields(t);
 
-  const { name, description, entity_type, image_id, ...data } =
-    await c.req.json();
+  let body: Record<string, unknown>;
+  try {
+    body = (await c.req.json()) as Record<string, unknown>;
+  } catch {
+    return c.body("Bad Request", 400);
+  }
+  const { name, description, entity_type, image_id, ...data } = body;
 
   if (!user) {
-    deleteImage(image_id);
+    if (image_id) await deleteImage(image_id as string).catch(() => {});
     return c.body("Unauthorized", 401);
   }
 
-  if (
-    !name ||
-    !description ||
-    !entity_type ||
-    name.length < 3 ||
-    description.length < 3
-  ) {
-    deleteImage(image_id);
+  const fail = (msg: string) => {
+    if (image_id) deleteImage(image_id as string).catch(() => {});
+    return c.body(msg, 400);
+  };
 
-    return c.body(
+  if (
+    typeof name !== "string" ||
+    typeof description !== "string" ||
+    typeof entity_type !== "string" ||
+    name.trim().length < 3 ||
+    name.trim().length > 255 ||
+    description.trim().length < 3 ||
+    description.length > 20000
+  ) {
+    return fail(
       "Name and description are required and need to be at least 3 characters long.",
-      400,
     );
   }
 
   // Checking whether the necessary fields of the specific entity type have been supplied
   const typeInfo = infoFields[entity_type as keyof typeof infoFields];
 
-  if (!typeInfo) return c.body("Bad Request", 400);
+  if (!typeInfo) return fail("Bad Request");
+
+  const allowedByType: Record<string, string[]> = {
+    set: ["pieces", "issued", "theme", "size", "brand_id", "manufacturer_id"],
+    brand: ["country", "website"],
+    wiki: [],
+  };
+  const allowed = allowedByType[entity_type] ?? [];
+  const cleanData: Record<string, unknown> = {};
+  for (const key of allowed) {
+    if (data[key] !== undefined && String(data[key]).length > 0) {
+      cleanData[key] = data[key];
+    }
+  }
+
+  // pieces must be a non-negative integer when supplied
+  if ("pieces" in cleanData) {
+    const n = Number(cleanData.pieces);
+    if (!Number.isInteger(n) || n < 0 || n > 1000000) {
+      return fail("Validation failed for pieces");
+    }
+    cleanData.pieces = n;
+  }
+  if ("brand_id" in cleanData) {
+    const n = Number(cleanData.brand_id);
+    if (!Number.isInteger(n) || n <= 0) return fail("Validation failed for brand_id");
+    cleanData.brand_id = n;
+  }
 
   for (const [fieldKey] of Object.entries(typeInfo)) {
     const info = typeInfo[fieldKey as keyof typeof typeInfo]!;
     if (
-      data[fieldKey] !== undefined &&
+      cleanData[fieldKey] !== undefined &&
       (typeof info !== "string" && info.validate
-        ? info.validate(data[fieldKey] as never)
+        ? info.validate(cleanData[fieldKey] as never)
         : true)
     )
       continue;
 
-    deleteImage(image_id);
-
-    return c.body("Validation failed for " + fieldKey, 400);
+    return fail("Validation failed for " + fieldKey);
   }
+
+  const cleanImageId =
+    typeof image_id === "string" && image_id.length > 0 && image_id.length < 64
+      ? image_id
+      : null;
 
   try {
     // Every created set by a user will be handles by a change and needs to be accepted by a moderator
@@ -359,7 +400,7 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
       >`
             WITH new_entity AS (
                 INSERT INTO entities (name, type)
-                VALUES (${name.toString()}, ${entity_type})
+                VALUES (${name.trim()}, ${entity_type})
                 RETURNING id
             ), new_version AS (
                 INSERT INTO entity_versions (
@@ -373,10 +414,10 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
                 SELECT
                     id,
                     1,
-                    ${user.id.toString()},
+                    ${user.id},
                     'pending',
-                    ${description.toString()},
-                    ${image_id || null}
+                    ${description.trim()},
+                    ${cleanImageId}
                 FROM new_entity
                 RETURNING id, entity_id
             ) SELECT entity_id, id FROM new_version;
@@ -387,13 +428,13 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
         await sql`
                 INSERT INTO sets ${sql({
                   version_id: id,
-                  ...data,
+                  ...cleanData,
                 })}`;
       } else if (entity_type === "brand") {
         await sql`
                 INSERT INTO brands ${sql({
                   version_id: id,
-                  ...data,
+                  ...cleanData,
                 })}`;
       } else if (entity_type === "wiki") {
         // No additional table insertion is needed for wiki entities.
@@ -404,7 +445,8 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
 
     return c.json(version);
   } catch (error) {
+    if (cleanImageId) await deleteImage(cleanImageId).catch(() => {});
     console.error(error);
-    return c.body("Something went wrong. " + (error as any).message, 500);
+    return c.body("Something went wrong.", 500);
   }
 };
