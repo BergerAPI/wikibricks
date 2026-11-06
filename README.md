@@ -7,9 +7,9 @@ npm run dev
 open http://localhost:3000
 ```
 
-Run `npm run dev:css` or `npm run dev:client` in a separate terminal to watch
-stylesheet or browser TypeScript changes. The browser scripts in
-`src/client/pages/` are loaded only by the pages that use them.
+`npm run dev` watches the server, Tailwind CSS, and browser TypeScript.
+The browser scripts in `src/client/pages/` are loaded only by the pages
+that use them. Press Ctrl-C to stop all three watchers.
 
 # TODO
 
