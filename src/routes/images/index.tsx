@@ -1,8 +1,13 @@
 import { sql } from "../../database";
-import { imageStorage } from "../../services/image-storage";
+import {
+  imageStorage,
+  ImageUploadError,
+  MAX_IMAGE_FILE_BYTES,
+} from "../../services/image-storage";
 import { Layout } from "../../layout";
 import { TranslationFunctions, useTranslation } from "../../translation";
 import { PermissionLevel, type DefaultContext } from "../../utils";
+import { bodyLimit } from "hono/body-limit";
 
 const UPLOAD_SCRIPT = (t: TranslationFunctions["t"]) => {
   const uploading = JSON.stringify(t("images.uploading"));
@@ -103,7 +108,11 @@ document.querySelector('input[name="image"]').addEventListener('change', (e) => 
             `;
 };
 
-// Handle image upload submission
+export const limitImageUpload = bodyLimit({
+  maxSize: MAX_IMAGE_FILE_BYTES + 64 * 1024,
+  onError: (c) => c.text("Upload body exceeds the size limit", 413),
+});
+
 export const handleImageUpload = async (c: DefaultContext) => {
   const user = c.get("user");
 
@@ -111,37 +120,42 @@ export const handleImageUpload = async (c: DefaultContext) => {
     return c.text("Unauthorized", 401);
   }
 
+  let body;
   try {
-    const body = await c.req.parseBody();
-    const rawFile = body["file"] ?? body["image"];
-    const imageFile = Array.isArray(rawFile) ? rawFile[0] : rawFile as File;
-    const rawAlt = body["alt_text"];
-    const altText = typeof rawAlt === "string" ? rawAlt : undefined;
+    body = await c.req.parseBody();
+  } catch (error) {
+    // Let the body limiter recognize stream-size errors after the handler.
+    if (error instanceof Error) c.error = error;
+    return c.text("Invalid upload form", 400);
+  }
 
-    if (
-      !imageFile ||
-      typeof imageFile !== "object" ||
-      typeof (imageFile as File).size !== "number" ||
-      (imageFile as File).size === 0
-    ) {
-      return c.text("No image file provided", 400);
-    }
+  const imageFile = body["file"] ?? body["image"];
+  const rawAlt = body["alt_text"];
+  if (!(imageFile instanceof File) || imageFile.size === 0) {
+    return c.text("No image file provided", 400);
+  }
+  if (imageFile.size > MAX_IMAGE_FILE_BYTES) {
+    return c.text("File size exceeds the 10 MB limit", 413);
+  }
 
-    const buffer = Buffer.from(await (imageFile as File).arrayBuffer());
-
+  try {
+    const buffer = Buffer.from(await imageFile.arrayBuffer());
     const image = await imageStorage.uploadImage({
-      originalFilename: (imageFile as File).name || "upload",
+      originalFilename: imageFile.name || "upload",
       buffer,
-      mimetype: (imageFile as File).type || "application/octet-stream",
+      mimetype: imageFile.type,
       uploadedBy: user.id,
-      altText: altText || undefined,
+      altText: typeof rawAlt === "string" ? rawAlt : undefined,
       permissionLevel: user.permission_level,
     });
 
     return c.json(image);
   } catch (error) {
+    if (error instanceof ImageUploadError) {
+      return c.text(error.message, error.status);
+    }
     console.error("Image upload error:", error);
-    return c.text("Upload failed", 400);
+    return c.text("Upload failed", 500);
   }
 };
 
@@ -177,8 +191,9 @@ export const handleImageServe = async (c: DefaultContext) => {
       return c.text("Image file not found", 404);
     }
 
-    const contentType = SERVE_ALLOWLIST.has(image.mime_type)
-      ? image.mime_type
+    const mime = image.mime_type === "image/jpg" ? "image/jpeg" : image.mime_type;
+    const contentType = SERVE_ALLOWLIST.has(mime)
+      ? mime
       : "application/octet-stream";
 
     // Convert Buffer to Uint8Array for Response compatibility

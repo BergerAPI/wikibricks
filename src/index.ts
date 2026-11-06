@@ -28,6 +28,7 @@ import {
 import { handleSearchPage } from "./routes/entities/search";
 import {
   handleImageUpload,
+  limitImageUpload,
   handleImageServe,
   handleImageInfo,
   handleImagePage,
@@ -76,7 +77,7 @@ import {
   app.get("/users/:id", handleUserPage);
 
   // Image routes
-  app.post("/images/upload", handleImageUpload);
+  app.post("/images/upload", limitImageUpload, handleImageUpload);
   app.get("/images/serve/:id", handleImageServe);
   app.get("/images/:id", handleImagePage);
   app.get("/images/:id/info", handleImageInfo);

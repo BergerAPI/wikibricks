@@ -3,25 +3,30 @@ import { writeFile, readFile, mkdir, unlink } from "fs/promises";
 import { existsSync } from "fs";
 import { join } from "path";
 import { randomUUID } from "crypto";
+import sharp from "sharp";
+import { isAdmin } from "../utils";
 
-// Configuration constants
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const ALLOWED_MIME_TYPES = [
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/webp",
-];
-const MIME_TO_EXT: Record<string, string> = {
-  "image/jpeg": ".jpg",
-  "image/jpg": ".jpg",
-  "image/png": ".png",
-  "image/webp": ".webp",
-  "image/gif": ".gif",
+export const MAX_IMAGE_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_IMAGE_PIXELS = 25_000_000;
+const IMAGE_FORMATS = {
+  jpeg: { mime: "image/jpeg", extension: ".jpg" },
+  png: { mime: "image/png", extension: ".png" },
+  webp: { mime: "image/webp", extension: ".webp" },
 };
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "uploads/images";
 const MAX_UPLOADS_PER_USER_PER_HOUR = 20;
 const MAX_ALT_TEXT_LENGTH = 500;
+
+sharp.block({ operation: ["VipsForeignLoad"] });
+sharp.unblock({
+  operation: ["VipsForeignLoadJpegBuffer", "VipsForeignLoadPngBuffer", "VipsForeignLoadWebpBuffer"],
+});
+
+export class ImageUploadError extends Error {
+  constructor(message: string, readonly status: 400 | 413 | 415 | 429) {
+    super(message);
+  }
+}
 
 // Ensure upload directory exists
 const ensureUploadDir = async () => {
@@ -30,14 +35,28 @@ const ensureUploadDir = async () => {
   }
 };
 
-// Get image dimensions (simplified - in production you'd use a proper image library)
-const getImageDimensions = async (
-  buffer: Buffer,
-  mimeType: string,
-): Promise<{ width: number; height: number }> => {
-  // For now, return default dimensions
-  // In production, you'd use libraries like 'sharp' or 'image-size'
-  return { width: 0, height: 0 };
+const inspectImage = async (buffer: Buffer, mime: string) => {
+  const image = sharp(buffer, {
+    animated: true,
+    failOn: "warning",
+    limitInputPixels: MAX_IMAGE_PIXELS,
+  });
+  try {
+    const { format, width, height, pageHeight, pages } = await image.metadata();
+    if (
+      (format === "jpeg" || format === "png" || format === "webp") &&
+      IMAGE_FORMATS[format].mime === mime &&
+      width && height &&
+      width * (pageHeight ?? height) * (pages ?? 1) <= MAX_IMAGE_PIXELS
+    ) {
+      // Reading metadata alone does not decode the image pixels.
+      await image.stats();
+      return { width, height: pageHeight ?? height, extension: IMAGE_FORMATS[format].extension };
+    }
+  } catch {
+    // The decoder also rejects corrupt or truncated input.
+  }
+  throw new ImageUploadError("Upload a valid JPEG, PNG, or WebP image up to 25 megapixels", 415);
 };
 
 // Check if user has exceeded upload rate limit
@@ -79,35 +98,31 @@ export const uploadImage = async (
 
   // Validation checks
   if (!buffer || buffer.length === 0) {
-    throw new Error("No image data provided");
+    throw new ImageUploadError("No image data provided", 400);
   }
 
-  if (buffer.length > MAX_FILE_SIZE) {
-    throw new Error(
-      `File size exceeds limit of ${MAX_FILE_SIZE / (1024 * 1024)}MB`,
-    );
+  if (buffer.length > MAX_IMAGE_FILE_BYTES) {
+    throw new ImageUploadError("File size exceeds the 10 MB limit", 413);
   }
 
-  if (!ALLOWED_MIME_TYPES.includes(mimetype)) {
-    throw new Error(
-      `File type ${mimetype} not allowed. Allowed types: ${ALLOWED_MIME_TYPES.join(", ")}`,
-    );
+  const mime = mimetype === "image/jpg" ? "image/jpeg" : mimetype;
+  if (!Object.values(IMAGE_FORMATS).some((format) => format.mime === mime)) {
+    throw new ImageUploadError("Only JPEG, PNG, and WebP files are supported", 415);
   }
 
   // Check rate limit (admins skip)
-  const isUploaderAdmin = (permissionLevel ?? 0) >= 9;
-  if (!isUploaderAdmin) {
+  if (!isAdmin({ permission_level: permissionLevel })) {
     const withinRateLimit = await checkRateLimit(uploadedBy);
     if (!withinRateLimit) {
-      throw new Error(
+      throw new ImageUploadError(
         `Upload rate limit exceeded. Maximum ${MAX_UPLOADS_PER_USER_PER_HOUR} uploads per hour.`,
+        429,
       );
     }
   }
 
-  // Generate unique filename (extension derived from validated MIME, not user input)
-  const fileExtension = MIME_TO_EXT[mimetype] ?? ".jpg";
-  const uniqueFilename = `${randomUUID()}${fileExtension}`;
+  const { width, height, extension } = await inspectImage(buffer, mime);
+  const uniqueFilename = `${randomUUID()}${extension}`;
   const safeOriginal = originalFilename.slice(0, 255);
   const safeAlt =
     typeof altText === "string" && altText.length > 0
@@ -119,9 +134,6 @@ export const uploadImage = async (
     // Ensure upload directory exists
     await ensureUploadDir();
 
-    // Get image dimensions
-    const { width, height } = await getImageDimensions(buffer, mimetype);
-
     // Save file to disk
     await writeFile(filePath, buffer);
 
@@ -132,7 +144,7 @@ export const uploadImage = async (
         original_filename: safeOriginal,
         file_path: filePath,
         file_size: buffer.length,
-        mime_type: mimetype,
+        mime_type: mime,
         width,
         height,
         uploaded_by: uploadedBy,
