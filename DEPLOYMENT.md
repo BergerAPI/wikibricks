@@ -1,7 +1,8 @@
 # WikiBricks VPS Deployment Guide
 
-This guide provides complete instructions for deploying WikiBricks to a VPS with
-rolling updates and zero downtime.
+This guide covers deployment of WikiBricks to a VPS. The Compose configuration
+replaces one application container on host port 3000, so a deployment can briefly
+interrupt HTTP requests.
 
 ## Prerequisites
 
@@ -49,6 +50,29 @@ sudo ./deploy.sh deploy
 - **`Dockerfile.prod`** - Production optimized image
 - **`docker-compose.yml`** - Development environment
 - **`docker-compose.prod.yml`** - Production environment
+
+### Asset retention
+
+The build writes fingerprinted CSS and JavaScript, gzip copies, and a manifest
+to `dist/assets`. Before replacing the app, `deploy.sh` publishes the new files
+to the Compose volume `app_assets_prod`. Every release with this setup can serve
+assets retained in that volume, including those requested by pages opened before
+an update or rollback. The volume retains published assets until an operator
+removes them. Keep it across deployments.
+If the replacement fails, the deployment script restores the previously
+running image.
+
+For a manual Compose deployment, run these commands from the project directory:
+
+```bash
+docker compose -f docker-compose.prod.yml build app
+docker compose -f docker-compose.prod.yml run --rm --no-deps -T app npm run publish:assets
+docker compose -f docker-compose.prod.yml up -d --no-build app
+```
+
+For an existing installation, update the checkout to this version and use the
+manual Compose commands for the first deployment. The shared volume starts
+empty, and asset continuity applies to releases that publish their files to it.
 
 ## Configuration
 

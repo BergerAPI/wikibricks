@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from "hono/jsx";
 import { html } from "hono/html";
 import type { User } from "./database";
-import { browserScripts, stylesheet } from "./assets";
+import { assetUrl } from "./assets";
 import { useTranslation } from "./translation";
 import { DefaultContext } from "./utils";
 
@@ -33,7 +33,7 @@ export const Layout = ({
   title?: string | undefined;
   user?: User | null | undefined;
   context: DefaultContext;
-  script?: keyof typeof browserScripts;
+  script?: string;
 }) => {
   const { t, language } = useTranslation(context);
 
@@ -44,8 +44,8 @@ export const Layout = ({
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="description" content={t("site.tagline")} />
         <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-        <link rel="stylesheet" href={stylesheet.url} />
-        {script && <script type="module" src={browserScripts[script].url}></script>}
+        <link rel="stylesheet" href={assetUrl("styles.css")} />
+        {script && <script type="module" src={assetUrl(`${script}.js`)}></script>}
         <title>{title ?? t("site.title")}</title>
         <link
           rel="icon"

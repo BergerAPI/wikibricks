@@ -11,6 +11,10 @@ open http://localhost:3000
 The browser scripts in `src/client/pages/` are loaded only by the pages
 that use them. Press Ctrl-C to stop all three watchers.
 
+To add a browser script, create `src/client/pages/example.ts` and use
+`<Layout script="example" ...>` on the page that needs it. The build,
+watcher, and deployment discover the file automatically.
+
 # TODO
 
 ## Active

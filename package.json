@@ -5,13 +5,14 @@
     "node": ">=20.9.0"
   },
   "scripts": {
-    "build": "tsc && tsc -p src/client/tsconfig.json && npm run build:css && npm run build:client -- --minify",
+    "build": "tsc && tsc -p src/client/tsconfig.json && npm run build:css && npm run build:client -- --minify --metafile=dist/client-outputs.json && node dist/build-assets.js",
     "build:css": "tailwindcss -i ./global.css -o ./dist/public/styles.css --minify",
-    "build:client": "esbuild src/client/pages/*.ts --bundle --platform=browser --format=esm --target=es2021 --outdir=dist/public",
+    "build:client": "esbuild \"src/client/pages/*.ts\" --bundle --platform=browser --format=esm --target=es2021 --outdir=dist/public",
     "dev": "npm run build:css && npm run build:client -- --sourcemap=inline && concurrently --kill-others --names server,css,client npm:dev:server npm:dev:css npm:dev:client",
     "dev:server": "tsx watch src/index.ts",
     "dev:css": "tailwindcss -i ./global.css -o ./dist/public/styles.css --watch=always",
     "start": "node dist/index.js",
+    "publish:assets": "node dist/publish-assets.js",
     "dev:client": "npm run build:client -- --sourcemap=inline --watch=forever",
     "typecheck": "tsc --noEmit && tsc -p src/client/tsconfig.json"
   },

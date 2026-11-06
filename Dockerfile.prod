@@ -45,8 +45,8 @@ COPY --from=builder /app/dist dist
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S appuser -u 1001 -G nodejs
 
-# Create data directory for uploads
-RUN mkdir -p /app/data
+# Create upload and shared asset directories owned by the application user.
+RUN mkdir -p /app/data /app/shared-assets/files
 
 # Change ownership of app directory
 RUN chown -R appuser:nodejs /app
@@ -64,5 +64,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
 ENV NODE_ENV=production
 ENV UPLOAD_DIR=/app/data
 
-# Start the application using compiled JavaScript
-CMD ["node", "dist/index.js"]
+# Publish the image's assets before serving requests.
+CMD ["sh", "-c", "node dist/publish-assets.js && exec node dist/index.js"]

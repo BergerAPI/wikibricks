@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# WikiBricks Rolling Deployment Script
-# This script performs zero-downtime rolling updates on a VPS
+# WikiBricks Deployment Script
 
 set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
@@ -173,57 +172,28 @@ health_check() {
     return 1
 }
 
-# Rolling update with zero downtime
-rolling_update() {
-    log INFO "Starting rolling update..."
+publish_assets() {
+    log INFO "Publishing fingerprinted assets to the shared volume..."
+    docker compose -f "$COMPOSE_FILE" run --rm --no-deps -T app npm run "$@" publish:assets
+}
 
-    cd "$SCRIPT_DIR"
-
-    # Start new containers with different names
-    log INFO "Starting new application containers..."
-
-    # Scale up the app service to 2 instances
-    docker compose -f "$COMPOSE_FILE" up -d --scale app=2
-
-    # Wait for new container to be ready
-    sleep 10
-
-    # Health check on new container
-    if ! health_check "http://localhost:3000" 15; then
-        log ERROR "New container failed health check, rolling back..."
-        rollback
-        return 1
-    fi
-
-    log INFO "New container is healthy, completing update..."
-
-    # Scale back to 1 instance (removes old container)
-    docker compose -f "$COMPOSE_FILE" up -d --scale app=1
-
-    # Final health check
-    if health_check "http://localhost:3000" 10; then
-        log INFO "Rolling update completed successfully"
-        return 0
-    else
-        log ERROR "Final health check failed"
-        return 1
-    fi
+replace_app() {
+    log INFO "Replacing the application container..."
+    docker compose -f "$COMPOSE_FILE" up -d --no-build app &&
+        health_check "http://localhost:3000" 15
 }
 
 # Rollback function
 rollback() {
+    local revision=${1:-HEAD~1}
     log WARN "Rolling back to previous version..."
 
     cd "$SCRIPT_DIR"
 
-    # Reset to previous git commit
-    git reset --hard HEAD~1
-
-    # Rebuild and restart with previous code
-    docker compose -f "$COMPOSE_FILE" build
-    docker compose -f "$COMPOSE_FILE" up -d
-
-    if health_check "http://localhost:3000" 15; then
+    if git reset --hard "$revision" &&
+        docker compose -f "$COMPOSE_FILE" build &&
+        publish_assets --if-present &&
+        replace_app; then
         log INFO "Rollback completed successfully"
     else
         log ERROR "Rollback failed - manual intervention required"
@@ -259,6 +229,12 @@ send_notification() {
 # Main deployment function
 deploy() {
     local start_time=$(date +%s)
+    local running_container running_image="" running_tag="" image_info
+    running_container=$(docker compose -f "$SCRIPT_DIR/$COMPOSE_FILE" ps --status running -q app)
+    if [[ -n "$running_container" ]]; then
+        image_info=$(docker inspect --format '{{.Image}} {{.Config.Image}}' "$running_container")
+        read -r running_image running_tag <<< "$image_info"
+    fi
 
     log INFO "Starting deployment of WikiBricks..."
 
@@ -284,9 +260,21 @@ deploy() {
         exit 1
     fi
 
-    # Perform rolling update
-    if ! rolling_update; then
-        send_notification "FAILED" "Rolling update failed"
+    if ! publish_assets; then
+        send_notification "FAILED" "Asset publication failed"
+        exit 1
+    fi
+
+    if ! replace_app; then
+        log ERROR "New container failed to start or pass its health check"
+        if [[ -n "$running_image" && -n "$running_tag" ]] &&
+            docker image tag "$running_image" "$running_tag" &&
+            replace_app; then
+            log INFO "Restored the previous running image"
+        else
+            log ERROR "No previous image could be restored"
+        fi
+        send_notification "FAILED" "Application replacement failed"
         exit 1
     fi
 
@@ -306,7 +294,7 @@ deploy() {
 usage() {
     echo "Usage: $0 [OPTION]"
     echo "Options:"
-    echo "  deploy     - Perform full deployment with rolling update"
+    echo "  deploy     - Build, publish assets, and replace the application container"
     echo "  rollback   - Rollback to previous version"
     echo "  health     - Perform health check only"
     echo "  backup     - Create database backup only"
