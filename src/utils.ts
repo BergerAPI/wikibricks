@@ -2,7 +2,7 @@ import type { Context } from "hono";
 import { sql, type User } from "./database";
 import { sign, verify } from "hono/jwt";
 import { getCookie } from "hono/cookie";
-import { type Language, isLanguageSupported } from "./translation";
+import type { Language } from "./translation";
 
 // Passing values between routes using middleware and shared context
 export type Variables = {
@@ -115,35 +115,4 @@ export const attemptAuthentication = async (
     }
     return await next();
   }
-};
-
-// Middleware to detect and set language
-export const detectLanguage = async (
-  c: DefaultContext,
-  next: () => Promise<void>,
-) => {
-  // Check for language preference in query parameter
-  let language = c.req.query("lang");
-
-  // If not in query, check Accept-Language header
-  if (!language) {
-    const acceptLanguage = c.req.header("Accept-Language");
-    if (acceptLanguage) {
-      // Simple language detection from Accept-Language header
-      const languages = acceptLanguage
-        .split(",")
-        .map((lang) => lang.trim().split(";")[0].split("-")[0]);
-      language = languages.find((lang) => isLanguageSupported(lang)) || "en";
-    }
-  }
-
-  // Default to English if not supported
-  if (!language || !isLanguageSupported(language)) {
-    language = "en";
-  }
-
-  // Set global language context
-  c.set("language", language as Language);
-
-  await next();
 };

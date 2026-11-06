@@ -14,6 +14,7 @@ export interface Translations {
   "nav.logout": string;
   "nav.register": string;
   "nav.createAccount": string;
+  "nav.language": string;
 
   // Common Actions
   "action.search": string;
@@ -198,6 +199,7 @@ const translations: Record<Language, Translations> = {
     "nav.search.button": "Search",
     "nav.login": "Login",
     "nav.logout": "Logout",
+    "nav.language": "Language",
     "nav.register": "Create Account",
     "nav.createAccount": "Create Account",
 
@@ -397,6 +399,7 @@ const translations: Record<Language, Translations> = {
     "nav.search.button": "Suchen",
     "nav.login": "Anmelden",
     "nav.logout": "Abmelden",
+    "nav.language": "Sprache",
     "nav.register": "Konto erstellen",
     "nav.createAccount": "Konto erstellen",
 
@@ -650,7 +653,7 @@ export const getAvailableLanguages = (): Language[] => {
 
 // Check if a language is supported
 export const isLanguageSupported = (language: string): language is Language => {
-  return language in translations;
+  return Object.prototype.hasOwnProperty.call(translations, language);
 };
 
 // Pluralization helper for German

@@ -5,7 +5,8 @@ import { secureHeaders } from "hono/secure-headers";
 import { initDatabase } from "./database";
 import { handleRootPage } from "./routes/root";
 import { handleAsset } from "./assets";
-import { attemptAuthentication, detectLanguage, type Variables } from "./utils";
+import { detectLanguage, handleLanguagePreference } from "./language";
+import { attemptAuthentication, type Variables } from "./utils";
 import {
   handleLoginPage,
   handleLoginSubmit,
@@ -50,6 +51,7 @@ import {
   }
 
   app.use(detectLanguage);
+  app.post("/language", handleLanguagePreference);
   app.use(attemptAuthentication);
 
   app.get("/", handleRootPage);

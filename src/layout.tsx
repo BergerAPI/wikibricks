@@ -2,6 +2,7 @@ import type { PropsWithChildren } from "hono/jsx";
 import { html } from "hono/html";
 import type { User } from "./database";
 import { assetUrl } from "./assets";
+import { LanguageSwitcher } from "./components/language-switcher";
 import { useTranslation } from "./translation";
 import { DefaultContext } from "./utils";
 
@@ -110,6 +111,9 @@ export const Layout = ({
               <p>
                 {t("footer.content")} {t("footer.termsPrivacy")}
               </p>
+              <div class="mt-2">
+                <LanguageSwitcher context={context} />
+              </div>
               <p class="text-xs text-gray-500 mt-1">
                 {t("footer.version")}:{" "}
                 <a

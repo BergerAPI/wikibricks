@@ -1,6 +1,7 @@
 import type { HttpBindings } from "@hono/node-server";
 import { isIP } from "node:net";
 import { Layout } from "../layout";
+import { parseLocalUrl } from "../local-url";
 import { deleteCookie, setCookie } from "hono/cookie";
 import { sql, type User } from "../database";
 import {
@@ -28,15 +29,9 @@ const cookieOptions = {
   maxAge: 7 * 24 * 60 * 60,
 };
 
-const redirectBase = new URL("https://wikibricks.invalid");
 const getLoginRedirect = (c: DefaultContext): string | undefined => {
-  const target = c.req.query("redirect");
-  if (!target?.startsWith("/") || target.startsWith("//") || /[\\\u0000-\u001f\u007f]/.test(target)) {
-    return;
-  }
-  const url = new URL(target, redirectBase);
-  if (url.origin !== redirectBase.origin || url.pathname.startsWith("//")) return;
-  return url.pathname + url.search + url.hash;
+  const url = parseLocalUrl(c.req.query("redirect"));
+  return url && url.pathname + url.search + url.hash;
 };
 
 const normalizeAddress = (address: string | undefined) =>
