@@ -225,38 +225,31 @@ export const getImageUrl = (image: Image): string => {
   return `/images/serve/${image.id}`;
 };
 
-// Delete image (marks as deleted, doesn't actually delete file immediately)
+// Remove the local file after its metadata deletion has committed.
+export const removeImageFile = async (image: Image): Promise<void> => {
+  if (image.storage_type !== "local" || !image.file_path) return;
+
+  try {
+    await unlink(image.file_path);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      console.error("Failed to remove image file:", error);
+    }
+  }
+};
+
 export const deleteImage = async (id: number | string): Promise<boolean> => {
   if (!id) return false;
 
   const numericId = Number(id);
   if (!Number.isInteger(numericId)) return false;
 
-  // Check if user owns the image or is admin/moderator
   const [image] = await sql<Image[]>`
-    SELECT * FROM images WHERE id = ${numericId} LIMIT 1
+    DELETE FROM images WHERE id = ${numericId} RETURNING *
   `;
+  if (!image) return false;
 
-  if (!image) {
-    return false;
-  }
-
-  await sql`
-    DELETE FROM images WHERE id = ${numericId}
-  `;
-
-  if (image.storage_type === "local" && image.file_path) {
-    try {
-      if (existsSync(image.file_path)) {
-        await unlink(image.file_path);
-        return true;
-      }
-      return true;
-    } catch {
-      return true;
-    }
-  }
-
+  await removeImageFile(image);
   return true;
 };
 

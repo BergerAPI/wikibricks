@@ -118,6 +118,7 @@ export type EntityVersionView = {
  * A column returned by the set_view view which joins entities, entity_versions, and sets
  */
 export type SetView = {
+  type: "set";
   pieces: number;
   issued: string;
   theme: string;
@@ -130,6 +131,7 @@ export type SetView = {
  * A column returned by the brand_view view which joins entities, entity_versions, and brands
  */
 export type BrandView = {
+  type: "brand";
   country: string;
   website: string;
 } & EntityVersionView;
@@ -137,7 +139,7 @@ export type BrandView = {
 /**
  * A column returned by the wiki_view view which joins entities, entity_versions
  */
-export type WikiView = EntityVersionView;
+export type WikiView = EntityVersionView & { type: "wiki" };
 
 // Database connection
 export const sql = postgres(process.env.DB_CONN ?? "");

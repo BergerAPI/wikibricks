@@ -5,11 +5,12 @@ import {
   type BrandView,
   type EntityType,
   type EntityViewType,
+  type Image,
   type SetView,
   type WikiView,
 } from "../../database";
 import { Layout } from "../../layout";
-import { deleteImage } from "../../services/image-storage";
+import { removeImageFile } from "../../services/image-storage";
 import { TranslationFunctions, useTranslation } from "../../translation";
 import { PermissionLevel, type DefaultContext } from "../../utils";
 
@@ -118,14 +119,14 @@ export const getInfoFields = (t: TranslationFunctions["t"]) =>
 // Consolidate SQL query definitions per entity type to reduce duplications.
 const queryMapping = {
   set: {
-    defaultQuery: (entityId: string) => sql<
+    defaultQuery: (db: typeof sql, entityId: string) => db<
       (SetView & { brand_name: string })[]
     >`
             SELECT s.*, e.name as brand_name
             FROM set_view s
             LEFT JOIN entities e ON s.brand_id = e.id
             WHERE s.id = ${entityId}`,
-    versionQuery: (entityId: string, version: number) => sql<
+    versionQuery: (db: typeof sql, entityId: string, version: number) => db<
       (SetView & { brand_name: string })[]
     >`
             SELECT s.*, e.name as brand_name
@@ -134,15 +135,15 @@ const queryMapping = {
             WHERE s.id = ${entityId} AND s.version_id = ${version}`,
   },
   brand: {
-    defaultQuery: (entityId: string) => sql<BrandView[]>`
+    defaultQuery: (db: typeof sql, entityId: string) => db<BrandView[]>`
             SELECT * FROM brand_view WHERE id = ${entityId}`,
-    versionQuery: (entityId: string, version: number) => sql<BrandView[]>`
+    versionQuery: (db: typeof sql, entityId: string, version: number) => db<BrandView[]>`
             SELECT * FROM brand_versions_view WHERE id = ${entityId} AND version_id = ${version}`,
   },
   wiki: {
-    defaultQuery: (entityId: string) => sql<WikiView[]>`
+    defaultQuery: (db: typeof sql, entityId: string) => db<WikiView[]>`
             SELECT * FROM wiki_view WHERE id = ${entityId}`,
-    versionQuery: (entityId: string, version: number) => sql<WikiView[]>`
+    versionQuery: (db: typeof sql, entityId: string, version: number) => db<WikiView[]>`
             SELECT * FROM wiki_versions_view WHERE id = ${entityId} AND version_id = ${version}`,
   },
 };
@@ -153,8 +154,8 @@ const queryMapping = {
  * @param version The version number to fetch
  * @returns The entity or null if not found
  */
-const getEntity = async (entityId: string, version?: number) => {
-  const [entityInfo] = await sql<{ type: string }[]>`
+const getEntity = async (entityId: string, version?: number, db = sql) => {
+  const [entityInfo] = await db<{ type: string }[]>`
       SELECT type FROM entities WHERE id = ${entityId}
     `;
 
@@ -163,13 +164,10 @@ const getEntity = async (entityId: string, version?: number) => {
   const mapping = queryMapping[entityInfo.type as EntityType];
   if (!mapping) return null;
 
-  return await sql
-    .begin(async (_) => {
-      return version
-        ? await mapping.versionQuery(entityId, version)
-        : await mapping.defaultQuery(entityId);
-    })
-    .then((result) => result[0]);
+  const [entity] = await (version === undefined
+    ? mapping.defaultQuery(db, entityId)
+    : mapping.versionQuery(db, entityId, version));
+  return entity;
 };
 
 const EntityInfoBox = <T extends EntityType>({
@@ -318,9 +316,10 @@ document.getElementById('save').addEventListener('click', async () => {
         headers: {
             'Content-Type': 'application/json'
         }
-    }).then(it => {
+    }).then(response => {
+        if (!response.ok) throw new Error("Edit failed (" + response.status + ")");
         window.location.href = "/entities/${entity.id}/history"
-    });
+    }).catch(error => alert(error.message));
 });
 `,
               }}
@@ -360,13 +359,15 @@ const reviewVersion = (type) => {
         headers: {
             'Content-Type': 'application/json'
         }
-    }).then(it => {
+    }).then(async response => {
+      if (response.status === 409) throw new Error(await response.text());
+      if (!response.ok) throw new Error("Review failed (" + response.status + ")");
       if (type === "approved") {
         window.location.href = "/entities/${entity.id}/history"
       } else {
         window.location.href = "/changes"
       }
-    });
+    }).catch(error => alert(error.message));
 };
 
 // When the user approves a change
@@ -405,10 +406,17 @@ document.getElementById('reject').addEventListener('click', () => {
   );
 };
 
-const ALLOWED_EDIT_FIELDS: Record<string, string[]> = {
-  set: ["pieces", "issued", "theme", "size", "brand_id", "description"],
-  brand: ["country", "website", "description"],
-  wiki: ["description"],
+const ALLOWED_EDIT_FIELDS = {
+  set: ["pieces", "issued", "theme", "size", "brand_id"],
+  brand: ["country", "website"],
+  wiki: [],
+};
+
+const lockEntity = async (db: typeof sql, entityId: string) => {
+  const [entity] = await db<{ head_version_id: number | null }[]>`
+    SELECT head_version_id FROM entities WHERE id = ${entityId} FOR NO KEY UPDATE
+  `;
+  return entity;
 };
 
 export const handleEntityPageSubmit = async (c: DefaultContext) => {
@@ -417,130 +425,135 @@ export const handleEntityPageSubmit = async (c: DefaultContext) => {
 
   if (!user) return c.body("Unauthorized", 401);
 
-  const entity = await getEntity(entityId);
-
-  if (!entity) return c.notFound();
-
   let parsed: unknown;
   try {
     parsed = await c.req.json();
   } catch {
     return c.body("Bad Request", 400);
   }
-  const { changeMessage, ...data } = (parsed ?? {}) as Record<string, unknown>;
-
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return c.body("Bad Request", 400);
+  }
+  const { changeMessage, description, ...data } = parsed as Record<string, unknown>;
   if (
     typeof changeMessage !== "string" ||
     changeMessage.trim().length === 0 ||
-    changeMessage.length > 2000
+    changeMessage.length > 2000 ||
+    (description !== undefined &&
+      (typeof description !== "string" || description.length > 20000))
   ) {
     return c.body("Bad Request", 400);
   }
 
-  const allowed = ALLOWED_EDIT_FIELDS[entity.type] ?? ["description"];
-  const filtered: Record<string, unknown> = {};
-  for (const key of allowed) {
-    const value = (data as Record<string, unknown>)[key];
-    if (value !== undefined && String(value).length > 0) {
-      filtered[key] = value;
-    }
-  }
-
-  if (typeof filtered.description !== "string") {
-    filtered.description = entity.description;
-  }
-  if (String(filtered.description).length > 20000) {
-    return c.body("Bad Request", 400);
-  }
-
-  // Reuse view validation for editable fields (without translation dependency)
-  const noT = ((key: string) => key) as Parameters<typeof getInfoFields>[0];
-  const infoFields = getInfoFields(noT)[entity.type as keyof ReturnType<typeof getInfoFields>] as Record<
-    string,
-    string | { validate?: (v: never) => boolean }
-  >;
-  for (const [key, value] of Object.entries(filtered)) {
-    if (key === "description") continue;
-    const def = infoFields[key];
-    if (!def) return c.body("Bad Request", 400);
-    if (
-      typeof def !== "string" &&
-      typeof def.validate === "function" &&
-      !def.validate(value as never)
-    ) {
-      return c.body("Bad Request", 400);
-    }
-  }
-
-  // Update the entity with the new data
-  const modifiedFields = Object.entries(filtered).filter(([key, value]) => {
-    const original = entity[key as keyof typeof entity];
-    return String(value) !== (original?.toString() ?? "");
-  });
-
-  if (modifiedFields.length === 0) return c.body("Bad Request", 400);
-
-  const nextVersionNumber = Number(entity.version_number) + 1;
-  if (!Number.isInteger(nextVersionNumber)) return c.body("Bad Request", 400);
-
   try {
-    await sql.begin(async (tx) => {
+    return await sql.begin(async (tx) => {
+      if (!(await lockEntity(tx, entityId))) return c.notFound();
+      const entity = await getEntity(entityId, undefined, tx);
+      if (!entity) return c.notFound();
+
+      const extra: Record<string, string | number> = {};
+      const infoFields = getInfoFields(useTranslation(c).t)[entity.type] as Record<
+        string,
+        string | { validate?: (value: never) => boolean }
+      >;
+      for (const key of ALLOWED_EDIT_FIELDS[entity.type]) {
+        const value = data[key];
+        if (value === undefined || value === "") continue;
+        if (key === "pieces" || key === "brand_id") {
+          const numeric = typeof value === "string" && /^\d+$/.test(value)
+            ? Number(value)
+            : value;
+          const min = key === "pieces" ? 0 : 1;
+          const max = key === "pieces" ? 1000000 : 2147483647;
+          if (typeof numeric !== "number" || !Number.isInteger(numeric) || numeric < min || numeric > max) {
+            return c.body("Bad Request", 400);
+          }
+          extra[key] = numeric;
+          continue;
+        }
+
+        const field = infoFields[key];
+        const maxLength = entity.type === "brand" ? 255 : 64;
+        if (
+          typeof value !== "string" ||
+          value.length > maxLength ||
+          (typeof field !== "string" && field.validate && !field.validate(value as never))
+        ) {
+          return c.body("Bad Request", 400);
+        }
+        extra[key] = value;
+      }
+
+      const nextDescription = description ?? entity.description;
+      const modified = Object.entries(extra).some(([key, value]) => {
+        const original = entity[key as keyof typeof entity];
+        return String(value) !== (original?.toString() ?? "");
+      });
+      if (!modified && nextDescription === entity.description) {
+        return c.body("Bad Request", 400);
+      }
+
+      const [{ version_number }] = await tx<{ version_number: number }[]>`
+        SELECT COALESCE(MAX(version_number), 0) + 1 AS version_number
+        FROM entity_versions WHERE entity_id = ${entityId}
+      `;
       const [{ id: newVersionId }] = await tx<{ id: number }[]>`
         INSERT INTO entity_versions ${tx({
           entity_id: entityId,
-          version_number: nextVersionNumber,
+          version_number,
           created_by: user.id,
+          previous_version: entity.version_id,
           change_message: changeMessage,
-          description: String(filtered.description),
+          description: nextDescription,
+          image_id: entity.image_id,
           review_status: "pending",
         })}
-            RETURNING id;
-        `;
+        RETURNING id
+      `;
 
-      const extra = Object.fromEntries(
-        Object.entries(filtered).filter(([k]) => k !== "description"),
-      );
       if (entity.type === "set") {
         await tx`
-            INSERT INTO sets ${tx({
-              version_id: newVersionId,
-              ...extra,
-            })}`;
+          INSERT INTO sets ${tx({
+            version_id: newVersionId,
+            pieces: entity.pieces,
+            issued: entity.issued,
+            theme: entity.theme,
+            size: entity.size,
+            brand_id: entity.brand_id,
+            manufacturer_id: entity.manufacturer_id,
+            ...extra,
+          })}
+        `;
       } else if (entity.type === "brand") {
         await tx`
-            INSERT INTO brands ${tx({
-              version_id: newVersionId,
-              ...extra,
-            })}`;
+          INSERT INTO brands ${tx({
+            version_id: newVersionId,
+            country: entity.country,
+            website: entity.website,
+            ...extra,
+          })}
+        `;
       }
+      return c.body("OK", 200);
     });
   } catch (err) {
     console.error("Entity update error:", err);
     return c.body("Something went wrong", 500);
   }
-
-  return c.body("OK", 200);
 };
 
 export const handleEntityVersionPatch = async (c: DefaultContext) => {
   const user = c.get("user");
-
-  if (!user || user.permission_level < PermissionLevel.MODERATOR)
+  if (!user || user.permission_level < PermissionLevel.MODERATOR) {
     return c.body("Unauthorized", 401);
+  }
 
   const entityId = c.req.param("id");
   const versionId = c.req.param("version");
-
-  if (!entityId || !versionId) return c.body("Bad Request", 400);
-
-  const versionNum = parseInt(versionId, 10);
-  if (!Number.isInteger(versionNum)) return c.body("Bad Request", 400);
-
-  const entity = await getEntity(entityId, versionNum);
-
-  if (!entity) return c.notFound();
-
-  if (entity.review_status !== "pending") return c.body("Bad Request", 400);
+  const version = Number(versionId);
+  if (!entityId || !/^\d+$/.test(versionId) || version < 1 || version > 2147483647) {
+    return c.body("Bad Request", 400);
+  }
 
   let parsed: unknown;
   try {
@@ -549,45 +562,80 @@ export const handleEntityVersionPatch = async (c: DefaultContext) => {
     return c.body("Bad Request", 400);
   }
   const { reviewMessage, type } = (parsed ?? {}) as Record<string, unknown>;
-
   if (
     typeof reviewMessage !== "string" ||
-    reviewMessage.length === 0 ||
+    reviewMessage.trim().length === 0 ||
     reviewMessage.length > 2000 ||
-    !["approved", "rejected"].includes(String(type))
-  )
+    (type !== "approved" && type !== "rejected")
+  ) {
     return c.body("Bad Request", 400);
+  }
 
   try {
-    await sql.begin(async (tx) => {
-      // Noting that the version has been review with the provided status
-      await tx`
-        UPDATE entity_versions SET review_status = ${String(type)}, reviewed_at = NOW(), reviewed_by = ${user.id}, review_comment = ${reviewMessage} WHERE id = ${entity.version_id} AND entity_id = ${entity.id} AND review_status = 'pending'
-    `;
+    const result = await sql.begin(async (tx): Promise<{
+      status: 200 | 404 | 409;
+      removedImage?: Image;
+    }> => {
+      const current = await lockEntity(tx, entityId);
+      if (!current) return { status: 404 };
 
-      if (type === "rejected") {
-        // Deleting the entire entity if the first version was rejected
-        // First, attempt to delete the entity if head_version_id is null
-        const result = await tx`
-        DELETE FROM entities WHERE id = ${entity.id} AND head_version_id IS NULL;
-    `;
+      const entity = await getEntity(entityId, version, tx);
+      if (!entity) return { status: 404 };
+      if (entity.review_status !== "pending") return { status: 409 };
 
-        // If the entity was deleted and it had an image, delete the image as well
-        if (result.count > 0 && entity.image_id) {
-          await deleteImage(entity.image_id);
-        }
-        return;
+      if (
+        type === "approved" &&
+        entity.previous_version != null &&
+        entity.previous_version !== current.head_version_id
+      ) {
+        return { status: 409 };
       }
 
-      // Setting the HEAD-id when approved
-      await tx`
-        UPDATE entities SET head_version_id = ${entity.version_id} WHERE id = ${entity.id}
-    `;
+      const rejectInitial = type === "rejected" && current.head_version_id === null;
+      let image: { id: number } | undefined;
+      if (rejectInitial && entity.image_id && entity.created_by) {
+        // Lock the image before deleting the entity. Attachments also lock this row.
+        [image] = await tx<{ id: number }[]>`
+          SELECT id FROM images
+          WHERE id = ${entity.image_id} AND uploaded_by = ${entity.created_by}
+          FOR UPDATE
+        `;
+      }
+
+      const [reviewed] = await tx<{ id: number }[]>`
+        UPDATE entity_versions
+        SET review_status = ${type}, reviewed_at = NOW(), reviewed_by = ${user.id},
+            review_comment = ${reviewMessage}
+        WHERE id = ${entity.version_id} AND entity_id = ${entityId} AND review_status = 'pending'
+        RETURNING id
+      `;
+      if (!reviewed) return { status: 409 };
+
+      if (type === "approved") {
+        await tx`UPDATE entities SET head_version_id = ${reviewed.id} WHERE id = ${entityId}`;
+      }
+      if (!rejectInitial) return { status: 200 };
+
+      await tx`DELETE FROM entities WHERE id = ${entityId}`;
+      if (!image) return { status: 200 };
+
+      const [removedImage] = await tx<Image[]>`
+        DELETE FROM images
+        WHERE id = ${image.id}
+          AND NOT EXISTS (SELECT 1 FROM entity_versions WHERE image_id = ${image.id})
+        RETURNING *
+      `;
+      return { status: 200, removedImage };
     });
+
+    if (result.status === 404) return c.notFound();
+    if (result.status === 409) {
+      return c.body("The version or its base has changed. Reload before reviewing.", 409);
+    }
+    if (result.removedImage) await removeImageFile(result.removedImage);
+    return c.body("OK", 200);
   } catch (err) {
     console.error("Review update error:", err);
     return c.body("Something went wrong", 500);
   }
-
-  return c.body("OK", 200);
 };
