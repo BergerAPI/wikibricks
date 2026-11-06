@@ -1,4 +1,5 @@
-import { type Context } from "hono";
+import type { HttpBindings } from "@hono/node-server";
+import { isIP } from "node:net";
 import { Layout } from "../layout";
 import { deleteCookie, setCookie } from "hono/cookie";
 import { sql, type User } from "../database";
@@ -14,8 +15,8 @@ import bcrypt from "bcryptjs";
 import { Child, JSX } from "hono/jsx";
 
 const SALT_ROUNDS = 12;
-// Constant-time dummy hash to mitigate user-enumeration via timing
-const DUMMY_HASH = "$2b$12$C6UzMDM.H6dfI/f/IKcEe.Qx8F5P5P5P5P5P5P5P5P5P5P5P5P5u";
+// Use the same bcrypt cost when the username is unknown.
+const DUMMY_HASH = "$2b$12$6eXafv3SS7lUSoTCPean4eEGsHZRcjHM0Hm/kcKopTu3dGovFymA2";
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -27,11 +28,30 @@ const cookieOptions = {
   maxAge: 7 * 24 * 60 * 60,
 };
 
-const isSafeRedirect = (target: string | undefined | null): target is string => {
-  if (!target) return false;
-  return (
-    target.startsWith("/") && !target.startsWith("//") && !target.includes(":")
-  );
+const redirectBase = new URL("https://wikibricks.invalid");
+const getLoginRedirect = (c: DefaultContext): string | undefined => {
+  const target = c.req.query("redirect");
+  if (!target?.startsWith("/") || target.startsWith("//") || /[\\\u0000-\u001f\u007f]/.test(target)) {
+    return;
+  }
+  const url = new URL(target, redirectBase);
+  if (url.origin !== redirectBase.origin || url.pathname.startsWith("//")) return;
+  return url.pathname + url.search + url.hash;
+};
+
+const normalizeAddress = (address: string | undefined) =>
+  address?.replace(/^::ffff:(?=\d+\.)/i, "").toLowerCase();
+const trustedProxy = normalizeAddress(process.env.TRUSTED_PROXY_IP?.trim());
+
+const getRateLimitAddress = (c: DefaultContext): string => {
+  const bindings = c.env as HttpBindings | undefined;
+  const peer = normalizeAddress(bindings?.incoming?.socket.remoteAddress);
+  if (peer && peer === trustedProxy) {
+    const forwarded = c.req.header("x-forwarded-for")?.split(",").pop()?.trim();
+    const client = normalizeAddress(forwarded);
+    if (client && isIP(client)) return client;
+  }
+  return peer ?? "unknown";
 };
 
 const USERNAME_RE = /^[A-Za-z0-9._-]{3,32}$/;
@@ -109,13 +129,19 @@ const ActionButton = ({
 /* Forms (simplified registration form as requested) */
 const CredentialsForm = ({
   error,
+  redirect,
   t,
 }: {
   error?: string;
+  redirect?: string;
   t: TranslationFunctions["t"];
 }) => {
   return (
-    <form method="post" action="/login" class="px-4 py-3 max-w-lg">
+    <form
+      method="post"
+      action={redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : "/login"}
+      class="px-4 py-3 max-w-lg"
+    >
       <ErrorBox message={error} />
       <TextInput id="username" name="username" label={t("auth.username")} required autoComplete="username" maxLength={32} />
       <TextInput id="password" name="password" label={t("auth.password")} type="password" required autoComplete="current-password" maxLength={128} />
@@ -145,7 +171,7 @@ const RegisterForm = ({
 
 /* Small helper to render auth pages and avoid duplication */
 function renderAuthPage(
-  c: DefaultContext | Context,
+  c: DefaultContext,
   opts: {
     titleKey: keyof Translations;
     user?: User | null;
@@ -187,7 +213,7 @@ export const handleLoginPage = async (c: DefaultContext) => {
   return renderAuthPage(c, {
     titleKey: "auth.login",
     user: null,
-    form: <CredentialsForm t={t} />,
+    form: <CredentialsForm t={t} redirect={getLoginRedirect(c)} />,
     bottom,
   });
 };
@@ -218,11 +244,9 @@ export const handleRegisterPage = async (c: DefaultContext) => {
 };
 
 /* Submission handlers */
-export const handleRegisterSubmit = async (c: Context) => {
-  const currentUser = (c as { get?: (key: string) => unknown }).get?.(
-    "user",
-  ) as User | null | undefined;
-  const ip = c.req.header("x-forwarded-for") ?? "unknown";
+export const handleRegisterSubmit = async (c: DefaultContext) => {
+  const currentUser = c.get("user");
+  const ip = getRateLimitAddress(c);
   if (!isAdmin(currentUser) && isRateLimited(`register:${ip}`, 10, 60 * 60 * 1000)) {
     return c.text("Too many requests", 429);
   }
@@ -382,23 +406,25 @@ export const handleRegisterSubmit = async (c: Context) => {
   }
 };
 
-export const handleLoginSubmit = async (c: Context) => {
-  const currentUser = (c as { get?: (key: string) => unknown }).get?.(
-    "user",
-  ) as User | null | undefined;
-  const ip = c.req.header("x-forwarded-for") ?? "unknown";
+export const handleLoginSubmit = async (c: DefaultContext) => {
+  const currentUser = c.get("user");
+  const ip = getRateLimitAddress(c);
   if (!isAdmin(currentUser) && isRateLimited(`login:${ip}`, 20, 10 * 60 * 1000)) {
     return c.text("Too many requests", 429);
   }
   const { username, password } = await c.req.parseBody();
   const { t } = useTranslation(c);
+  const redirect = getLoginRedirect(c);
+
+  const loginError = (error: string) =>
+    renderAuthPage(c, {
+      titleKey: "auth.login",
+      form: <CredentialsForm t={t} error={error} redirect={redirect} />,
+      user: currentUser,
+    });
 
   if (!username || !password) {
-    return renderAuthPage(c, {
-      titleKey: "auth.login",
-      form: <CredentialsForm t={t} error={t("error.usernamePasswordRequired")} />,
-      user: c.get("user") as User | null | undefined,
-    });
+    return loginError(t("error.usernamePasswordRequired"));
   }
 
   const usernameStr =
@@ -411,43 +437,25 @@ export const handleLoginSubmit = async (c: Context) => {
     usernameStr.length > 64 ||
     passwordStr.length > 128
   ) {
-    return renderAuthPage(c, {
-      titleKey: "auth.login",
-      form: <CredentialsForm t={t} error={t("error.invalidCredentials")} />,
-      user: null,
-    });
+    return loginError(t("error.invalidCredentials"));
   }
 
   const [user] = await sql<User[]>`
     SELECT * FROM users WHERE username = ${usernameStr} LIMIT 1;
   `;
 
-  if (!user) {
-    await verifyPassword(passwordStr, DUMMY_HASH).catch(() => false);
-    return renderAuthPage(c, {
-      titleKey: "auth.login",
-      form: <CredentialsForm t={t} error={t("error.invalidCredentials")} />,
-      user: null,
-    });
-  }
-
-  const isValid = await verifyPassword(passwordStr, user.password);
-  if (!isValid) {
-    return renderAuthPage(c, {
-      titleKey: "auth.login",
-      form: <CredentialsForm t={t} error={t("error.invalidCredentials")} />,
-      user: null,
-    });
+  const isValid = await verifyPassword(passwordStr, user?.password || DUMMY_HASH);
+  if (!user?.password || !isValid) {
+    return loginError(t("error.invalidCredentials"));
   }
 
   const token = await signUser(user);
   setCookie(c, "auth", token, cookieOptions);
 
-  const redirect = c.req.query("redirect");
-  return c.redirect(isSafeRedirect(redirect) ? redirect : "/");
+  return c.redirect(redirect ?? "/");
 };
 
-export const handleLogoutSubmit = async (c: Context) => {
+export const handleLogoutSubmit = async (c: DefaultContext) => {
   deleteCookie(c, "auth", { path: "/" });
   return c.redirect("/");
 };

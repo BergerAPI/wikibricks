@@ -1,4 +1,4 @@
-import type { Context, Env } from "hono";
+import type { Context } from "hono";
 import { sql, type User } from "./database";
 import { sign, verify } from "hono/jwt";
 import { getCookie } from "hono/cookie";
@@ -15,36 +15,46 @@ export type DefaultContext<T extends Variables = Variables> = Context<{
   Variables: T;
 }>;
 
+const DEV_JWT_SECRET = "dev-only-insecure-secret-change-me";
+const EXAMPLE_JWT_SECRET = "change-me-to-at-least-32-chars-long-random-string";
+
 const getSecret = () => {
   const secret = process.env.JWT_SECRET;
-  if (secret && secret.length >= 32) return secret;
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("JWT_SECRET must be set to a string of at least 32 chars");
+  const trimmed = secret?.trim() ?? "";
+  if (
+    process.env.NODE_ENV === "production" &&
+    (trimmed.length < 32 || trimmed === EXAMPLE_JWT_SECRET ||
+      trimmed === DEV_JWT_SECRET)
+  ) {
+    throw new Error("Set JWT_SECRET to a unique secret of at least 32 characters");
   }
   if (secret) return secret;
   console.warn("JWT_SECRET not set, using insecure dev fallback");
-  return "dev-only-insecure-secret-change-me";
+  return DEV_JWT_SECRET;
 };
 
 const SECRET = getSecret();
 
-// Simple in-memory rate limiter (per key, no hard dependency)
-const rateLimitBuckets = new Map<string, number[]>();
+const rateLimitBuckets = new Map<string, { hits: number[]; expiresAt: number }>();
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, bucket] of rateLimitBuckets) {
+    if (bucket.expiresAt <= now) rateLimitBuckets.delete(key);
+  }
+}, 60_000).unref();
+
 export const isRateLimited = (
   key: string,
   max: number,
   windowMs: number,
 ): boolean => {
   const now = Date.now();
-  const hits = (rateLimitBuckets.get(key) ?? []).filter(
+  const hits = (rateLimitBuckets.get(key)?.hits ?? []).filter(
     (t) => now - t < windowMs,
   );
-  if (hits.length >= max) {
-    rateLimitBuckets.set(key, hits);
-    return true;
-  }
+  if (hits.length >= max) return true;
   hits.push(now);
-  rateLimitBuckets.set(key, hits);
+  rateLimitBuckets.set(key, { hits, expiresAt: now + windowMs });
   return false;
 };
 

@@ -68,9 +68,17 @@ POSTGRES_PASSWORD=your_secure_password
 NODE_ENV=production
 PORT=3000
 
-# JWT Secret (generate a secure random string)
-JWT_SECRET=your-very-secure-jwt-secret-here
+# Generate with openssl rand -hex 32 and paste the result here.
+JWT_SECRET=
+
+# Optional: IP address of the reverse proxy as seen by the app.
+TRUSTED_PROXY_IP=
 ```
+
+If using a reverse proxy, set `TRUSTED_PROXY_IP` to its immediate connection
+address and configure it to overwrite `X-Forwarded-For` with the client IP or
+append that IP as the rightmost entry. Otherwise, the app rate-limits using the
+connection address.
 
 ### GitHub Actions Setup
 
