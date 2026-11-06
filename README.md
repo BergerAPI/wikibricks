@@ -7,6 +7,8 @@ npm run dev
 open http://localhost:3000
 ```
 
+Run `npm run dev:css` in a second terminal to rebuild the stylesheet as you edit.
+
 # TODO
 
 ## Active

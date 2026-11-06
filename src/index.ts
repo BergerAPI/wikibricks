@@ -4,6 +4,7 @@ import { Hono } from "hono";
 import { secureHeaders } from "hono/secure-headers";
 import { initDatabase } from "./database";
 import { handleRootPage } from "./routes/root";
+import { handleStylesheet, stylesheetUrl } from "./stylesheet";
 import { attemptAuthentication, detectLanguage, type Variables } from "./utils";
 import {
   handleLoginPage,
@@ -39,6 +40,7 @@ import {
   const app = new Hono<{ Variables: Variables }>();
 
   app.use(secureHeaders());
+  app.get(stylesheetUrl, handleStylesheet);
 
   try {
     await initDatabase();

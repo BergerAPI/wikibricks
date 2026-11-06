@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from "hono/jsx";
 import { html } from "hono/html";
-import fs from "fs";
 import type { User } from "./database";
+import { stylesheetUrl } from "./stylesheet";
 import { useTranslation } from "./translation";
 import { DefaultContext } from "./utils";
 
@@ -16,19 +16,6 @@ const getCommitId = () => {
 };
 
 const shortCommitId = getCommitId();
-
-const loadStyles = () => {
-  try {
-    if (process.env.NODE_ENV === "production") {
-      return fs.readFileSync("/app/dist/public/styles.css", "utf8");
-    }
-    return fs.readFileSync("./public/styles.css", "utf-8");
-  } catch {
-    return "";
-  }
-};
-
-const styles = loadStyles();
 
 const getGithubUrl = () => {
   const base =
@@ -55,7 +42,7 @@ export const Layout = ({
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="description" content={t("site.tagline")} />
         <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-        <style dangerouslySetInnerHTML={{ __html: styles }}></style>
+        <link rel="stylesheet" href={stylesheetUrl} />
         <title>{title ?? t("site.title")}</title>
         <link
           rel="icon"
