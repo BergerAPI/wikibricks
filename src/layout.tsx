@@ -1,4 +1,5 @@
 import type { PropsWithChildren } from "hono/jsx";
+import { html } from "hono/html";
 import fs from "fs";
 import type { User } from "./database";
 import { useTranslation } from "./translation";
@@ -47,7 +48,7 @@ export const Layout = ({
 }) => {
   const { t, language } = useTranslation(context);
 
-  return (
+  return html`<!DOCTYPE html>${(
     <html lang={language}>
       <head>
         <meta charset="UTF-8" />
@@ -167,5 +168,5 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       </body>
     </html>
-  );
+  )}`;
 };
