@@ -7,7 +7,9 @@ npm run dev
 open http://localhost:3000
 ```
 
-Run `npm run dev:css` in a second terminal to rebuild the stylesheet as you edit.
+Run `npm run dev:css` or `npm run dev:client` in a separate terminal to watch
+stylesheet or browser TypeScript changes. The browser scripts in
+`src/client/pages/` are loaded only by the pages that use them.
 
 # TODO
 
@@ -34,7 +36,7 @@ Run `npm run dev:css` in a second terminal to rebuild the stylesheet as you edit
 - [ ] CI/CD
   - [ ] View commit on production build
   - [ ] Maybe add staging
-- [ ] ViteJS for bundeling the client side
+- [x] TypeScript build for page-specific browser scripts
 
 ## Future
 

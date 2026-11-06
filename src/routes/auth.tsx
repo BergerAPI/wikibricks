@@ -457,5 +457,5 @@ export const handleLoginSubmit = async (c: DefaultContext) => {
 
 export const handleLogoutSubmit = async (c: DefaultContext) => {
   deleteCookie(c, "auth", { path: "/" });
-  return c.redirect("/");
+  return c.redirect("/", 303);
 };

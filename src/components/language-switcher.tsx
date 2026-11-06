@@ -1,39 +1,28 @@
 import { useTranslation, getAvailableLanguages } from "../translation";
-import { DefaultContext } from "../utils";
+import type { DefaultContext } from "../utils";
 
 export const LanguageSwitcher = ({ context }: { context: DefaultContext }) => {
-  const { language: currentLang } = useTranslation(context);
-  const availableLanguages = getAvailableLanguages();
+  const { language: currentLang, t } = useTranslation(context);
 
   return (
-    <div class="relative inline-block">
+    <form method="get" class="relative inline-block">
+      {Object.entries(context.req.queries()).flatMap(([name, values]) =>
+        name === "lang"
+          ? []
+          : values.map(value => <input type="hidden" name={name} value={value} />)
+      )}
       <select
         id="language-switcher"
+        name="lang"
         class="bg-transparent border border-gray-300 rounded px-2 py-1 text-sm cursor-pointer hover:bg-gray-50"
-        onchange="handleLanguageChange(this.value)"
       >
-        {availableLanguages.map((lang) => (
+        {getAvailableLanguages().map((lang) => (
           <option value={lang} selected={lang === currentLang}>
-            {lang === "en"
-              ? "English"
-              : lang === "de"
-                ? "Deutsch"
-                : (lang as string).toUpperCase()}
+            {lang === "en" ? "English" : "Deutsch"}
           </option>
         ))}
       </select>
-
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `
-            function handleLanguageChange(newLang) {
-              const url = new URL(window.location);
-              url.searchParams.set('lang', newLang);
-              window.location.href = url.toString();
-            }
-          `,
-        }}
-      />
-    </div>
+      <button type="submit">{t("action.submit")}</button>
+    </form>
   );
 };

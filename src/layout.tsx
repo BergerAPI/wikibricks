@@ -60,22 +60,24 @@ export const Layout = ({
                 <a href="/" class="font-serif text-black text-medium text-xl">
                   {t("site.tagline")}
                 </a>
-                <div class="hidden md:flex">
+                <form method="get" action="/entities/search" class="hidden md:flex">
                   <label for="search" class="sr-only">
                     {t("nav.search")}
                   </label>
                   <input
                     id="search"
+                    name="name"
                     class="py-1.5 px-1 border mr-0"
                     placeholder={t("nav.search.placeholder")}
                   />
+                  <input type="hidden" name="entity_type" value="all" />
                   <button
+                    type="submit"
                     class="border font-semibold bg-gray-200 px-1 py-1.5 ml-0"
-                    id="search-button"
                   >
                     {t("nav.search.button")}
                   </button>
-                </div>
+                </form>
               </div>
               <div class="flex items-center space-x-2">
                 <nav class="space-x-2 [&>a]:text-sm">
@@ -87,50 +89,17 @@ export const Layout = ({
                   ) : (
                     <>
                       <a href={`/users/${user.id}`}>{user.username}</a>
-                      <a id="logout-button">{t("nav.logout")}</a>
+                      <form method="post" action="/logout" class="inline">
+                        <button type="submit" class="border-0! p-0! text-sm text-blue-800 hover:underline">
+                          {t("nav.logout")}
+                        </button>
+                      </form>
                     </>
                   )}
                 </nav>
               </div>
             </div>
           </header>
-          <script
-            dangerouslySetInnerHTML={{
-              __html: `
-document.addEventListener('DOMContentLoaded', () => {
-  const searchInput = document.getElementById('search');
-  const searchButton = document.getElementById('search-button');
-  const logoutButton = document.getElementById('logout-button');
-
-  const goSearch = () => {
-    if (!searchInput || !searchButton) return;
-    const query = searchInput.value;
-    window.location.href = "/entities/search?name=" + encodeURIComponent(query) + "&entity_type=all";
-  };
-
-  if (searchButton) {
-    searchButton.addEventListener('click', goSearch);
-  }
-  if (searchInput) {
-    searchInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        goSearch();
-      }
-    });
-  }
-
-  if (logoutButton) {
-    logoutButton.addEventListener('click', () => {
-      fetch('/logout', { method: 'POST', credentials: 'same-origin' })
-        .then(() => window.location.href = '/')
-        .catch(error => console.error('Logout failed:', error));
-    });
-  }
-});
-            `,
-            }}
-          ></script>
           <div class="block xl:grid grid-cols-[200px_1fr_200px]">
             <aside class="left-sidebar"></aside>
             {children}
