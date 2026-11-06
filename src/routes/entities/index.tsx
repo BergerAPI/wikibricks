@@ -11,6 +11,11 @@ import {
 } from "../../database";
 import { Layout } from "../../layout";
 import { removeImageFile } from "../../services/image-storage";
+import type {
+  EditEntityRequest,
+  EntityEditField,
+  ReviewVersionRequest,
+} from "../../shared/contracts";
 import { TranslationFunctions, useTranslation } from "../../translation";
 import { PermissionLevel, type DefaultContext } from "../../utils";
 
@@ -206,7 +211,7 @@ const EntityInfoBox = <T extends EntityType>({
                 return (
                   <input
                     class="flex-1 border-none outline-none h-6"
-                    field={field}
+                    data-edit-field={field}
                     type={typeof value === "number" ? "number" : "text"}
                     value={value instanceof Date ? value.toISOString() : value}
                   />
@@ -251,13 +256,25 @@ export const handleEntityPage = async (c: DefaultContext) => {
   const isModerator =
     (user?.permission_level ?? 0) >= PermissionLevel.MODERATOR;
   const canEdit = !!user && edit && !isProposedVersion;
+  const canReview = isProposedVersion && isModerator;
+  const entityUrl = `/entities/${entity.id}`;
 
   // Define info box fields based on entity type
   const infoFields = getInfoFields(t)[entity.type];
 
   return c.render(
-    <Layout context={c} user={user}>
-      <main class="overflow-auto">
+    <Layout
+      context={c}
+      user={user}
+      script={canEdit ? "edit-entity" : canReview ? "review-entity" : undefined}
+    >
+      <main
+        class="overflow-auto"
+        data-edit-url={canEdit ? entityUrl : undefined}
+        data-base-version-id={canEdit ? entity.version_id : undefined}
+        data-review-url={canReview ? `${entityUrl}/${entity.version_id}` : undefined}
+        data-history-url={canEdit || canReview ? `${entityUrl}/history` : undefined}
+      >
         <div class="flex justify-between items-center pb-2 mb-3 border-b">
           <h1 class="text-3xl font-serif">
             {!version
@@ -280,112 +297,30 @@ export const handleEntityPage = async (c: DefaultContext) => {
         </div>
 
         {canEdit && (
-          <>
-            <div class="mb-3 pb-2 border-b flex items-center gap-2">
-              <label class="flex items-center flex-1 space-x-1">
-                <span>{t("entity.changeMessage")}</span>
-                <input class="flex-1" id="change_message" />
-              </label>
+          <div class="mb-3 pb-2 border-b flex items-center gap-2">
+            <label class="flex items-center flex-1 space-x-1">
+              <span>{t("entity.changeMessage")}</span>
+              <input class="flex-1" id="change_message" />
+            </label>
 
-              <button id="save">{t("entity.save")}</button>
-            </div>
-
-            <script
-              dangerouslySetInnerHTML={{
-                __html: `
-document.addEventListener('DOMContentLoaded', () => {
-  const fields = Array.from(document.querySelectorAll("[field]"));
-  const readField = (element) => element.nodeName === 'INPUT' ? element.value : element.innerText;
-  const initialValues = new Map(fields.map(field => [field, readField(field)]));
-
-  document.getElementById('save').addEventListener('click', async () => {
-    const data = { baseVersionId: ${entity.version_id} };
-    fields.forEach(field => {
-      const value = readField(field);
-      if (value !== initialValues.get(field)) {
-        data[field.getAttribute('field')] = value;
-      }
-    });
-
-    const changeMessage = document.getElementById('change_message').value;
-    data.changeMessage = changeMessage;
-
-    fetch(\`/entities/${entity.id}\`, {
-        method: 'POST',
-        redirect: "follow",
-        body: JSON.stringify(data),
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    }).then(async response => {
-        if (response.status === 409) throw new Error(await response.text());
-        if (!response.ok) throw new Error("Edit failed (" + response.status + ")");
-        window.location.href = "/entities/${entity.id}/history"
-    }).catch(error => alert(error.message));
-  });
-});
-`,
-              }}
-            />
-          </>
+            <button id="save" type="button">{t("entity.save")}</button>
+          </div>
         )}
 
-        {isProposedVersion && isModerator && (
-          <>
-            <div class="mb-3 pb-2 border-b flex items-center gap-2">
-              <label class="flex items-center flex-1 space-x-1">
-                <span>{t("entity.reviewMessage")}</span>
-                <input class="flex-1" id="review_message" />
-              </label>
+        {canReview && (
+          <div class="mb-3 pb-2 border-b flex items-center gap-2">
+            <label class="flex items-center flex-1 space-x-1">
+              <span>{t("entity.reviewMessage")}</span>
+              <input class="flex-1" id="review_message" />
+            </label>
 
-              <button title={t("entity.approveTooltip")} id="approve">
-                {t("entity.approve")}
-              </button>
-              <button title={t("entity.rejectTooltip")} id="reject">
-                {t("entity.reject")}
-              </button>
-            </div>
-
-            <script
-              dangerouslySetInnerHTML={{
-                __html: `
-const reviewVersion = (type) => {
-    const reviewMessage = document.getElementById('review_message').value;
-
-    fetch("/entities/${entity.id}/${entity.version_id}", {
-        method: 'PATCH',
-        redirect: "follow",
-        body: JSON.stringify({
-            type,
-            reviewMessage: reviewMessage.length > 0 ? reviewMessage : "No Change Message"
-        }),
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    }).then(async response => {
-      if (response.status === 409) throw new Error(await response.text());
-      if (!response.ok) throw new Error("Review failed (" + response.status + ")");
-      if (type === "approved") {
-        window.location.href = "/entities/${entity.id}/history"
-      } else {
-        window.location.href = "/changes"
-      }
-    }).catch(error => alert(error.message));
-};
-
-// When the user approves a change
-document.getElementById('approve').addEventListener('click', () => {
-    reviewVersion("approved")
-});
-
-// When the user rejects a change
-document.getElementById('reject').addEventListener('click', () => {
-    reviewVersion("rejected")
-});
-                    `,
-              }}
-            />
-          </>
+            <button title={t("entity.approveTooltip")} id="approve" type="button">
+              {t("entity.approve")}
+            </button>
+            <button title={t("entity.rejectTooltip")} id="reject" type="button">
+              {t("entity.reject")}
+            </button>
+          </div>
         )}
 
         {Object.keys(infoFields).length > 0 && (
@@ -399,7 +334,7 @@ document.getElementById('reject').addEventListener('click', () => {
 
         <div
           contenteditable={canEdit}
-          field="description"
+          data-edit-field={canEdit ? "description" : undefined}
           class="text-pretty [&>ul]:mt-2 whitespace-pre-wrap"
         >
           {entity.description}
@@ -413,7 +348,7 @@ const ALLOWED_EDIT_FIELDS = {
   set: ["pieces", "issued", "theme", "size", "brand_id"],
   brand: ["country", "website"],
   wiki: [],
-};
+} satisfies Record<EntityType, EntityEditField[]>;
 
 const lockEntity = async (db: typeof sql, entityId: string) => {
   const [entity] = await db<{ head_version_id: number | null }[]>`
@@ -438,7 +373,7 @@ export const handleEntityPageSubmit = async (c: DefaultContext) => {
     return c.body("Bad Request", 400);
   }
   const { changeMessage, description, baseVersionId, ...data } =
-    parsed as Record<string, unknown>;
+    parsed as Partial<Record<keyof EditEntityRequest, unknown>>;
   if (
     typeof changeMessage !== "string" ||
     changeMessage.trim().length === 0 ||
@@ -577,7 +512,8 @@ export const handleEntityVersionPatch = async (c: DefaultContext) => {
   } catch {
     return c.body("Bad Request", 400);
   }
-  const { reviewMessage, type } = (parsed ?? {}) as Record<string, unknown>;
+  const { reviewMessage, type } =
+    (parsed ?? {}) as Partial<Record<keyof ReviewVersionRequest, unknown>>;
   if (
     typeof reviewMessage !== "string" ||
     reviewMessage.trim().length === 0 ||

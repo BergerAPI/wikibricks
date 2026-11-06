@@ -21,3 +21,19 @@ export type CreateEntityResponse = {
 };
 
 export type UploadImageResponse = { id: number };
+
+export const entityEditFields = [
+  "pieces", "issued", "theme", "size", "brand_id", "country", "website", "description",
+] as const;
+
+export type EntityEditField = (typeof entityEditFields)[number];
+
+export type EditEntityRequest = Partial<Pick<CreateEntityRequest, EntityEditField>> & {
+  baseVersionId?: number;
+  changeMessage: string;
+};
+
+export type ReviewVersionRequest = {
+  type: "approved" | "rejected";
+  reviewMessage: string;
+};

@@ -54,4 +54,7 @@ const createAsset = (name: string, extension: "css" | "js"): {
 export const stylesheet = createAsset("styles", "css");
 export const browserScripts = {
   "new-entity": createAsset("new-entity", "js"),
+  "edit-entity": createAsset("edit-entity", "js"),
+  "review-entity": createAsset("review-entity", "js"),
+  "delete-image": createAsset("delete-image", "js"),
 };

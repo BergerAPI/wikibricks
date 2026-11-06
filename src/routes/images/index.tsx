@@ -5,109 +5,10 @@ import {
   MAX_IMAGE_FILE_BYTES,
 } from "../../services/image-storage";
 import { Layout } from "../../layout";
-import { TranslationFunctions, useTranslation } from "../../translation";
+import { useTranslation } from "../../translation";
 import { PermissionLevel, type DefaultContext } from "../../utils";
 import { bodyLimit } from "hono/body-limit";
 import type { UploadImageResponse } from "../../shared/contracts";
-
-const UPLOAD_SCRIPT = (t: TranslationFunctions["t"]) => {
-  const uploading = JSON.stringify(t("images.uploading"));
-  const noFile = JSON.stringify(t("images.noFileSelected"));
-  const tooLarge = JSON.stringify(t("images.fileTooLarge"));
-  const failed = JSON.stringify(t("images.uploadFailed"));
-  const successPrefix = JSON.stringify(t("images.uploadSuccess"));
-  const viewLabel = JSON.stringify(t("images.viewImage"));
-  const previewLabel = JSON.stringify(t("images.preview"));
-  return `
-document.getElementById('upload-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const errorDiv = document.getElementById('error');
-    const successDiv = document.getElementById('success');
-    const submitButton = e.target.querySelector('button[type="submit"]');
-
-    // Clear previous messages
-    errorDiv.textContent = '';
-    successDiv.textContent = '';
-
-    // Disable submit button
-    submitButton.disabled = true;
-    submitButton.textContent = ${uploading};
-
-    try {
-        const formData = new FormData(e.target);
-        const imageFile = formData.get('image');
-
-        // Client-side validation
-        if (!imageFile || imageFile.size === 0) {
-            throw new Error(${noFile});
-        }
-
-        if (imageFile.size > 10 * 1024 * 1024) {
-            throw new Error(${tooLarge});
-        }
-
-        const response = await fetch('/images/upload', {
-            method: 'POST',
-            body: formData
-        });
-
-        if (!response.ok) {
-            throw new Error(${failed} + " (" + response.status + ")");
-        }
-
-        const result = await response.json();
-        successDiv.textContent = ${successPrefix} + result.id + '. ';
-        const link = document.createElement('a');
-        link.href = '/images/' + encodeURIComponent(result.id);
-        link.className = 'underline';
-        link.textContent = ${viewLabel};
-        successDiv.appendChild(link);
-        e.target.reset();
-
-    } catch (error) {
-        errorDiv.textContent = error.message;
-    } finally {
-        // Re-enable submit button
-        submitButton.disabled = false;
-        submitButton.textContent = ${JSON.stringify(t("images.uploadButton"))};
-    }
-});
-
-// Preview selected image
-document.querySelector('input[name="image"]').addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) {
-        // Remove any existing preview
-        const existingPreview = document.getElementById('image-preview');
-        if (existingPreview) existingPreview.remove();
-
-        // Create preview
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const preview = document.createElement('div');
-            preview.id = 'image-preview';
-            preview.className = 'mt-2 p-2 border rounded';
-            const label = document.createElement('p');
-            label.className = 'text-sm text-gray-600 mb-2';
-            label.textContent = ${previewLabel} + ':';
-            const img = document.createElement('img');
-            img.src = e.target.result;
-            img.alt = 'Preview';
-            img.className = 'max-w-xs max-h-48 rounded shadow';
-            const meta = document.createElement('p');
-            meta.className = 'text-xs text-gray-500 mt-1';
-            meta.textContent = file.name + ' (' + (file.size / 1024 / 1024).toFixed(2) + ' MB)';
-            preview.appendChild(label);
-            preview.appendChild(img);
-            preview.appendChild(meta);
-            e.target.closest('div').appendChild(preview);
-        };
-        reader.readAsDataURL(file);
-    }
-});
-            `;
-};
 
 export const limitImageUpload = bodyLimit({
   maxSize: MAX_IMAGE_FILE_BYTES + 64 * 1024,
@@ -280,7 +181,7 @@ export const handleImagePage = async (c: DefaultContext) => {
         user.permission_level >= PermissionLevel.MODERATOR);
 
     return c.render(
-      <Layout context={c} user={user}>
+      <Layout context={c} user={user} script={canDelete ? "delete-image" : undefined}>
         <main class="overflow-auto">
           <div class="flex justify-between items-center pb-2 mb-3 border-b">
             <h1 class="text-3xl font-serif">{image.original_filename}</h1>
@@ -293,7 +194,14 @@ export const handleImagePage = async (c: DefaultContext) => {
                 {t("images.viewFull")}
               </a>
               {canDelete && (
-                <button id="delete-btn" class="text-red-600 hover:underline">
+                <button
+                  type="button"
+                  class="text-red-600 hover:underline"
+                  data-delete-url={`/images/${image.id}`}
+                  data-delete-confirm={t("images.confirmDelete")}
+                  data-delete-success={t("images.deleteSuccess")}
+                  data-delete-failed={t("images.deleteFailed")}
+                >
                   {t("images.delete")}
                 </button>
               )}
@@ -383,33 +291,6 @@ export const handleImagePage = async (c: DefaultContext) => {
             </div>
           </div>
 
-          {canDelete && (
-            <script
-              dangerouslySetInnerHTML={{
-                __html: `
-document.getElementById('delete-btn').addEventListener('click', async () => {
-    if (!confirm(${JSON.stringify(t("images.confirmDelete"))})) return;
-
-    try {
-        const response = await fetch('/images/${image.id}', {
-            method: 'DELETE',
-            credentials: 'same-origin'
-        });
-
-        if (response.ok) {
-            alert(${JSON.stringify(t("images.deleteSuccess"))});
-            window.location.href = '/';
-        } else {
-            throw new Error('Request failed (' + response.status + ')');
-        }
-    } catch (error) {
-        alert(${JSON.stringify(t("images.deleteFailed"))} + ': ' + error.message);
-    }
-});
-                `,
-              }}
-            />
-          )}
         </main>
       </Layout>,
     );
