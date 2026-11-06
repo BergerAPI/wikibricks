@@ -4,7 +4,7 @@ import { Layout } from "../layout";
 import type { DefaultContext } from "../utils";
 
 const operator = {
-  name: "WikiBricks Beispielbetrieb",
+  name: "WikiBricks",
   street: "Musterstraße 1",
   city: "12345 Musterstadt",
   country: "Deutschland",
@@ -34,11 +34,6 @@ function renderLegalPage(c: DefaultContext, title: string, content: Child) {
     <Layout context={c} user={c.get("user")} title={`${title} | WikiBricks`}>
       <main lang="de" class="mx-auto w-full max-w-3xl space-y-6">
         <h1 class="border-b pb-2 font-serif text-3xl">{title}</h1>
-        <p class="border border-amber-300 bg-amber-50 p-3 text-sm">
-          <strong>Beispielentwurf.</strong> Die Betreiberangaben sind fiktiv.
-          Vor der Veröffentlichung müssen die Angaben ersetzt und die Texte
-          mit dem tatsächlichen Betrieb abgeglichen werden.
-        </p>
         {content}
       </main>
     </Layout>,
@@ -49,19 +44,6 @@ export const handleImprintPage = (c: DefaultContext) =>
   renderLegalPage(c, "Impressum", <>
     <Section heading="Anbieter und Kontakt">
       <OperatorAddress />
-    </Section>
-    <Section heading="Angaben für die Veröffentlichung">
-      <p>
-        Hier sind der tatsächliche Name, die ladungsfähige Anschrift und die
-        Kontaktdaten des Anbieters einzutragen. Je nach Betreiber können
-        weitere Angaben erforderlich sein, etwa Rechtsform, Vertretung,
-        Register und Registernummer, Umsatzsteuer-Identifikationsnummer oder
-        Aufsichtsbehörde.
-      </p>
-      <p>
-        Für journalistisch-redaktionelle Angebote ist gegebenenfalls die
-        verantwortliche Person gesondert anzugeben.
-      </p>
       <p>
         Hinweise zum Umgang mit personenbezogenen Daten stehen unter{" "}
         <a href="/datenschutz">Datenschutz</a>.
@@ -85,13 +67,11 @@ export const handlePrivacyPage = (c: DefaultContext) =>
         und dem Schutz vor Missbrauch.
       </p>
       <p>
-        Als Rechtsgrundlage für Bereitstellung und Sicherheit kommt im
-        Beispiel Art. 6 Abs. 1 Buchst. f DSGVO in Betracht. Das berechtigte
+        Als Rechtsgrundlage für Bereitstellung und Sicherheit kommt
+        Art. 6 Abs. 1 Buchst. f DSGVO in Betracht. Das berechtigte
         Interesse besteht im sicheren und zuverlässigen Betrieb. Je nach
         Cloudflare-Einstellungen können Verarbeitungen außerhalb des EWR
-        stattfinden. Der Serverstandort, die eingesetzten Funktionen, die
-        konkreten Empfänger und gegebenenfalls die Garantien für
-        Drittlandübermittlungen sind vor Veröffentlichung zu ergänzen.
+        stattfinden.
       </p>
       <p>
         <a href="https://www.hetzner.com/legal/privacy-policy/">Datenschutzhinweise von Hetzner</a>
@@ -99,11 +79,7 @@ export const handlePrivacyPage = (c: DefaultContext) =>
         <a href="https://www.cloudflare.com/privacypolicy/">Datenschutzhinweise von Cloudflare</a>
       </p>
       <p>
-        Nach der aktuellen Betreiberangabe werden Protokolle unbefristet
-        gespeichert. Vor Veröffentlichung sind die betroffenen Protokolle,
-        ihre konkreten Zwecke und zweckbezogene Löschfristen festzulegen.
-        Für personenbezogene Protokolle gilt die Speicherbegrenzung nach
-        Art. 5 Abs. 1 Buchst. e DSGVO.
+        Protokolle werden derzeit unbefristet gespeichert.
       </p>
     </Section>
 
@@ -118,10 +94,8 @@ export const handlePrivacyPage = (c: DefaultContext) =>
       <p>
         Diese Verarbeitung dient der Bereitstellung des Kontos, der
         Veröffentlichung und der Nachvollziehbarkeit von Beiträgen. Für
-        beantragte Kontofunktionen kommt im Beispiel Art. 6 Abs. 1 Buchst. b
-        DSGVO in Betracht. Die Speicherfristen für Konten, Beiträge,
-        Versionshistorien und Sicherungskopien sind vor Veröffentlichung zu
-        ergänzen.
+        beantragte Kontofunktionen kommt Art. 6 Abs. 1 Buchst. b
+        DSGVO in Betracht.
       </p>
     </Section>
 
@@ -141,9 +115,7 @@ export const handlePrivacyPage = (c: DefaultContext) =>
       </ul>
       <p>
         Die Cookies dienen den gewählten Funktionen. Für das Speichern und
-        Auslesen kommt insoweit § 25 Abs. 2 Nr. 2 TDDDG in Betracht. Ob
-        Cloudflare je nach Konfiguration weitere Cookies setzt, ist vor
-        Veröffentlichung anhand der aktiven Funktionen zu prüfen.
+        Auslesen kommt insoweit § 25 Abs. 2 Nr. 2 TDDDG in Betracht.
       </p>
     </Section>
 
@@ -161,9 +133,7 @@ export const handlePrivacyPage = (c: DefaultContext) =>
     <Section heading="Geplante Reichweitenmessung">
       <p>
         Eine spätere Reichweitenmessung mit Umami ohne Analyse-Cookies ist
-        geplant. Umami ist derzeit in WikiBricks nicht eingebunden. Vor
-        Aktivierung sind Betriebsart, Datenkategorien, Rechtsgrundlage,
-        Empfänger und Speicherfrist in dieser Erklärung zu ergänzen.
+        geplant. Umami ist derzeit in WikiBricks nicht eingebunden.
       </p>
     </Section>
 
@@ -206,11 +176,9 @@ export const handleTermsPage = (c: DefaultContext) =>
 
     <Section heading="Lizenz und Weiterverwendung">
       <p>
-        Dieser Beispielentwurf sieht für eigene veröffentlichte Beiträge die
-        Lizenz <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.de">CC BY-SA 4.0</a> vor,
-        soweit am Inhalt keine andere Lizenz angegeben ist. Bestätigen Sie
-        die Lizenzfassung vor Veröffentlichung dieser Bedingungen. Beachten
-        Sie bei der Weiterverwendung die Lizenz- und Rechtehinweise am
+        WikiBricks stellt Inhalte unter CC BY-SA bereit, sofern am Inhalt
+        keine andere Lizenz angegeben ist. Beachten Sie bei der
+        Weiterverwendung die Lizenzfassung und die Rechtehinweise zum
         jeweiligen Inhalt.
       </p>
     </Section>

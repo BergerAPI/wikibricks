@@ -76,6 +76,17 @@ empty, and asset continuity applies to releases that publish their files to it.
 
 ## Configuration
 
+### Legal pages
+
+The German legal pages use placeholder operator details and send a `noindex`
+header. Before publishing, replace the details in `src/routes/legal.tsx` and
+verify the applicable imprint disclosures and content license. Confirm the
+hosting location, Cloudflare features and cookies, data transfers and
+safeguards, and the legal bases and retention periods for accounts,
+contributions, logs, and backups. Set purpose-based deletion periods for
+logs containing personal data. Update the privacy page before enabling
+Umami. Remove the `noindex` header when the pages are ready for indexing.
+
 ### Environment Variables
 
 Create `/opt/wikibricks/.env` with:
