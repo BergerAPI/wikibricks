@@ -108,9 +108,12 @@ export const Layout = ({
           </div>
           <footer class="py-4 mt-12 border-t">
             <div class="container mx-auto text-center text-sm text-gray-600">
-              <p>
-                {t("footer.content")} {t("footer.termsPrivacy")}
-              </p>
+              <p>{t("footer.content")}</p>
+              <nav aria-label={t("footer.legal")} class="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1">
+                <a href="/datenschutz">{t("footer.privacy")}</a>
+                <a href="/impressum">{t("footer.imprint")}</a>
+                <a href="/nutzungsbedingungen">{t("footer.terms")}</a>
+              </nav>
               <div class="mt-2">
                 <LanguageSwitcher context={context} />
               </div>

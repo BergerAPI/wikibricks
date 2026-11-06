@@ -22,6 +22,7 @@ import {
 } from "./routes/entities";
 import { handleEntityHistoryPage } from "./routes/entities/history";
 import { handleUserPage } from "./routes/users";
+import { handleImprintPage, handlePrivacyPage, handleTermsPage } from "./routes/legal";
 import { handleError, handleNotFound } from "./error";
 import {
   handleNewEntityPage,
@@ -55,6 +56,9 @@ import {
   app.use(attemptAuthentication);
 
   app.get("/", handleRootPage);
+  app.get("/datenschutz", handlePrivacyPage);
+  app.get("/impressum", handleImprintPage);
+  app.get("/nutzungsbedingungen", handleTermsPage);
 
   // Auth routes
   app.get("/login", handleLoginPage);

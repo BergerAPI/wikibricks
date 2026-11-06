@@ -109,7 +109,10 @@ export interface Translations {
 
   // Footer
   "footer.content": string;
-  "footer.termsPrivacy": string;
+  "footer.legal": string;
+  "footer.privacy": string;
+  "footer.imprint": string;
+  "footer.terms": string;
   "footer.version": string;
 
   // Entity History
@@ -303,7 +306,10 @@ const translations: Record<Language, Translations> = {
     // Footer
     "footer.content":
       "Content is available under CC BY-SA unless otherwise noted.",
-    "footer.termsPrivacy": "Terms of Use | Privacy Policy",
+    "footer.legal": "Legal information",
+    "footer.privacy": "Privacy Policy",
+    "footer.imprint": "Legal Notice",
+    "footer.terms": "Terms of Use",
     "footer.version": "Version",
 
     // Entity History
@@ -505,7 +511,10 @@ const translations: Record<Language, Translations> = {
     // Footer
     "footer.content":
       "Inhalt ist unter CC BY-SA verfügbar, sofern nicht anders vermerkt.",
-    "footer.termsPrivacy": "Nutzungsbedingungen | Datenschutzrichtlinie",
+    "footer.legal": "Rechtliche Informationen",
+    "footer.privacy": "Datenschutz",
+    "footer.imprint": "Impressum",
+    "footer.terms": "Nutzungsbedingungen",
     "footer.version": "Version",
 
     // Entity History
