@@ -1,7 +1,7 @@
-import { ReactElement } from "hono/jsx";
-import { getInfoFields, type EntityAttributes } from ".";
+import { getInfoFields } from ".";
 import { categories, Category } from "../../categories";
-import { sql, type EntityType } from "../../database";
+import { sql } from "../../database";
+import type { CreateEntityRequest, CreateEntityResponse } from "../../shared/contracts";
 import { Layout } from "../../layout";
 import { useTranslation } from "../../translation";
 import type { DefaultContext } from "../../utils";
@@ -62,14 +62,15 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
     `;
 
   return c.render(
-    <Layout context={c} user={user}>
-      <main>
+    <Layout context={c} user={user} script="new-entity">
+      <main data-create-url="/entities/new" data-upload-url="/images/upload">
         <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
           {t("entities.addNew")}
         </h1>
 
         <div
           id="error"
+          role="alert"
           class="empty:hidden mb-3 p-3 border border-red-500 bg-red-100 text-red-700"
         ></div>
 
@@ -78,8 +79,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
             <span class="font-semibold">{t("entities.entityTypeLabel")}</span>
             <select
               class="mt-1 block w-full"
-              field="entity_type"
-              name="brand_id"
+              name="entity_type"
               value="set"
               id="entity_type"
             >
@@ -96,7 +96,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
             <span class="font-semibold">{t("entities.nameLabel")}</span>
             <input
               id="name"
-              field="name"
+              name="name"
               value=""
               class="border p-2 rounded w-full"
             />
@@ -105,7 +105,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
           <label class="block mb-3">
             <span class="font-semibold">{t("entities.descriptionLabel")}</span>
             <textarea
-              field="description"
+              name="description"
               id="description"
               value=""
               class="border p-2 rounded w-full"
@@ -120,11 +120,6 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
               id="image_file"
               class="border p-2 rounded w-full"
             />
-            <input type="hidden" field="image_url" id="image_url" value="" />
-            <div
-              id="image_upload_progress"
-              class="mt-2 text-sm text-gray-600 hidden"
-            ></div>
           </label>
 
           {/* Tab contents */}
@@ -157,7 +152,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
 
                         <select
                           id={key}
-                          field={key}
+                          name={key}
                           class="border p-2 rounded w-full"
                         >
                           <option value="">{t("entities.selectBrand")}</option>
@@ -178,7 +173,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
 
                         <select
                           id={key}
-                          field={key}
+                          name={key}
                           class="border p-2 rounded w-full"
                         >
                           <option value="">{t("entities.selectTheme")}</option>
@@ -194,7 +189,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
 
                       <input
                         id={key}
-                        field={key}
+                        name={key}
                         type={inputType}
                         value={""}
                         class="border p-2 rounded w-full"
@@ -206,101 +201,9 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
             </div>
           ))}
 
-          <button id="submit_button">{t("action.submit")}</button>
+          <button id="submit_button" type="button">{t("action.submit")}</button>
         </div>
 
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-document.addEventListener("DOMContentLoaded", () => {
-  const fileInput = document.getElementById("image_file");
-  const submitButton = document.getElementById("submit_button");
-  const errorEl = document.getElementById("error");
-  const entityTypeSelect = document.getElementById("entity_type");
-
-  let imageId = null;
-  let isSubmitting = false;
-
-  const setError = (msg) => { if (errorEl) errorEl.textContent = msg; };
-
-  fileInput?.addEventListener("change", () => { imageId = null; });
-
-  async function uploadImage(file) {
-    if (!file) throw new Error("No file selected.");
-    const form = new FormData();
-    form.append("file", file);
-
-    const res = await fetch("/images/upload", { method: "POST", body: form });
-    if (!res.ok) throw new Error("Upload failed ("+res.status+")");
-
-    const data = await res.json();
-    if (!data.id) throw new Error("Invalid upload response.");
-    imageId = data.id;
-    return imageId;
-  }
-
-  function collectFields() {
-    const result = {};
-    document.querySelectorAll("[field]").forEach((el) => {
-      if (el.offsetParent === null) return;
-      const key = el.getAttribute("field");
-      let value = el.type === "checkbox" ? el.checked : el.value;
-      if (["brand_id", "pieces"].includes(key)) {
-        const num = parseInt(value, 10);
-        if (!isNaN(num)) value = num;
-      }
-      result[key] = value;
-    });
-    return result;
-  }
-
-  async function submitEntity(data) {
-    const res = await fetch("/entities/new", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-
-    if (!res.ok) throw new Error("There was an error ("+res.status+")");
-    const json = await res.json();
-    if (json.entity_id) {
-      window.location.href = "/entities/"+json.entity_id+"?version="+json.id;
-    } else {
-      throw new Error("Unexpected response from server.");
-    }
-  }
-
-  submitButton?.addEventListener("click", async (e) => {
-    e.preventDefault();
-    if (isSubmitting) return;
-
-    isSubmitting = true;
-    submitButton.disabled = true;
-    if (fileInput) fileInput.disabled = true;
-    setError("");
-
-    try {
-      const file = fileInput?.files?.[0];
-      if (file && !imageId) await uploadImage(file);
-      const fields = collectFields();
-      await submitEntity({ ...fields, image_id: imageId });
-    } catch (err) {
-      setError(err.message || "Network error. Please try again.");
-    } finally {
-      isSubmitting = false;
-      submitButton.disabled = false;
-      if (fileInput) fileInput.disabled = false;
-    }
-  });
-
-  entityTypeSelect?.addEventListener("change", () => {
-    document.querySelectorAll(".tab-content").forEach((el) => el.classList.add("hidden"));
-    document.getElementById("tab-" + entityTypeSelect.value)?.classList.remove("hidden");
-  });
-});
-                    `,
-          }}
-        />
       </main>
     </Layout>,
   );
@@ -320,7 +223,7 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
     return c.body("Bad Request", 400);
   }
   const { name, description, entity_type, image_id, ...data } =
-    body as Record<string, unknown>;
+    body as Partial<Record<keyof CreateEntityRequest, unknown>>;
 
   if (
     typeof name !== "string" ||
@@ -345,7 +248,7 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
     set: ["pieces", "issued", "theme", "size", "brand_id", "manufacturer_id"],
     brand: ["country", "website"],
     wiki: [],
-  };
+  } as const;
   const allowed = allowedByType[entity_type];
   const cleanData: Record<string, unknown> = {};
   for (const key of allowed) {
@@ -405,9 +308,7 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
         if (!image) return null;
       }
 
-      const [{ id, entity_id }] = await sql<
-        { id: number; entity_id: number }[]
-      >`
+      const [{ id, entity_id }] = await sql<CreateEntityResponse[]>`
             WITH new_entity AS (
                 INSERT INTO entities (name, type)
                 VALUES (${name.trim()}, ${entity_type})

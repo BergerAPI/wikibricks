@@ -1,4 +1,6 @@
 import postgres from "postgres";
+import type { EntityType } from "./shared/contracts";
+export type { EntityType } from "./shared/contracts";
 
 /**
  * A column in the user table
@@ -84,7 +86,6 @@ export type Image = {
  */
 export type DataEntityType = "set" | "brand";
 export type RawEntityType = "wiki";
-export type EntityType = DataEntityType | RawEntityType;
 
 /**
  * Conjuction of all possible views for each entity type

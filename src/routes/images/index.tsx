@@ -8,6 +8,7 @@ import { Layout } from "../../layout";
 import { TranslationFunctions, useTranslation } from "../../translation";
 import { PermissionLevel, type DefaultContext } from "../../utils";
 import { bodyLimit } from "hono/body-limit";
+import type { UploadImageResponse } from "../../shared/contracts";
 
 const UPLOAD_SCRIPT = (t: TranslationFunctions["t"]) => {
   const uploading = JSON.stringify(t("images.uploading"));
@@ -149,7 +150,7 @@ export const handleImageUpload = async (c: DefaultContext) => {
       permissionLevel: user.permission_level,
     });
 
-    return c.json(image);
+    return c.json(image satisfies UploadImageResponse);
   } catch (error) {
     if (error instanceof ImageUploadError) {
       return c.text(error.message, error.status);
