@@ -5,14 +5,14 @@
     "node": ">=20.9.0"
   },
   "scripts": {
-    "build": "tsc && tsc -p tsconfig.client.json && npm run build:css && npm run build:client -- --minify",
+    "build": "tsc && tsc -p src/client/tsconfig.json && npm run build:css && npm run build:client -- --minify",
     "build:css": "tailwindcss -i ./global.css -o ./dist/public/styles.css --minify",
     "build:client": "esbuild src/client/pages/*.ts --bundle --platform=browser --format=esm --target=es2021 --outdir=dist/public",
     "dev": "npm run build:css && npm run build:client -- --sourcemap=inline && tsx watch src/index.ts",
     "dev:css": "tailwindcss -i ./global.css -o ./dist/public/styles.css --watch",
     "start": "node dist/index.js",
     "dev:client": "npm run build:client -- --sourcemap=inline --watch",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.client.json"
+    "typecheck": "tsc --noEmit && tsc -p src/client/tsconfig.json"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.929.0",
