@@ -3,7 +3,6 @@ import { getInfoFields, type EntityAttributes } from ".";
 import { categories, Category } from "../../categories";
 import { sql, type EntityType } from "../../database";
 import { Layout } from "../../layout";
-import { deleteImage } from "../../services/image-storage";
 import { useTranslation } from "../../translation";
 import type { DefaultContext } from "../../utils";
 import { JSX } from "hono/jsx/jsx-runtime";
@@ -50,7 +49,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
   const user = c.get("user");
   const { t } = useTranslation(c);
 
-  if (user === undefined) return c.redirect("/login?redirect=/entities/new");
+  if (!user) return c.redirect("/login?redirect=/entities/new");
 
   const infoFields = getInfoFields(t);
 
@@ -219,10 +218,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const errorEl = document.getElementById("error");
   const entityTypeSelect = document.getElementById("entity_type");
 
-  let imageId = "";
+  let imageId = null;
   let isSubmitting = false;
 
   const setError = (msg) => { if (errorEl) errorEl.textContent = msg; };
+
+  fileInput?.addEventListener("change", () => { imageId = null; });
 
   async function uploadImage(file) {
     if (!file) throw new Error("No file selected.");
@@ -275,6 +276,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     isSubmitting = true;
     submitButton.disabled = true;
+    if (fileInput) fileInput.disabled = true;
     setError("");
 
     try {
@@ -283,11 +285,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const fields = collectFields();
       await submitEntity({ ...fields, image_id: imageId });
     } catch (err) {
-      imageId = null;
       setError(err.message || "Network error. Please try again.");
     } finally {
       isSubmitting = false;
       submitButton.disabled = false;
+      if (fileInput) fileInput.disabled = false;
     }
   });
 
@@ -306,53 +308,45 @@ document.addEventListener("DOMContentLoaded", () => {
 
 export const handleNewEntitySubmit = async (c: DefaultContext) => {
   const user = c.get("user");
-  const { t } = useTranslation(c);
+  if (!user) return c.body("Unauthorized", 401);
 
-  const infoFields = getInfoFields(t);
-
-  let body: Record<string, unknown>;
+  let body: unknown;
   try {
-    body = (await c.req.json()) as Record<string, unknown>;
+    body = await c.req.json();
   } catch {
     return c.body("Bad Request", 400);
   }
-  const { name, description, entity_type, image_id, ...data } = body;
-
-  if (!user) {
-    if (image_id) await deleteImage(image_id as string).catch(() => {});
-    return c.body("Unauthorized", 401);
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return c.body("Bad Request", 400);
   }
-
-  const fail = (msg: string) => {
-    if (image_id) deleteImage(image_id as string).catch(() => {});
-    return c.body(msg, 400);
-  };
+  const { name, description, entity_type, image_id, ...data } =
+    body as Record<string, unknown>;
 
   if (
     typeof name !== "string" ||
     typeof description !== "string" ||
-    typeof entity_type !== "string" ||
     name.trim().length < 3 ||
     name.trim().length > 255 ||
     description.trim().length < 3 ||
     description.length > 20000
   ) {
-    return fail(
+    return c.body(
       "Name and description are required and need to be at least 3 characters long.",
+      400,
     );
   }
 
   // Checking whether the necessary fields of the specific entity type have been supplied
-  const typeInfo = infoFields[entity_type as keyof typeof infoFields];
-
-  if (!typeInfo) return fail("Bad Request");
-
-  const allowedByType: Record<string, string[]> = {
+  if (entity_type !== "set" && entity_type !== "brand" && entity_type !== "wiki") {
+    return c.body("Bad Request", 400);
+  }
+  const typeInfo = getInfoFields(useTranslation(c).t)[entity_type];
+  const allowedByType = {
     set: ["pieces", "issued", "theme", "size", "brand_id", "manufacturer_id"],
     brand: ["country", "website"],
     wiki: [],
   };
-  const allowed = allowedByType[entity_type] ?? [];
+  const allowed = allowedByType[entity_type];
   const cleanData: Record<string, unknown> = {};
   for (const key of allowed) {
     if (data[key] !== undefined && String(data[key]).length > 0) {
@@ -364,13 +358,15 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
   if ("pieces" in cleanData) {
     const n = Number(cleanData.pieces);
     if (!Number.isInteger(n) || n < 0 || n > 1000000) {
-      return fail("Validation failed for pieces");
+      return c.body("Validation failed for pieces", 400);
     }
     cleanData.pieces = n;
   }
   if ("brand_id" in cleanData) {
     const n = Number(cleanData.brand_id);
-    if (!Number.isInteger(n) || n <= 0) return fail("Validation failed for brand_id");
+    if (!Number.isInteger(n) || n <= 0) {
+      return c.body("Validation failed for brand_id", 400);
+    }
     cleanData.brand_id = n;
   }
 
@@ -384,17 +380,31 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
     )
       continue;
 
-    return fail("Validation failed for " + fieldKey);
+    return c.body("Validation failed for " + fieldKey, 400);
   }
 
-  const cleanImageId =
-    typeof image_id === "string" && image_id.length > 0 && image_id.length < 64
-      ? image_id
-      : null;
+  let cleanImageId: number | null = null;
+  if (image_id != null && image_id !== "") {
+    const id = typeof image_id === "string" && /^\d+$/.test(image_id)
+      ? Number(image_id)
+      : image_id;
+    if (typeof id !== "number" || !Number.isInteger(id) || id < 1 || id > 2147483647) {
+      return c.body("Invalid image ID", 400);
+    }
+    cleanImageId = id;
+  }
 
   try {
     // Every created set by a user will be handles by a change and needs to be accepted by a moderator
     const version = await sql.begin(async (sql) => {
+      if (cleanImageId !== null) {
+        const [image] = await sql<{ id: number }[]>`
+          SELECT id FROM images WHERE id = ${cleanImageId} AND uploaded_by = ${user.id}
+          FOR KEY SHARE
+        `;
+        if (!image) return null;
+      }
+
       const [{ id, entity_id }] = await sql<
         { id: number; entity_id: number }[]
       >`
@@ -443,9 +453,9 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
       return { id, entity_id };
     });
 
+    if (!version) return c.body("Image is unavailable", 400);
     return c.json(version);
   } catch (error) {
-    if (cleanImageId) await deleteImage(cleanImageId).catch(() => {});
     console.error(error);
     return c.body("Something went wrong.", 500);
   }
