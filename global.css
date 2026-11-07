@@ -37,7 +37,8 @@ select {
     background-size: 1.5em 1.5em;
     background-repeat: no-repeat;
 
-    @apply border rounded-none p-1 bg-white appearance-none;
+    /* The right padding keeps the text clear of the arrow */
+    @apply border rounded-none p-1 pr-8 bg-white appearance-none;
 }
 
 ol,
