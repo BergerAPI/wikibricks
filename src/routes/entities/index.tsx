@@ -4,6 +4,7 @@ import { sql, type EntityView, type Image, type Queryable } from "../../database
 import {
   displayField,
   entityDefinitions,
+  isEntityType,
   loadFieldOptions,
   loadReferenceNames,
   parseFields,
@@ -12,11 +13,7 @@ import {
 } from "../../entity-types";
 import { Layout } from "../../layout";
 import { removeImageFile } from "../../services/image-storage";
-import {
-  isEntityType,
-  type EditEntityRequest,
-  type ReviewVersionRequest,
-} from "../../shared/contracts";
+import type { EditEntityRequest, ReviewVersionRequest } from "../../shared/contracts";
 import { useTranslation, type TranslationFunctions } from "../../translation";
 import { isModerator, parseId, readJson, routeParam, type DefaultContext } from "../../utils";
 
@@ -105,8 +102,13 @@ export const handleEntityPage = async (c: DefaultContext) => {
   const entity = await getEntity(entityId, versionId);
   if (!entity) return c.notFound();
 
+  // Like in the history, unreviewed and rejected versions are only for moderators and their author
+  if (entity.review_status !== "approved" && !isModerator(user) && entity.created_by !== user?.id)
+    return c.notFound();
+
   const isProposal = entity.review_status === "pending";
-  const canEdit = !!user && c.req.query("edit") !== undefined && !isProposal;
+  // Edits always start from the current version, otherwise saving fails with a conflict
+  const canEdit = !!user && c.req.query("edit") !== undefined && !versionId;
   const canReview = isProposal && isModerator(user);
   const entityUrl = `/entities/${entity.id}`;
 
@@ -219,12 +221,12 @@ export const handleEntityPageSubmit = async (c: DefaultContext) => {
     if (!entity) return c.notFound();
 
     const definition = entityDefinitions[entity.type];
-    const parsed = await parseFields(definition, fields, false, tx);
+    const parsed = await parseFields(definition, fields, "edit", tx);
     if ("error" in parsed) return c.body(parsed.error, 400);
 
     const nextDescription = description ?? entity.description;
     const changed = Object.entries(parsed.values).some(
-      ([key, value]) => String(value) !== String(entity[key] ?? ""),
+      ([key, value]) => String(value ?? "") !== String(entity[key] ?? ""),
     );
     if (!changed && nextDescription === entity.description) return c.body("Bad Request", 400);
 

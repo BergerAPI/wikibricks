@@ -33,3 +33,6 @@ dist
 
 # uploads
 uploads/
+
+# local database (npm run db)
+.pglite/

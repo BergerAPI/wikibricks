@@ -4,7 +4,6 @@ import { Hono } from "hono";
 import { compress } from "hono/compress";
 import { secureHeaders } from "hono/secure-headers";
 import { handleAsset, handlePublicFile } from "./assets";
-import { initDatabase } from "./database";
 import { handleError, handleNotFound } from "./error";
 import { detectLanguage, handleLanguagePreference } from "./language";
 import {
@@ -34,6 +33,7 @@ import {
 import { handleImprintPage, handlePrivacyPage, handleTermsPage } from "./routes/legal";
 import { handleRootPage } from "./routes/root";
 import { handleUserPage } from "./routes/users";
+import { initDatabase } from "./schema";
 import { attemptAuthentication, type Variables } from "./utils";
 
 const app = new Hono<{ Variables: Variables }>();

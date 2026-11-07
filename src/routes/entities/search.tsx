@@ -1,7 +1,7 @@
 import { Table, TableHead } from "../../components/table";
 import { sql } from "../../database";
 import { Layout } from "../../layout";
-import { entityTypes, isEntityType, type EntityType } from "../../shared/contracts";
+import { entityTypes, isEntityType, type EntityType } from "../../entity-types";
 import { useTranslation } from "../../translation";
 import { isModerator, type DefaultContext } from "../../utils";
 

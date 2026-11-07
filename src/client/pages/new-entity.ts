@@ -2,7 +2,6 @@ import type {
   CreateEntityRequest,
   CreateEntityResponse,
   EntityFieldValues,
-  EntityType,
   UploadImageResponse,
 } from "../../shared/contracts";
 
@@ -31,7 +30,7 @@ function setupCreation(page: HTMLElement) {
     page.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[name="${name}"]`)?.value ?? "";
 
   function collectRequest(): CreateEntityRequest {
-    const entityType = typeSelect!.value as EntityType;
+    const entityType = typeSelect!.value;
 
     // Every input in the tab of the selected type is one of its fields
     const fields: EntityFieldValues = {};

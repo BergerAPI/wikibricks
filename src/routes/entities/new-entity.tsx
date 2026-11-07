@@ -2,15 +2,12 @@ import { EntityFieldInput } from "../../components/entity-field";
 import { sql } from "../../database";
 import {
   entityDefinitions,
+  entityTypes,
+  isEntityType,
   loadFieldOptions,
   parseFields,
 } from "../../entity-types";
-import {
-  entityTypes,
-  isEntityType,
-  type CreateEntityRequest,
-  type CreateEntityResponse,
-} from "../../shared/contracts";
+import type { CreateEntityRequest, CreateEntityResponse } from "../../shared/contracts";
 import { Layout } from "../../layout";
 import { useTranslation } from "../../translation";
 import { parseId, readJson, type DefaultContext } from "../../utils";
@@ -134,24 +131,28 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
   if (!isEntityType(entity_type)) return c.body("Bad Request", 400);
   const definition = entityDefinitions[entity_type];
 
-  const parsed = await parseFields(definition, fields, true);
+  const parsed = await parseFields(definition, fields, "create");
   if ("error" in parsed) return c.body(parsed.error, 400);
 
   const imageId = image_id == null ? null : parseId(image_id);
   if (imageId === undefined) return c.body("Invalid image ID", 400);
 
   // New entities start out as a pending version that a moderator has to approve
-  const created = await sql.begin(async (tx) => {
+  return sql.begin(async (tx) => {
     if (imageId !== null) {
       const [image] = await tx`
         SELECT id FROM images WHERE id = ${imageId} AND uploaded_by = ${user.id} FOR KEY SHARE
       `;
-      if (!image) return;
+      if (!image) return c.body("Image is unavailable", 400);
     }
 
     const [entity] = await tx<{ id: number }[]>`
-      INSERT INTO entities (name, type) VALUES (${name}, ${entity_type}) RETURNING id
+      INSERT INTO entities (name, type) VALUES (${name}, ${entity_type})
+      ON CONFLICT (name) DO NOTHING
+      RETURNING id
     `;
+    if (!entity) return c.body("An entity with this name already exists", 409);
+
     const [version] = await tx<CreateEntityResponse[]>`
       INSERT INTO entity_versions ${tx({
         entity_id: entity.id,
@@ -167,9 +168,6 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
     if (definition.table)
       await tx`INSERT INTO ${tx(definition.table)} ${tx({ version_id: version.id, ...parsed.values })}`;
 
-    return version;
+    return c.json(version);
   });
-
-  if (!created) return c.body("Image is unavailable", 400);
-  return c.json(created);
 };

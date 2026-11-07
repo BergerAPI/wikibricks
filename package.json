@@ -11,6 +11,7 @@
     "dev:server": "tsx watch src/index.ts",
     "dev:client": "vite build --watch",
     "start": "node dist/index.js",
+    "db": "tsx scripts/dev-db.ts",
     "typecheck": "tsc --noEmit && tsc -p src/client/tsconfig.json"
   },
   "dependencies": {
@@ -24,6 +25,8 @@
     "sharp": "^0.35.5"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.15",
+    "@electric-sql/pglite-socket": "^0.2.18",
     "@tailwindcss/vite": "^4.3.4",
     "@types/node": "^26.6.6",
     "concurrently": "^10.0.6",

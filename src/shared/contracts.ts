@@ -1,20 +1,11 @@
 /**
- * All entity types. Adding a type here requires a matching definition in src/entity-types.ts.
- */
-export const entityTypes = ["set", "brand", "wiki"] as const;
-
-export type EntityType = (typeof entityTypes)[number];
-
-export const isEntityType = (value: unknown): value is EntityType =>
-  entityTypes.includes(value as EntityType);
-
-/**
  * Type-specific field values keyed by field name, as entered in the form.
  */
 export type EntityFieldValues = Record<string, string>;
 
 export type CreateEntityRequest = {
-  entity_type: EntityType;
+  // One of the entity types defined on the server
+  entity_type: string;
   name: string;
   description: string;
   image_id?: number | null;

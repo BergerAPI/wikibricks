@@ -1,22 +1,22 @@
 import { categories, type Category } from "./categories";
 import { sql, type EntityView, type Queryable } from "./database";
-import type { EntityType } from "./shared/contracts";
 import type { Translations } from "./translation";
 import { parseId } from "./utils";
 
 type TranslationKey = keyof Translations;
 
 /**
- * How a field is entered and displayed.
- * - text / number: a plain input showing the stored value
+ * How a field is entered, displayed and stored.
+ * - text: a plain input, stored as VARCHAR
+ * - number: a number input, stored as INTEGER
  * - category: a choice from a category tree, shown by the category name
- * - reference: the ID of another entity, shown as a link to that entity
+ * - reference: the ID of an entity of the given type, shown as a link to it
  */
 export type FieldInput =
   | { kind: "text" }
   | { kind: "number" }
   | { kind: "category"; tree: Category[]; placeholder: TranslationKey }
-  | { kind: "reference"; entityType: EntityType; placeholder: TranslationKey };
+  | { kind: "reference"; entityType: string; placeholder: TranslationKey };
 
 export type FieldDefinition = {
   label: TranslationKey;
@@ -31,15 +31,17 @@ export type FieldDefinition = {
 
 export type EntityTypeDefinition = {
   /**
-   * Table holding the type-specific columns of each version, keyed by version_id.
-   * Every type also needs the views <type>_view and <type>_versions_view.
+   * Table holding the fields of each version. Needed as soon as a type has fields.
+   * The table and the views <type>_view and <type>_versions_view are created from this definition.
    */
   table?: string;
-  /** Field names match the columns of the table and views */
   fields: Record<string, FieldDefinition>;
 };
 
-export const entityDefinitions: Record<EntityType, EntityTypeDefinition> = {
+/**
+ * All entity types. Adding one here, plus the translation of its name, is all it takes.
+ */
+const definitions = {
   set: {
     table: "sets",
     fields: {
@@ -89,7 +91,16 @@ export const entityDefinitions: Record<EntityType, EntityTypeDefinition> = {
     },
   },
   wiki: { fields: {} },
-};
+} satisfies Record<string, EntityTypeDefinition>;
+
+export type EntityType = keyof typeof definitions;
+
+export const entityDefinitions: Record<EntityType, EntityTypeDefinition> = definitions;
+
+export const entityTypes = Object.keys(definitions) as EntityType[];
+
+export const isEntityType = (value: unknown): value is EntityType =>
+  entityTypes.includes(value as EntityType);
 
 export const inputOf = (field: FieldDefinition): FieldInput =>
   field.input ?? { kind: "text" };
@@ -221,26 +232,29 @@ const isValid = async (field: FieldDefinition, value: string, db: Queryable) => 
 };
 
 /**
- * Validates submitted field values against a type definition.
- * Unknown and empty fields are dropped. With `requireAll`, every field must be supplied.
+ * Validates submitted field values against a type definition. Unknown fields are dropped.
+ * When creating, every field must be filled in. When editing, missing fields stay as they are
+ * and empty ones are cleared.
  */
 export const parseFields = async (
   definition: EntityTypeDefinition,
   submitted: unknown,
-  requireAll: boolean,
+  mode: "create" | "edit",
   db: Queryable = sql,
-): Promise<{ values: Record<string, string | number> } | { error: string }> => {
+): Promise<{ values: Record<string, string | number | null> } | { error: string }> => {
   const input = submitted ?? {};
   if (typeof input !== "object" || Array.isArray(input))
     return { error: "Bad Request" };
 
-  const values: Record<string, string | number> = {};
+  const values: Record<string, string | number | null> = {};
 
   for (const [key, field] of Object.entries(definition.fields)) {
     const value = (input as Record<string, unknown>)[key];
 
-    if (value === undefined || value === "") {
-      if (requireAll) return { error: `Validation failed for ${key}` };
+    if (mode === "create" && !value) return { error: `Validation failed for ${key}` };
+    if (value === undefined) continue;
+    if (value === "") {
+      values[key] = null;
       continue;
     }
 
