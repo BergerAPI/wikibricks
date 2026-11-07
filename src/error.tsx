@@ -1,26 +1,20 @@
-import type { User } from "./database";
 import { Layout } from "./layout";
-import type { DefaultContext } from "./utils";
 import { useTranslation } from "./translation";
+import type { DefaultContext } from "./utils";
 
-const ErrorPage = ({ context }: { context: DefaultContext }) => {
-  const { t } = useTranslation(context);
-
-  const statusCode = context.res.status || 500;
-  const title =
-    statusCode === 404
-      ? t("error.pageNotFound")
-      : t("error.somethingWentWrong");
-  const message =
-    statusCode === 404
-      ? t("error.pageNotFoundMessage")
-      : t("error.unexpectedErrorMessage");
+const ErrorPage = ({ c }: { c: DefaultContext }) => {
+  const { t } = useTranslation(c);
+  const notFound = c.res.status === 404;
 
   return (
-    <Layout context={context} user={context.get("user")}>
+    <Layout context={c} user={c.get("user")}>
       <main>
-        <h1 class="text-3xl font-serif pb-2 mb-3 border-b">Error: {title}</h1>
-        <p class="pb-2">{message}</p>
+        <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
+          Error: {t(notFound ? "error.pageNotFound" : "error.somethingWentWrong")}
+        </h1>
+        <p class="pb-2">
+          {t(notFound ? "error.pageNotFoundMessage" : "error.unexpectedErrorMessage")}
+        </p>
         <a href="/">{t("action.returnHome")}</a>
       </main>
     </Layout>
@@ -28,16 +22,16 @@ const ErrorPage = ({ context }: { context: DefaultContext }) => {
 };
 
 export const handleError = (err: Error, c: DefaultContext) => {
-  // TODO: Log error to a service like Sentry
-  if (c.res.status < 400) c.status(500);
-
   console.error(err);
 
-  return c.html(<ErrorPage context={c} />);
+  // Requests made by our scripts show the message in an alert, so they get plain text
+  if (c.req.method !== "GET") return c.text("Something went wrong", 500);
+
+  c.status(500);
+  return c.html(<ErrorPage c={c} />);
 };
 
 export const handleNotFound = (c: DefaultContext) => {
   c.status(404);
-
-  return c.html(<ErrorPage context={c} />);
+  return c.html(<ErrorPage c={c} />);
 };

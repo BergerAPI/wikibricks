@@ -1,5 +1,5 @@
 # Production Dockerfile with multi-stage build
-FROM node:22-alpine AS builder
+FROM node:26-alpine AS builder
 
 # Accept build argument for commit ID
 ARG COMMIT_ID=unknown
@@ -19,11 +19,11 @@ COPY . .
 # Set commit ID as an environment variable for the build process
 ENV COMMIT_ID=${COMMIT_ID}
 
-# Build TypeScript and CSS into dist
-RUN npm run build
+# Build the server and client into dist
+RUN npm run build && mkdir -p public
 
 # Production stage
-FROM node:22-alpine AS runner
+FROM node:26-alpine AS runner
 
 WORKDIR /app
 
@@ -40,6 +40,7 @@ ENV COMMIT_ID=${COMMIT_ID}
 
 # Copy compiled application and assets from builder stage
 COPY --from=builder /app/dist dist
+COPY --from=builder /app/public public
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
@@ -64,5 +65,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
 ENV NODE_ENV=production
 ENV UPLOAD_DIR=/app/data
 
-# Publish the image's assets before serving requests.
-CMD ["sh", "-c", "node dist/publish-assets.js && exec node dist/index.js"]
+# The app publishes its assets to ASSET_STORE_DIR on startup.
+CMD ["node", "dist/index.js"]

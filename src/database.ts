@@ -35,30 +35,6 @@ export type EntityVersion = {
 };
 
 /**
- * A column in the brands table
- */
-export type Brand = {
-  version_id: number;
-  country: string;
-  website: string;
-  created_at: Date;
-};
-
-/**
- * A column in the sets table
- */
-export type Set = {
-  version_id: number;
-  pieces: number;
-  issued: string;
-  theme: string;
-  size: string;
-  manufacturer_id: string;
-  brand_id: number;
-  created_at: Date;
-};
-
-/**
  * A column in the images table
  */
 export type Image = {
@@ -71,8 +47,6 @@ export type Image = {
   width: number;
   height: number;
   uploaded_by: number;
-  entity_id: number | null;
-  version_id: number | null;
   s3_bucket: string | null;
   s3_key: string | null;
   storage_type: "local" | "s3";
@@ -80,21 +54,6 @@ export type Image = {
   created_at: Date;
   updated_at: Date;
 };
-
-/**
- * Possible types of entities
- */
-export type DataEntityType = "set" | "brand";
-export type RawEntityType = "wiki";
-
-/**
- * Conjuction of all possible views for each entity type
- */
-export type EntityViewType<T extends EntityType> = T extends "set"
-  ? SetView
-  : T extends "brand"
-  ? BrandView
-  : WikiView;
 
 export type EntityVersionView = {
   id: string;
@@ -116,34 +75,17 @@ export type EntityVersionView = {
 };
 
 /**
- * A column returned by the set_view view which joins entities, entity_versions, and sets
+ * A row returned by a <type>_view or <type>_versions_view view.
+ * The type-specific columns are described by the fields in src/entity-types.ts.
  */
-export type SetView = {
-  type: "set";
-  pieces: number;
-  issued: string;
-  theme: string;
-  size: string;
-  manufacturer_id: string;
-  brand_id: string;
-} & EntityVersionView;
-
-/**
- * A column returned by the brand_view view which joins entities, entity_versions, and brands
- */
-export type BrandView = {
-  type: "brand";
-  country: string;
-  website: string;
-} & EntityVersionView;
-
-/**
- * A column returned by the wiki_view view which joins entities, entity_versions
- */
-export type WikiView = EntityVersionView & { type: "wiki" };
+export type EntityView = EntityVersionView & { [field: string]: unknown };
 
 // Database connection
-export const sql = postgres(process.env.DB_CONN ?? "");
+// `infer` keeps the v3 parameter typing for Dates, booleans, and arrays.
+export const sql = postgres(process.env.DB_CONN ?? "", { infer: true });
+
+// Either the pool or a transaction.
+export type Queryable = postgres.ISql;
 
 // Initialize database
 export const initDatabase = async () => {

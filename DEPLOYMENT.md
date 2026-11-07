@@ -53,26 +53,19 @@ sudo ./deploy.sh deploy
 
 ### Asset retention
 
-The build writes fingerprinted CSS and JavaScript, gzip copies, and a manifest
-to `dist/assets`. Before replacing the app, `deploy.sh` publishes the new files
-to the Compose volume `app_assets_prod`. Every release with this setup can serve
-assets retained in that volume, including those requested by pages opened before
-an update or rollback. The volume retains published assets until an operator
-removes them. Keep it across deployments.
+Vite writes fingerprinted CSS, JavaScript, and the images they reference to
+`dist/client/assets` and maps source paths to those files in
+`dist/client/.vite/manifest.json`. On
+startup, the app copies its files to the Compose volume `app_assets_prod` and
+serves requests from both locations, so pages opened before an update or
+rollback can still load their assets. The volume retains published assets until
+an operator removes them. Keep it across deployments.
 If the replacement fails, the deployment script restores the previously
 running image.
 
-For a manual Compose deployment, run these commands from the project directory:
-
-```bash
-docker compose -f docker-compose.prod.yml build app
-docker compose -f docker-compose.prod.yml run --rm --no-deps -T app npm run publish:assets
-docker compose -f docker-compose.prod.yml up -d --no-build app
-```
-
-For an existing installation, update the checkout to this version and use the
-manual Compose commands for the first deployment. The shared volume starts
-empty, and asset continuity applies to releases that publish their files to it.
+Files in `public/`, such as a logo, are served at their own path
+(`public/logo.svg` at `/logo.svg`). Their URLs do not change between releases,
+so browsers revalidate them by ETag.
 
 ## Configuration
 

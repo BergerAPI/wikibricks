@@ -1,5 +1,4 @@
-import { Context } from "hono/jsx";
-import { DefaultContext } from "./utils";
+import type { DefaultContext } from "./utils";
 
 export type Language = "en" | "de";
 
@@ -129,6 +128,7 @@ export interface Translations {
   "entity.size": string;
   "entity.theme": string;
   "entity.issued": string;
+  "entity.issuedHint": string;
   "entity.brand": string;
   "entity.country": string;
   "entity.website": string;
@@ -179,17 +179,11 @@ export interface Translations {
   "images.uploadedBy": string;
   "images.unknownUser": string;
   "images.uploadedAt": string;
-  "images.linkedEntity": string;
   "images.viewFull": string;
   "images.delete": string;
   "images.confirmDelete": string;
   "images.deleteSuccess": string;
   "images.deleteFailed": string;
-
-  // Common
-  "common.optional": string;
-  "common.previous": string;
-  "common.next": string;
 }
 
 const translations: Record<Language, Translations> = {
@@ -328,6 +322,7 @@ const translations: Record<Language, Translations> = {
     "entity.size": "Size",
     "entity.theme": "Theme",
     "entity.issued": "Issued",
+    "entity.issuedHint": "YYYY, MM.YYYY or DD.MM.YYYY",
     "entity.brand": "Brand",
     "entity.country": "Country",
     "entity.website": "Website",
@@ -382,18 +377,12 @@ const translations: Record<Language, Translations> = {
     "images.uploadedBy": "Uploaded By",
     "images.unknownUser": "Unknown User",
     "images.uploadedAt": "Uploaded At",
-    "images.linkedEntity": "Linked Entity",
     "images.viewFull": "View Full Size",
     "images.delete": "Delete",
     "images.confirmDelete":
       "Are you sure you want to delete this image? This action cannot be undone.",
     "images.deleteSuccess": "Image deleted successfully",
     "images.deleteFailed": "Failed to delete image",
-
-    // Common
-    "common.optional": "optional",
-    "common.previous": "Previous",
-    "common.next": "Next",
   },
 
   de: {
@@ -533,6 +522,7 @@ const translations: Record<Language, Translations> = {
     "entity.size": "Größe",
     "entity.theme": "Thema",
     "entity.issued": "Ausgegeben",
+    "entity.issuedHint": "YYYY oder MM.YYYY oder DD.MM.YYYY",
     "entity.brand": "Marke",
     "entity.country": "Land",
     "entity.website": "Website",
@@ -589,115 +579,56 @@ const translations: Record<Language, Translations> = {
     "images.uploadedBy": "Hochgeladen Von",
     "images.unknownUser": "Unbekannter Benutzer",
     "images.uploadedAt": "Hochgeladen Am",
-    "images.linkedEntity": "Verknüpfte Entity",
     "images.viewFull": "Vollgröße Anzeigen",
     "images.delete": "Löschen",
     "images.confirmDelete":
       "Sind Sie sicher, dass Sie dieses Bild löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
     "images.deleteSuccess": "Bild erfolgreich gelöscht",
     "images.deleteFailed": "Löschen des Bildes fehlgeschlagen",
-
-    // Common
-    "common.optional": "optional",
-    "common.previous": "Zurück",
-    "common.next": "Weiter",
   },
 };
 
-export type TranslationFunctions = ReturnType<typeof useTranslation>;
+export const getAvailableLanguages = () => Object.keys(translations) as Language[];
 
-export const useTranslation = (c: { get?: (key: string) => unknown }) => {
-  let language: Language = "de";
-  try {
-    const raw = c.get?.("language") as unknown;
-    if (typeof raw === "string" && isLanguageSupported(raw)) {
-      language = raw;
+export const isLanguageSupported = (language: string): language is Language =>
+  Object.hasOwn(translations, language);
+
+const locales: Record<Language, string> = { en: "en-US", de: "de-DE" };
+const warnedMissingKeys = new Set<string>();
+
+export const t = (
+  key: keyof Translations,
+  language: Language,
+  variables: Record<string, string> = {},
+) => {
+  let text = translations[language][key];
+
+  if (!text) {
+    if (!warnedMissingKeys.has(`${language}:${key}`)) {
+      warnedMissingKeys.add(`${language}:${key}`);
+      console.warn(`Translation missing for key: ${key} in language: ${language}`);
     }
-  } catch {
-    // keep default when context has no language (e.g. plain Context)
+    text = translations.en[key] || key;
   }
+
+  // split/join instead of a RegExp, so variable names can't inject patterns
+  for (const [name, value] of Object.entries(variables)) {
+    text = text.split(`{${name}}`).join(value);
+  }
+  return text;
+};
+
+export const useTranslation = (c: DefaultContext) => {
+  const language = c.get("language") ?? "de";
+  const locale = locales[language];
 
   return {
     language,
     t: (key: keyof Translations, variables?: Record<string, string>) =>
       t(key, language, variables),
-    formatDate: (date: Date) => formatDate(date, language),
-    formatDateTime: (date: Date) => formatDateTime(date, language),
+    formatDate: (date: Date) => new Date(date).toLocaleDateString(locale),
+    formatDateTime: (date: Date) => new Date(date).toLocaleString(locale),
   };
 };
 
-// Translation API with interpolation support
-const warnedMissingKeys = new Set<string>();
-export const t = (
-  key: keyof Translations,
-  language: Language,
-  variables?: Record<string, string>,
-): string => {
-  const translation = translations[language]?.[key];
-
-  if (!translation) {
-    if (!warnedMissingKeys.has(`${language}:${key}`)) {
-      warnedMissingKeys.add(`${language}:${key}`);
-      console.warn(
-        `Translation missing for key: ${key} in language: ${language}`,
-      );
-    }
-    return translations["en"][key] || key;
-  }
-
-  // Handle variable interpolation (split/join avoids RegExp injection)
-  if (variables) {
-    return Object.entries(variables).reduce((text, [key, value]) => {
-      return text.split(`{${key}}`).join(value);
-    }, translation);
-  }
-
-  return translation;
-};
-
-// Get available languages
-export const getAvailableLanguages = (): Language[] => {
-  return Object.keys(translations) as Language[];
-};
-
-// Check if a language is supported
-export const isLanguageSupported = (language: string): language is Language => {
-  return Object.prototype.hasOwnProperty.call(translations, language);
-};
-
-// Pluralization helper for German
-export const plural = (
-  count: number,
-  singular: string,
-  plural: string,
-): string => {
-  return count === 1 ? singular : plural;
-};
-
-// Date formatting with locale
-export const formatDate = (date: Date, lang: Language): string => {
-  const d = date instanceof Date ? date : new Date(date);
-  if (isNaN(d.getTime())) return "";
-  const locale = lang === "de" ? "de-DE" : "en-US";
-
-  return d.toLocaleDateString(locale);
-};
-
-// Date and time formatting with locale
-export const formatDateTime = (date: Date, lang: Language): string => {
-  const d = date instanceof Date ? date : new Date(date);
-  if (isNaN(d.getTime())) return "";
-  const locale = lang === "de" ? "de-DE" : "en-US";
-
-  return d.toLocaleString(locale);
-};
-
-// Default export for convenience
-export default {
-  t,
-  getAvailableLanguages,
-  isLanguageSupported,
-  plural,
-  formatDate,
-  formatDateTime,
-};
+export type TranslationFunctions = ReturnType<typeof useTranslation>;

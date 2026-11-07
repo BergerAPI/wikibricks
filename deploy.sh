@@ -172,11 +172,6 @@ health_check() {
     return 1
 }
 
-publish_assets() {
-    log INFO "Publishing fingerprinted assets to the shared volume..."
-    docker compose -f "$COMPOSE_FILE" run --rm --no-deps -T app npm run "$@" publish:assets
-}
-
 replace_app() {
     log INFO "Replacing the application container..."
     docker compose -f "$COMPOSE_FILE" up -d --no-build app &&
@@ -192,7 +187,6 @@ rollback() {
 
     if git reset --hard "$revision" &&
         docker compose -f "$COMPOSE_FILE" build &&
-        publish_assets --if-present &&
         replace_app; then
         log INFO "Rollback completed successfully"
     else
@@ -260,11 +254,6 @@ deploy() {
         exit 1
     fi
 
-    if ! publish_assets; then
-        send_notification "FAILED" "Asset publication failed"
-        exit 1
-    fi
-
     if ! replace_app; then
         log ERROR "New container failed to start or pass its health check"
         if [[ -n "$running_image" && -n "$running_tag" ]] &&
@@ -294,7 +283,7 @@ deploy() {
 usage() {
     echo "Usage: $0 [OPTION]"
     echo "Options:"
-    echo "  deploy     - Build, publish assets, and replace the application container"
+    echo "  deploy     - Build and replace the application container"
     echo "  rollback   - Rollback to previous version"
     echo "  health     - Perform health check only"
     echo "  backup     - Create database backup only"

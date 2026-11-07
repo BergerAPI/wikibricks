@@ -1,28 +1,13 @@
 import type { PropsWithChildren } from "hono/jsx";
 import { html } from "hono/html";
 import type { User } from "./database";
-import { assetUrl } from "./assets";
+import { assetUrl, pageScriptUrl } from "./assets";
 import { LanguageSwitcher } from "./components/language-switcher";
 import { useTranslation } from "./translation";
 import { DefaultContext } from "./utils";
 
-// Get commit ID from environment with development fallback
-const getCommitId = () => {
-  const commitId = process.env.COMMIT_ID;
-  if (commitId && commitId !== "unknown") {
-    return commitId.length > 7 ? commitId.substring(0, 7) : commitId;
-  }
-
-  return "unknown";
-};
-
-const shortCommitId = getCommitId();
-
-const getGithubUrl = () => {
-  const base =
-    process.env.GITHUB_URL ?? "https://github.com/BergerAPI/wikibricks";
-  return base.startsWith("https://") ? base : "https://github.com/BergerAPI/wikibricks";
-};
+const commitId = (process.env.COMMIT_ID ?? "unknown").slice(0, 7);
+const githubUrl = process.env.GITHUB_URL ?? "https://github.com/BergerAPI/wikibricks";
 
 export const Layout = ({
   children,
@@ -31,8 +16,8 @@ export const Layout = ({
   context,
   script,
 }: PropsWithChildren & {
-  title?: string | undefined;
-  user?: User | null | undefined;
+  title?: string;
+  user?: User | null;
   context: DefaultContext;
   script?: string;
 }) => {
@@ -45,8 +30,8 @@ export const Layout = ({
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="description" content={t("site.tagline")} />
         <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-        <link rel="stylesheet" href={assetUrl("styles.css")} />
-        {script && <script type="module" src={assetUrl(`${script}.js`)}></script>}
+        <link rel="stylesheet" href={assetUrl("global.css")} />
+        {script && <script type="module" src={pageScriptUrl(script)}></script>}
         <title>{title ?? t("site.title")}</title>
         <link
           rel="icon"
@@ -82,7 +67,7 @@ export const Layout = ({
               </div>
               <div class="flex items-center space-x-2">
                 <nav class="space-x-2 [&>a]:text-sm">
-                  {user === undefined || user === null ? (
+                  {!user ? (
                     <>
                       <a href="/register">{t("nav.register")}</a>
                       <a href="/login">{t("nav.login")}</a>
@@ -120,13 +105,13 @@ export const Layout = ({
               <p class="text-xs text-gray-500 mt-1">
                 {t("footer.version")}:{" "}
                 <a
-                  href={`${getGithubUrl()}/commit/${shortCommitId}`}
+                  href={`${githubUrl}/commit/${commitId}`}
                   class="underline text-gray-500 hover:text-gray-800"
                   target="_blank"
                   rel="noopener noreferrer"
                   title="View commit on GitHub"
                 >
-                  #{shortCommitId}
+                  #{commitId}
                 </a>
               </p>
             </div>

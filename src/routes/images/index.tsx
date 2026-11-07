@@ -1,338 +1,199 @@
+import { bodyLimit } from "hono/body-limit";
 import { sql } from "../../database";
+import { Layout } from "../../layout";
 import {
-  imageStorage,
+  deleteImage,
+  getImageById,
+  getImageUrl,
   ImageUploadError,
   MAX_IMAGE_FILE_BYTES,
+  normalizeMimeType,
+  readImageFile,
+  uploadImage,
 } from "../../services/image-storage";
-import { Layout } from "../../layout";
-import { useTranslation } from "../../translation";
-import { PermissionLevel, type DefaultContext } from "../../utils";
-import { bodyLimit } from "hono/body-limit";
 import type { UploadImageResponse } from "../../shared/contracts";
+import { useTranslation } from "../../translation";
+import { isModerator, parseId, routeParam, type DefaultContext } from "../../utils";
 
+// Leaves some room for the rest of the multipart form
 export const limitImageUpload = bodyLimit({
   maxSize: MAX_IMAGE_FILE_BYTES + 64 * 1024,
   onError: (c) => c.text("Upload body exceeds the size limit", 413),
 });
 
+const SERVABLE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+
 export const handleImageUpload = async (c: DefaultContext) => {
   const user = c.get("user");
-
-  if (!user) {
-    return c.text("Unauthorized", 401);
-  }
+  if (!user) return c.text("Unauthorized", 401);
 
   let body;
   try {
     body = await c.req.parseBody();
   } catch (error) {
-    // Let the body limiter recognize stream-size errors after the handler.
+    // Lets the body limiter see stream size errors after the handler
     if (error instanceof Error) c.error = error;
     return c.text("Invalid upload form", 400);
   }
 
-  const imageFile = body["file"] ?? body["image"];
-  const rawAlt = body["alt_text"];
-  if (!(imageFile instanceof File) || imageFile.size === 0) {
-    return c.text("No image file provided", 400);
-  }
-  if (imageFile.size > MAX_IMAGE_FILE_BYTES) {
-    return c.text("File size exceeds the 10 MB limit", 413);
-  }
+  const file = body.file ?? body.image;
+  if (!(file instanceof File) || file.size === 0) return c.text("No image file provided", 400);
+  if (file.size > MAX_IMAGE_FILE_BYTES) return c.text("File size exceeds the 10 MB limit", 413);
 
   try {
-    const buffer = Buffer.from(await imageFile.arrayBuffer());
-    const image = await imageStorage.uploadImage({
-      originalFilename: imageFile.name || "upload",
-      buffer,
-      mimetype: imageFile.type,
-      uploadedBy: user.id,
-      altText: typeof rawAlt === "string" ? rawAlt : undefined,
-      permissionLevel: user.permission_level,
+    const image = await uploadImage({
+      buffer: Buffer.from(await file.arrayBuffer()),
+      originalFilename: file.name || "upload",
+      mimeType: file.type,
+      altText: typeof body.alt_text === "string" ? body.alt_text : undefined,
+      uploader: user,
     });
-
     return c.json(image satisfies UploadImageResponse);
   } catch (error) {
-    if (error instanceof ImageUploadError) {
-      return c.text(error.message, error.status);
-    }
+    if (error instanceof ImageUploadError) return c.text(error.message, error.status);
     console.error("Image upload error:", error);
     return c.text("Upload failed", 500);
   }
 };
 
-// Serve image files
-const SERVE_ALLOWLIST = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/gif",
-  "image/webp",
-]);
 export const handleImageServe = async (c: DefaultContext) => {
-  const id = parseInt(c.req.param("id"), 10);
+  const id = parseId(routeParam(c, "id"));
+  const image = id && (await getImageById(id));
+  if (!image) return c.text("Image not found", 404);
 
-  if (isNaN(id)) {
-    return c.text("Invalid image ID", 400);
-  }
-
+  let buffer: Buffer;
   try {
-    const image = await imageStorage.getImageById(id);
-
-    if (!image) {
-      return c.text("Image not found", 404);
-    }
-
-    let buffer: Buffer;
-    try {
-      buffer = await imageStorage.readImageFile(image);
-    } catch {
-      return c.text("Image file not found", 404);
-    }
-
-    if (!buffer) {
-      return c.text("Image file not found", 404);
-    }
-
-    const mime = image.mime_type === "image/jpg" ? "image/jpeg" : image.mime_type;
-    const contentType = SERVE_ALLOWLIST.has(mime)
-      ? mime
-      : "application/octet-stream";
-
-    // Convert Buffer to Uint8Array for Response compatibility
-    return new Response(new Uint8Array(buffer), {
-      status: 200,
-      headers: {
-        "Content-Type": contentType,
-        "Content-Length": buffer.length.toString(),
-        "Cache-Control": "public, max-age=31536000",
-        "X-Content-Type-Options": "nosniff",
-        "Content-Disposition": `inline; filename="${image.filename.replace(/"/g, "")}"`,
-      },
-    });
-  } catch (error) {
-    console.error("Image serve error:", error);
-    return c.text("Failed to serve image", 500);
+    buffer = await readImageFile(image);
+  } catch {
+    return c.text("Image file not found", 404);
   }
+
+  const mime = normalizeMimeType(image.mime_type);
+
+  return c.body(new Uint8Array(buffer), 200, {
+    "Content-Type": SERVABLE_TYPES.has(mime) ? mime : "application/octet-stream",
+    "Cache-Control": "public, max-age=31536000",
+    "X-Content-Type-Options": "nosniff",
+    "Content-Disposition": `inline; filename="${image.filename.replace(/"/g, "")}"`,
+  });
 };
 
-// Get image metadata (GET /images/:id)
 export const handleImageInfo = async (c: DefaultContext) => {
-  const id = parseInt(c.req.param("id"), 10);
+  const id = parseId(routeParam(c, "id"));
+  const image = id && (await getImageById(id));
+  if (!image) return c.json({ error: "Image not found" }, 404);
 
-  if (isNaN(id)) {
-    return c.json({ error: "Invalid image ID" }, 400);
-  }
-
-  try {
-    const image = await imageStorage.getImageById(id);
-
-    if (!image) {
-      return c.json({ error: "Image not found" }, 404);
-    }
-
-    // Don't expose sensitive file paths
-    const publicImage = {
-      id: image.id,
-      filename: image.filename,
-      original_filename: image.original_filename,
-      file_size: image.file_size,
-      mime_type: image.mime_type,
-      width: image.width,
-      height: image.height,
-      entity_id: image.entity_id,
-      version_id: image.version_id,
-      alt_text: image.alt_text,
-      created_at: image.created_at,
-      url: imageStorage.getImageUrl(image),
-    };
-
-    return c.json(publicImage);
-  } catch (error) {
-    console.error("Get image error:", error);
-    return c.json({ error: "Failed to get image" }, 500);
-  }
+  return c.json({
+    id: image.id,
+    filename: image.filename,
+    original_filename: image.original_filename,
+    file_size: image.file_size,
+    mime_type: image.mime_type,
+    width: image.width,
+    height: image.height,
+    alt_text: image.alt_text,
+    created_at: image.created_at,
+    url: getImageUrl(image),
+  });
 };
 
-// Display image page (GET /images/:id)
+const Detail = ({ label, children }: { label: string; children: unknown }) => (
+  <div>
+    <dt class="font-medium">{label}:</dt>
+    <dd class="text-gray-600">{children}</dd>
+  </div>
+);
+
 export const handleImagePage = async (c: DefaultContext) => {
   const user = c.get("user");
-  const { t } = useTranslation(c);
-  const id = parseInt(c.req.param("id"), 10);
+  const { t, formatDateTime } = useTranslation(c);
 
-  if (isNaN(id)) {
-    return c.text("Invalid image ID", 400);
-  }
+  const id = parseId(routeParam(c, "id"));
+  const image = id && (await getImageById(id));
+  if (!image) return c.notFound();
 
-  try {
-    const image = await imageStorage.getImageById(id);
+  const [uploader] = await sql<{ username: string }[]>`
+    SELECT username FROM users WHERE id = ${image.uploaded_by}
+  `;
+  const canDelete = !!user && (user.id === image.uploaded_by || isModerator(user));
 
-    if (!image) {
-      return c.notFound();
-    }
-
-    // Get uploader info
-    const [uploader] = await sql<{ username: string }[]>`
-      SELECT username FROM users WHERE id = ${image.uploaded_by}
-    `;
-
-    const canDelete =
-      user &&
-      (user.id === image.uploaded_by ||
-        user.permission_level >= PermissionLevel.MODERATOR);
-
-    return c.render(
-      <Layout context={c} user={user} script={canDelete ? "delete-image" : undefined}>
-        <main class="overflow-auto">
-          <div class="flex justify-between items-center pb-2 mb-3 border-b">
-            <h1 class="text-3xl font-serif">{image.original_filename}</h1>
-            <div class="space-x-2">
-              <a
-                href={imageStorage.getImageUrl(image)}
-                target="_blank"
-                class="text-blue-600 hover:underline"
+  return c.render(
+    <Layout context={c} user={user} script={canDelete ? "delete-image" : undefined}>
+      <main class="overflow-auto">
+        <div class="flex justify-between items-center pb-2 mb-3 border-b">
+          <h1 class="text-3xl font-serif">{image.original_filename}</h1>
+          <div class="space-x-2">
+            <a href={getImageUrl(image)} target="_blank" class="text-blue-600 hover:underline">
+              {t("images.viewFull")}
+            </a>
+            {canDelete && (
+              <button
+                type="button"
+                class="text-red-600 hover:underline"
+                data-delete-url={`/images/${image.id}`}
+                data-delete-confirm={t("images.confirmDelete")}
+                data-delete-success={t("images.deleteSuccess")}
+                data-delete-failed={t("images.deleteFailed")}
               >
-                {t("images.viewFull")}
-              </a>
-              {canDelete && (
-                <button
-                  type="button"
-                  class="text-red-600 hover:underline"
-                  data-delete-url={`/images/${image.id}`}
-                  data-delete-confirm={t("images.confirmDelete")}
-                  data-delete-success={t("images.deleteSuccess")}
-                  data-delete-failed={t("images.deleteFailed")}
-                >
-                  {t("images.delete")}
-                </button>
+                {t("images.delete")}
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-6">
+          <img
+            src={getImageUrl(image)}
+            alt={image.alt_text || image.original_filename}
+            class="w-full rounded shadow-lg"
+            loading="lazy"
+          />
+
+          <div>
+            <h3 class="font-semibold text-lg mb-2">{t("images.details")}</h3>
+            <dl class="space-y-2">
+              <Detail label={t("images.filename")}>{image.filename}</Detail>
+              <Detail label={t("images.originalName")}>{image.original_filename}</Detail>
+              <Detail label={t("images.fileSize")}>
+                {(image.file_size / 1024 / 1024).toFixed(2)} MB
+              </Detail>
+              <Detail label={t("images.dimensions")}>
+                {image.width && image.height
+                  ? `${image.width} × ${image.height}`
+                  : t("images.unknown")}
+              </Detail>
+              <Detail label={t("images.uploadedBy")}>
+                {uploader ? (
+                  <a href={`/users/${image.uploaded_by}`} class="text-blue-600 hover:underline">
+                    {uploader.username}
+                  </a>
+                ) : (
+                  t("images.unknownUser")
+                )}
+              </Detail>
+              <Detail label={t("images.uploadedAt")}>{formatDateTime(image.created_at)}</Detail>
+              {image.alt_text && (
+                <Detail label={t("images.altText")}>{image.alt_text}</Detail>
               )}
-            </div>
+            </dl>
           </div>
-
-          <div class="grid md:grid-cols-2 gap-6">
-            <div>
-              <img
-                src={imageStorage.getImageUrl(image)}
-                alt={image.alt_text || image.original_filename}
-                class="w-full rounded shadow-lg"
-                loading="lazy"
-              />
-            </div>
-
-            <div class="space-y-4">
-              <div>
-                <h3 class="font-semibold text-lg mb-2">
-                  {t("images.details")}
-                </h3>
-                <dl class="space-y-2">
-                  <div>
-                    <dt class="font-medium">{t("images.filename")}:</dt>
-                    <dd class="text-gray-600">{image.filename}</dd>
-                  </div>
-                  <div>
-                    <dt class="font-medium">{t("images.originalName")}:</dt>
-                    <dd class="text-gray-600">{image.original_filename}</dd>
-                  </div>
-                  <div>
-                    <dt class="font-medium">{t("images.fileSize")}:</dt>
-                    <dd class="text-gray-600">
-                      {(image.file_size / 1024 / 1024).toFixed(2)} MB
-                    </dd>
-                  </div>
-                  <div>
-                    <dt class="font-medium">{t("images.dimensions")}:</dt>
-                    <dd class="text-gray-600">
-                      {image.width && image.height
-                        ? `${image.width} × ${image.height}`
-                        : t("images.unknown")}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt class="font-medium">{t("images.uploadedBy")}:</dt>
-                    <dd class="text-gray-600">
-                      {uploader ? (
-                        <a
-                          href={`/users/${image.uploaded_by}`}
-                          class="text-blue-600 hover:underline"
-                        >
-                          {uploader.username}
-                        </a>
-                      ) : (
-                        t("images.unknownUser")
-                      )}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt class="font-medium">{t("images.uploadedAt")}:</dt>
-                    <dd class="text-gray-600">
-                      {new Date(image.created_at).toLocaleString()}
-                    </dd>
-                  </div>
-                  {image.alt_text && (
-                    <div>
-                      <dt class="font-medium">{t("images.altText")}:</dt>
-                      <dd class="text-gray-600">{image.alt_text}</dd>
-                    </div>
-                  )}
-                  {image.entity_id && (
-                    <div>
-                      <dt class="font-medium">{t("images.linkedEntity")}:</dt>
-                      <dd class="text-gray-600">
-                        <a
-                          href={`/entities/${image.entity_id}`}
-                          class="text-blue-600 hover:underline"
-                        >
-                          Entity #{image.entity_id}
-                        </a>
-                      </dd>
-                    </div>
-                  )}
-                </dl>
-              </div>
-            </div>
-          </div>
-
-        </main>
-      </Layout>,
-    );
-  } catch (error) {
-    console.error("Image page error:", error);
-    return c.text("Failed to load image", 500);
-  }
+        </div>
+      </main>
+    </Layout>,
+  );
 };
 
-// Delete image (DELETE /images/:id)
 export const handleImageDelete = async (c: DefaultContext) => {
   const user = c.get("user");
-  const id = parseInt(c.req.param("id"), 10);
+  if (!user) return c.text("Unauthorized", 401);
 
-  if (!user) {
-    return c.text("Unauthorized", 401);
-  }
+  const id = parseId(routeParam(c, "id"));
+  const image = id && (await getImageById(id));
+  if (!image) return c.text("Image not found", 404);
 
-  if (isNaN(id)) {
-    return c.text("Invalid image ID", 400);
-  }
+  if (image.uploaded_by !== user.id && !isModerator(user))
+    return c.text("Permission denied", 403);
 
-  try {
-    const image = await imageStorage.getImageById(id);
-
-    if (!image) {
-      return c.text("Image not found", 404);
-    }
-
-    // Check permissions
-    if (
-      image.uploaded_by !== user.id &&
-      user.permission_level < PermissionLevel.MODERATOR
-    ) {
-      return c.text("Permission denied", 403);
-    }
-
-    await imageStorage.deleteImage(id);
-
-    return c.text("Image deleted successfully", 200);
-  } catch (error) {
-    console.error("Image delete error:", error);
-    return c.text("Failed to delete image", 500);
-  }
+  await deleteImage(image.id);
+  return c.text("Image deleted successfully");
 };

@@ -1,38 +1,35 @@
 {
   "name": "wikibricks",
   "private": true,
+  "type": "module",
   "engines": {
-    "node": ">=20.9.0"
+    "node": ">=26.0.0"
   },
   "scripts": {
-    "build": "tsc && tsc -p src/client/tsconfig.json && npm run build:css && npm run build:client -- --minify --metafile=dist/client-outputs.json && node dist/build-assets.js",
-    "build:css": "tailwindcss -i ./global.css -o ./dist/public/styles.css --minify",
-    "build:client": "esbuild \"src/client/pages/*.ts\" --bundle --platform=browser --format=esm --target=es2021 --outdir=dist/public",
-    "dev": "npm run build:css && npm run build:client -- --sourcemap=inline && concurrently --kill-others --names server,css,client npm:dev:server npm:dev:css npm:dev:client",
+    "build": "npm run typecheck && vite build --ssr && vite build",
+    "dev": "vite build && concurrently --kill-others --names server,client npm:dev:server npm:dev:client",
     "dev:server": "tsx watch src/index.ts",
-    "dev:css": "tailwindcss -i ./global.css -o ./dist/public/styles.css --watch=always",
+    "dev:client": "vite build --watch",
     "start": "node dist/index.js",
-    "publish:assets": "node dist/publish-assets.js",
-    "dev:client": "npm run build:client -- --sourcemap=inline --watch=forever",
     "typecheck": "tsc --noEmit && tsc -p src/client/tsconfig.json"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.929.0",
-    "@aws-sdk/s3-request-presigner": "^3.929.0",
-    "@hono/node-server": "^1.13.7",
+    "@aws-sdk/client-s3": "^3.1163.0",
+    "@aws-sdk/s3-request-presigner": "^3.1163.0",
+    "@hono/node-server": "^2.1.6",
     "bcryptjs": "^3.0.3",
-    "dotenv": "^16.4.7",
-    "hono": "^4.6.17",
-    "postgres": "^3.4.5",
+    "dotenv": "^18.0.9",
+    "hono": "^4.13.16",
+    "postgres": "^4.1.0",
     "sharp": "^0.35.5"
   },
   "devDependencies": {
-    "@tailwindcss/cli": "^4.3.4",
-    "@types/node": "^20.11.17",
-    "concurrently": "^9.2.5",
-    "esbuild": "^0.25.12",
+    "@tailwindcss/vite": "^4.3.4",
+    "@types/node": "^26.6.6",
+    "concurrently": "^10.0.6",
     "tailwindcss": "^4.3.4",
-    "tsx": "^4.7.1",
-    "typescript": "^5.3.3"
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.6"
   }
 }

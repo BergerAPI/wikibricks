@@ -25,8 +25,7 @@ function setupReview(page: HTMLElement) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
       });
-      if (response.status === 409) throw new Error(await response.text());
-      if (!response.ok) throw new Error(`Review failed (${response.status})`);
+      if (!response.ok) throw new Error((await response.text()) || `Review failed (${response.status})`);
       window.location.href = type === "approved" ? historyUrl : "/changes";
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "Review failed");

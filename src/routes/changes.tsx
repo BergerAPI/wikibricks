@@ -1,81 +1,56 @@
 import { Table, TableHead } from "../components/table";
-import { sql, type EntityVersion, type SetView } from "../database";
+import { sql, type EntityVersion } from "../database";
 import { Layout } from "../layout";
-import { PermissionLevel, type DefaultContext } from "../utils";
-import { TranslationFunctions, useTranslation } from "../translation";
+import { useTranslation } from "../translation";
+import { isModerator, type DefaultContext } from "../utils";
 
-type EntityVersionMetaData = EntityVersion & {
-  entity_title: string;
-  username: string;
-  user_id: string;
-};
+type PendingChange = EntityVersion & { entity_name: string; username: string };
 
-const ChangeTable = ({
-  t,
-  changes,
-}: {
-  changes: EntityVersionMetaData[];
-  t: TranslationFunctions["t"];
-}) => (
-  <Table>
-    <TableHead>
-      <th>{t("changes.set")}</th>
-      <th>{t("changes.changedBy")}</th>
-      <th>{t("changes.message")}</th>
-      <th>{t("entities.date")}</th>
-    </TableHead>
-
-    <tbody>
-      {changes.map((change) => {
-        return (
-          <tr>
-            <td>
-              <a href={`/entities/${change.entity_id}?version=${change.id}`}>
-                {change.entity_title}
-              </a>
-            </td>
-            <td>
-              <a href={`/users/${change.user_id}`}>{change.username}</a>
-            </td>
-            <td>{change.change_message || <em>{t("error.noMessage")}</em>}</td>
-            <td>{new Date(change.created_at).toLocaleString()}</td>
-          </tr>
-        );
-      })}
-    </tbody>
-  </Table>
-);
-
-export const handleSetChangesPage = async (c: DefaultContext) => {
+export const handleChangesPage = async (c: DefaultContext) => {
   const user = c.get("user");
-  const { t } = useTranslation(c);
+  const { t, formatDateTime } = useTranslation(c);
 
-  if (!user || user.permission_level < PermissionLevel.MODERATOR) {
-    return c.redirect("/");
-  }
+  if (!isModerator(user)) return c.redirect("/");
 
-  const changes = await sql<EntityVersionMetaData[]>`
-        SELECT
-          ev.*,
-          u.username,
-          e.name as entity_title,
-          u.id as user_id
-        FROM entity_versions ev
-        JOIN entities e ON ev.entity_id = e.id
-        LEFT JOIN users u ON ev.created_by = u.id
-        WHERE ev.review_status = 'pending'
-        ORDER BY ev.created_at DESC, ev.id DESC
-        LIMIT 100
-    `;
+  const changes = await sql<PendingChange[]>`
+    SELECT v.*, u.username, e.name AS entity_name
+    FROM entity_versions v
+    JOIN entities e ON v.entity_id = e.id
+    LEFT JOIN users u ON v.created_by = u.id
+    WHERE v.review_status = 'pending'
+    ORDER BY v.created_at DESC, v.id DESC
+    LIMIT 100
+  `;
 
   return c.render(
     <Layout context={c} user={user}>
       <main>
-        <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
-          {t("changes.title")}
-        </h1>
+        <h1 class="text-3xl font-serif pb-2 mb-3 border-b">{t("changes.title")}</h1>
         <div class="min-w-full overflow-x-auto">
-          <ChangeTable t={t} changes={changes} />
+          <Table>
+            <TableHead>
+              <th>{t("changes.set")}</th>
+              <th>{t("changes.changedBy")}</th>
+              <th>{t("changes.message")}</th>
+              <th>{t("entities.date")}</th>
+            </TableHead>
+            <tbody>
+              {changes.map((change) => (
+                <tr>
+                  <td>
+                    <a href={`/entities/${change.entity_id}?version=${change.id}`}>
+                      {change.entity_name}
+                    </a>
+                  </td>
+                  <td>
+                    <a href={`/users/${change.created_by}`}>{change.username}</a>
+                  </td>
+                  <td>{change.change_message || <em>{t("error.noMessage")}</em>}</td>
+                  <td>{formatDateTime(change.created_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
         </div>
       </main>
     </Layout>,

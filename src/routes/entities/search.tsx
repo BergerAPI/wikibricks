@@ -1,56 +1,47 @@
-import { Layout } from "../../layout";
-import { sql } from "../../database";
-import { PermissionLevel, type DefaultContext } from "../../utils";
 import { Table, TableHead } from "../../components/table";
+import { sql } from "../../database";
+import { Layout } from "../../layout";
+import { entityTypes, isEntityType, type EntityType } from "../../shared/contracts";
 import { useTranslation } from "../../translation";
+import { isModerator, type DefaultContext } from "../../utils";
+
+const PAGE_SIZE = 10;
+
+type SearchResult = { id: number; name: string; type: EntityType; created_at: Date };
 
 export const handleSearchPage = async (c: DefaultContext) => {
   const user = c.get("user");
-  const { t } = useTranslation(c);
+  const { t, formatDate } = useTranslation(c);
 
-  // Fetch and parse query parameters
-  const rawPage = c.req.query("page");
-  let page = Math.floor(Number(rawPage ?? 0));
-  if (!Number.isFinite(page) || page < 0) page = 0;
-
-  // Default to "all" if no type is provided.
+  const page = Math.max(0, Math.floor(Number(c.req.query("page")) || 0));
   const rawType = c.req.query("entity_type") ?? "all";
-  const entityType = ["all", "set", "brand", "wiki"].includes(rawType)
-    ? rawType
-    : "all";
-  const rawSearch = c.req.query("name") ?? "";
-  const nameSearch = rawSearch.slice(0, 64);
+  const entityType = isEntityType(rawType) ? rawType : "all";
+  const name = (c.req.query("name") ?? "").slice(0, 64);
+  const escapedName = name.replace(/[%_\\]/g, (char) => `\\${char}`);
 
-  const filters = [];
-  if (entityType !== "all") {
-    filters.push(sql`e.type = ${entityType}`);
-  }
-  if (nameSearch && nameSearch.length > 0) {
-    const escaped = nameSearch.replace(/[%_\\]/g, (m) => `\\${m}`);
-    filters.push(sql`e.name ILIKE ${`%${escaped}%`} ESCAPE '\\'`);
-  }
-  const whereClause = filters.length
-    ? sql`WHERE ${filters.reduce(
-        (acc, cur, idx) => (idx === 0 ? cur : sql`${acc} AND ${cur}`),
-        sql``,
-      )}`
-    : sql``;
+  const where = sql`
+    WHERE TRUE
+    ${entityType !== "all" ? sql`AND e.type = ${entityType}` : sql``}
+    ${name ? sql`AND e.name ILIKE ${`%${escapedName}%`} ESCAPE '\\'` : sql``}
+  `;
 
-  const [[totalCount], results] = await Promise.all([
+  const [[{ count }], results] = await Promise.all([
     sql<{ count: string }[]>`
-        SELECT COUNT(*) AS count FROM entities e
-            JOIN entity_versions v ON e.head_version_id = v.id
-            ${whereClause}
+      SELECT COUNT(*) AS count FROM entities e
+      JOIN entity_versions v ON e.head_version_id = v.id
+      ${where}
     `,
-    sql`
-        SELECT e.created_at, e.type, e.name, v.description, e.id FROM entities e
-            JOIN entity_versions v ON e.head_version_id = v.id
-            ${whereClause}
-            ORDER BY e.created_at DESC, e.id DESC
-            LIMIT 10 OFFSET ${page * 10}
+    sql<SearchResult[]>`
+      SELECT e.id, e.name, e.type, e.created_at FROM entities e
+      JOIN entity_versions v ON e.head_version_id = v.id
+      ${where}
+      ORDER BY e.created_at DESC, e.id DESC
+      LIMIT ${PAGE_SIZE} OFFSET ${page * PAGE_SIZE}
     `,
   ]);
-  const total = Number((totalCount as { count: string }).count ?? 0);
+
+  const pageUrl = (page: number) =>
+    `/entities/search?${new URLSearchParams({ page: String(page), entity_type: entityType, name })}`;
 
   return c.render(
     <Layout context={c} user={user}>
@@ -58,19 +49,12 @@ export const handleSearchPage = async (c: DefaultContext) => {
         <div class="flex justify-between items-center pb-2 mb-3 border-b">
           <h1 class="text-3xl font-serif">{t("entities.title")}</h1>
           <div class="space-x-2">
-            {(user ? user.permission_level : 0) >= PermissionLevel.MODERATOR && (
-              <a href="/changes">{t("entities.changeRequests")}</a>
-            )}
-            {user !== undefined && (
-              <a href="/entities/new">{t("action.addEntity")}</a>
-            )}
+            {isModerator(user) && <a href="/changes">{t("entities.changeRequests")}</a>}
+            {user && <a href="/entities/new">{t("action.addEntity")}</a>}
           </div>
         </div>
-        <form
-          method="get"
-          action="/entities/search"
-          class="mb-4 w-[50%] space-y-2"
-        >
+
+        <form method="get" action="/entities/search" class="mb-4 w-[50%] space-y-2">
           <div class="flex gap-2">
             <label class="sr-only" for="name">
               Name:
@@ -79,11 +63,10 @@ export const handleSearchPage = async (c: DefaultContext) => {
               type="text"
               id="name"
               name="name"
-              value={nameSearch}
+              value={name}
               class="border border-gray-300 p-1 w-full"
               placeholder={t("entities.searchByName")}
             />
-
             <button
               type="submit"
               class="border border-gray-300 bg-gray-100 px-3 py-1 text-sm hover:bg-gray-200"
@@ -97,22 +80,11 @@ export const handleSearchPage = async (c: DefaultContext) => {
               {t("entities.advancedSearch")}
             </summary>
             <div class="border border-t-0 p-2">
-              <label class="block text-sm text-gray-600 mb-1">
-                {t("entities.entityType")}
-              </label>
-              <select
-                name="entity_type"
-                class="border border-gray-300 w-full p-1"
-              >
-                {["all", "set", "brand", "wiki"].map((option) => (
+              <label class="block text-sm text-gray-600 mb-1">{t("entities.entityType")}</label>
+              <select name="entity_type" class="border border-gray-300 w-full p-1">
+                {(["all", ...entityTypes] as const).map((option) => (
                   <option value={option} selected={entityType === option}>
-                    {option === "all"
-                      ? t("entityType.all")
-                      : option === "set"
-                        ? t("entityType.set")
-                        : option === "brand"
-                          ? t("entityType.brand")
-                          : t("entityType.wiki")}
+                    {t(`entityType.${option}`)}
                   </option>
                 ))}
               </select>
@@ -128,34 +100,24 @@ export const handleSearchPage = async (c: DefaultContext) => {
               <th>{t("entities.date")}</th>
             </TableHead>
             <tbody>
-              {results.map((r: any) => (
-                <tr key={r.id}>
+              {results.map((result) => (
+                <tr>
                   <td>
-                    <a href={`/entities/${r.id}`}>{r.type}</a>
+                    <a href={`/entities/${result.id}`}>{t(`entityType.${result.type}`)}</a>
                   </td>
                   <td>
-                    <a href={`/entities/${r.id}`}>{r.name}</a>
+                    <a href={`/entities/${result.id}`}>{result.name}</a>
                   </td>
-                  <td>{new Date(r.created_at).toLocaleDateString()}</td>
+                  <td>{formatDate(result.created_at)}</td>
                 </tr>
               ))}
             </tbody>
           </Table>
 
           <div class="mt-4 flex justify-center space-x-2">
-            {page > 0 && (
-              <a
-                href={`/entities/search?page=${page - 1}&entity_type=${encodeURIComponent(entityType)}&name=${encodeURIComponent(nameSearch)}`}
-              >
-                {t("action.previous")}
-              </a>
-            )}
-            {results.length === 10 && (page + 1) * 10 < total && (
-              <a
-                href={`/entities/search?page=${page + 1}&entity_type=${encodeURIComponent(entityType)}&name=${encodeURIComponent(nameSearch)}`}
-              >
-                {t("action.next")}
-              </a>
+            {page > 0 && <a href={pageUrl(page - 1)}>{t("action.previous")}</a>}
+            {(page + 1) * PAGE_SIZE < Number(count) && (
+              <a href={pageUrl(page + 1)}>{t("action.next")}</a>
             )}
           </div>
         </div>

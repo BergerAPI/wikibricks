@@ -1,111 +1,91 @@
 import "dotenv/config";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
+import { compress } from "hono/compress";
 import { secureHeaders } from "hono/secure-headers";
+import { handleAsset, handlePublicFile } from "./assets";
 import { initDatabase } from "./database";
-import { handleRootPage } from "./routes/root";
-import { handleAsset } from "./assets";
+import { handleError, handleNotFound } from "./error";
 import { detectLanguage, handleLanguagePreference } from "./language";
-import { attemptAuthentication, type Variables } from "./utils";
 import {
   handleLoginPage,
   handleLoginSubmit,
+  handleLogoutSubmit,
   handleRegisterPage,
   handleRegisterSubmit,
-  handleLogoutSubmit,
 } from "./routes/auth";
-import { handleSetChangesPage } from "./routes/changes";
+import { handleChangesPage } from "./routes/changes";
 import {
   handleEntityPage,
   handleEntityPageSubmit,
   handleEntityVersionPatch,
 } from "./routes/entities";
 import { handleEntityHistoryPage } from "./routes/entities/history";
-import { handleUserPage } from "./routes/users";
-import { handleImprintPage, handlePrivacyPage, handleTermsPage } from "./routes/legal";
-import { handleError, handleNotFound } from "./error";
-import {
-  handleNewEntityPage,
-  handleNewEntitySubmit,
-} from "./routes/entities/new-entity";
+import { handleNewEntityPage, handleNewEntitySubmit } from "./routes/entities/new-entity";
 import { handleSearchPage } from "./routes/entities/search";
 import {
-  handleImageUpload,
-  limitImageUpload,
-  handleImageServe,
+  handleImageDelete,
   handleImageInfo,
   handleImagePage,
-  handleImageDelete,
+  handleImageServe,
+  handleImageUpload,
+  limitImageUpload,
 } from "./routes/images";
+import { handleImprintPage, handlePrivacyPage, handleTermsPage } from "./routes/legal";
+import { handleRootPage } from "./routes/root";
+import { handleUserPage } from "./routes/users";
+import { attemptAuthentication, type Variables } from "./utils";
 
-(async () => {
-  const app = new Hono<{ Variables: Variables }>();
+const app = new Hono<{ Variables: Variables }>();
 
-  app.use(secureHeaders());
-  app.get("/assets/:file", handleAsset);
+app.use(secureHeaders());
+app.get("/assets/:file", compress(), handleAsset);
+app.get("*", handlePublicFile);
 
-  try {
-    await initDatabase();
-  } catch (err) {
-    console.error("Failed to initialize database:", err);
-    process.exit(1);
-  }
+try {
+  await initDatabase();
+} catch (err) {
+  console.error("Failed to initialize database:", err);
+  process.exit(1);
+}
 
-  app.use(detectLanguage);
-  app.post("/language", handleLanguagePreference);
-  app.use(attemptAuthentication);
+app.use(detectLanguage);
+app.post("/language", handleLanguagePreference);
+app.use(attemptAuthentication);
 
-  app.get("/", handleRootPage);
-  app.get("/datenschutz", handlePrivacyPage);
-  app.get("/impressum", handleImprintPage);
-  app.get("/nutzungsbedingungen", handleTermsPage);
+app.get("/", handleRootPage);
+app.get("/datenschutz", handlePrivacyPage);
+app.get("/impressum", handleImprintPage);
+app.get("/nutzungsbedingungen", handleTermsPage);
 
-  // Auth routes
-  app.get("/login", handleLoginPage);
-  app.post("/login", handleLoginSubmit);
-  app.get("/register", handleRegisterPage);
-  app.post("/register", handleRegisterSubmit);
-  app.post("/logout", handleLogoutSubmit);
+app.get("/login", handleLoginPage);
+app.post("/login", handleLoginSubmit);
+app.get("/register", handleRegisterPage);
+app.post("/register", handleRegisterSubmit);
+app.post("/logout", handleLogoutSubmit);
 
-  // Entity routes
-  app.get("/entities/new", handleNewEntityPage);
-  app.post("/entities/new", handleNewEntitySubmit);
-  app.get("/entities/search", handleSearchPage);
-  app.get("/entities/:id", handleEntityPage);
-  app.post("/entities/:id", handleEntityPageSubmit);
-  app.get("/entities/:id/history", handleEntityHistoryPage);
-  app.patch("/entities/:id/:version", handleEntityVersionPatch);
+app.get("/entities/new", handleNewEntityPage);
+app.post("/entities/new", handleNewEntitySubmit);
+app.get("/entities/search", handleSearchPage);
+app.get("/entities/:id", handleEntityPage);
+app.post("/entities/:id", handleEntityPageSubmit);
+app.get("/entities/:id/history", handleEntityHistoryPage);
+app.patch("/entities/:id/:version", handleEntityVersionPatch);
 
-  // Based off, developed by, set id, Ergänzungssets, bricks
+// Based off, developed by, set id, Ergänzungssets, bricks
 
-  // Changes routes
-  app.get("/changes", handleSetChangesPage);
+app.get("/changes", handleChangesPage);
+app.get("/users/:id", handleUserPage);
 
-  // User routes
-  app.get("/users/:id", handleUserPage);
+app.post("/images/upload", limitImageUpload, handleImageUpload);
+app.get("/images/serve/:id", handleImageServe);
+app.get("/images/:id", handleImagePage);
+app.get("/images/:id/info", handleImageInfo);
+app.delete("/images/:id", handleImageDelete);
 
-  // Image routes
-  app.post("/images/upload", limitImageUpload, handleImageUpload);
-  app.get("/images/serve/:id", handleImageServe);
-  app.get("/images/:id", handleImagePage);
-  app.get("/images/:id/info", handleImageInfo);
-  app.delete("/images/:id", handleImageDelete);
+app.onError(handleError);
+app.notFound(handleNotFound);
 
-  // Handling errors
-  app.onError(handleError);
-  app.notFound(handleNotFound);
-
-  const port = Number(process.env.PORT ?? 3000);
-  if (!Number.isInteger(port) || port <= 0 || port > 65535) {
-    throw new Error(`Invalid PORT: ${process.env.PORT}`);
-  }
-
-  console.log(`Server is running on http://localhost:${port}`);
-
-  serve({
-    fetch: app.fetch,
-    port,
-  });
-})().then(() => {
-  /* Do nothing */
-});
+const port = Number(process.env.PORT ?? 3000);
+serve({ fetch: app.fetch, port });
+console.log(`Server is running on http://localhost:${port}`);

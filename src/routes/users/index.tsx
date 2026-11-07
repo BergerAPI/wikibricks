@@ -2,42 +2,31 @@ import { InfoBox, InfoBoxImage, InfoBoxRow } from "../../components/info-box";
 import { Table, TableHead } from "../../components/table";
 import { sql, type User } from "../../database";
 import { Layout } from "../../layout";
-import type { DefaultContext } from "../../utils";
+import { parseId, routeParam, type DefaultContext } from "../../utils";
 import { useTranslation } from "../../translation";
 
 export const handleUserPage = async (c: DefaultContext) => {
   const currentUser = c.get("user");
-  const userId = c.req.param("id");
-  const { t } = useTranslation(c);
+  const { t, formatDate } = useTranslation(c);
 
-  // Fetch user from database
-  const [user] = await sql<User[]>`
-        SELECT id, username, permission_level, created_at
-        FROM users
-        WHERE id = ${userId}
-    `;
+  const userId = parseId(routeParam(c, "id"));
+  if (!userId) return c.notFound();
 
+  const [user] = await sql<Omit<User, "password">[]>`
+    SELECT id, username, permission_level, created_at FROM users WHERE id = ${userId}
+  `;
   if (!user) return c.notFound();
 
   const recentActivity = await sql<
-    {
-      entity_name: string;
-      entity_id: number;
-      created_at: Date;
-      version_number: number;
-    }[]
+    { entity_name: string; entity_id: number; created_at: Date; version_number: number }[]
   >`
-        SELECT
-            e.name as entity_name,
-            e.id as entity_id,
-            v.created_at,
-            v.version_number
-        FROM entity_versions v
-        JOIN entities e ON v.entity_id = e.id
-        WHERE v.created_by = ${userId}
-        ORDER BY v.created_at DESC
-        LIMIT 10
-    `;
+    SELECT e.name AS entity_name, e.id AS entity_id, v.created_at, v.version_number
+    FROM entity_versions v
+    JOIN entities e ON v.entity_id = e.id
+    WHERE v.created_by = ${userId}
+    ORDER BY v.created_at DESC
+    LIMIT 10
+  `;
 
   return c.render(
     <Layout context={c} user={currentUser}>
@@ -74,7 +63,7 @@ export const handleUserPage = async (c: DefaultContext) => {
                         </a>
                       </td>
                       <td>{activity.version_number}</td>
-                      <td>{new Date(activity.created_at).toLocaleDateString()}</td>
+                      <td>{formatDate(activity.created_at)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -93,7 +82,7 @@ export const handleUserPage = async (c: DefaultContext) => {
               {user.permission_level}
             </InfoBoxRow>
             <InfoBoxRow label={t("user.memberSince")}>
-              {new Date(user.created_at).toLocaleDateString()}
+              {formatDate(user.created_at)}
             </InfoBoxRow>
           </InfoBox>
         </div>

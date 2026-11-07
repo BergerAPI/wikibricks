@@ -14,7 +14,8 @@
     "noEmit": true
   },
   "include": [
-    "**/*.ts"
+    "**/*.ts",
+    "../shared/**/*.ts"
   ],
   "exclude": []
 }

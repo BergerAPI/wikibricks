@@ -1,7 +1,6 @@
-import { type Context } from "hono";
 import { Layout } from "../layout";
 import type { DefaultContext } from "../utils";
-import { sql, type BrandView, type SetView } from "../database";
+import { sql, type EntityView } from "../database";
 import { useTranslation } from "../translation";
 
 export const handleRootPage = async (c: DefaultContext) => {
@@ -9,8 +8,8 @@ export const handleRootPage = async (c: DefaultContext) => {
   const { t } = useTranslation(c);
 
   const [sets, brands] = await Promise.all([
-    sql<SetView[]>`SELECT * FROM set_view ORDER BY version_created_at DESC LIMIT 3;`,
-    sql<BrandView[]>`SELECT * FROM brand_view ORDER BY version_created_at DESC LIMIT 3;`,
+    sql<EntityView[]>`SELECT * FROM set_view ORDER BY version_created_at DESC LIMIT 3`,
+    sql<EntityView[]>`SELECT * FROM brand_view ORDER BY version_created_at DESC LIMIT 3`,
   ]);
 
   return c.render(
