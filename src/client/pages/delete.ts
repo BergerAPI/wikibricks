@@ -2,7 +2,7 @@ const button = document.querySelector<HTMLButtonElement>("[data-delete-url]");
 if (button) setupDeletion(button);
 
 function setupDeletion(button: HTMLButtonElement) {
-  const { deleteUrl, deleteConfirm, deleteSuccess, deleteFailed } = button.dataset;
+  const { deleteUrl, deleteConfirm, deleteSuccess, deleteFailed, deleteRedirect = "/" } = button.dataset;
   if (!deleteUrl || !deleteConfirm || !deleteSuccess || !deleteFailed) return;
 
   button.addEventListener("click", async () => {
@@ -13,7 +13,7 @@ function setupDeletion(button: HTMLButtonElement) {
       const response = await fetch(deleteUrl, { method: "DELETE" });
       if (!response.ok) throw new Error(`Request failed (${response.status})`);
       window.alert(deleteSuccess);
-      window.location.href = "/";
+      window.location.href = deleteRedirect;
     } catch (error) {
       window.alert(error instanceof Error ? `${deleteFailed}: ${error.message}` : deleteFailed);
     } finally {

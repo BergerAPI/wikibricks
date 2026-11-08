@@ -1,4 +1,4 @@
-import { createCMS, type Collections, type Entry, type Field } from "@wikibricks/cms";
+import { createCMS, define, type Entry, type Field, type Fields } from "@wikibricks/cms";
 import { postgresAdapter } from "@wikibricks/cms-postgres";
 import { categories, type Category } from "./categories";
 import { sql } from "./database";
@@ -43,14 +43,16 @@ const common = {
     meta: {},
   },
   image_id: { type: "external", table: "images", meta: {} },
-} satisfies Record<string, Field<FieldUi>>;
+} satisfies Fields<FieldUi>;
 
 /**
  * All entity types. Adding one here, plus the translation of its name, is all it takes:
  * its table, columns and views are created on startup.
  */
+const { defineCollection } = define<FieldUi>();
+
 const collections = {
-  set: {
+  set: defineCollection({
     dbName: "sets",
     title: "name",
     fields: {
@@ -83,8 +85,8 @@ const collections = {
         meta: { label: "entity.brand", placeholder: "entities.selectBrand" },
       },
     },
-  },
-  brand: {
+  }),
+  brand: defineCollection({
     dbName: "brands",
     title: "name",
     fields: {
@@ -109,9 +111,9 @@ const collections = {
         },
       },
     },
-  },
-  wiki: { dbName: "wikis", title: "name", fields: { ...common } },
-} satisfies Collections<FieldUi>;
+  }),
+  wiki: defineCollection({ dbName: "wikis", title: "name", fields: { ...common } }),
+};
 
 export const cms = createCMS({
   db: postgresAdapter({ sql, migrations, actorTable: "users" }),

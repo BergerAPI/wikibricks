@@ -47,10 +47,14 @@ one entry. `cms.find` filters and sorts entries by their fields:
 cms.find({ type: "set", where: { pieces: { gt: 1000 } }, sort: "-updatedAt", limit: 10 });
 ```
 
+Collections and blocks defined on their own go through `defineCollection` and
+`defineBlock`, which check them, complete them in the editor and keep them exact
+for the types of values. `define<Meta>()` returns both, also checking `meta`.
+
 Values are typed from the collections: `entry.values.pieces` is a number once the
 entry's type is known, from `get(id, { type })`, `find({ type })` or by checking
-`entry.type`. Blocks defined on their own need `defineBlock` to keep their slug for
-this. With `populate: true`, `get` and `find` replace the IDs in relations with the
+`entry.type`. `create` and `propose` check the values they are given the same way.
+With `populate: true`, `get` and `find` replace the IDs in relations with the
 entries they point to, one level deep. `cms.delete(id)` removes an entry with all
 its versions.
 

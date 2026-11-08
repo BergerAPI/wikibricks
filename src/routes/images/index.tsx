@@ -118,7 +118,7 @@ export const handleImagePage = async (c: DefaultContext) => {
   const canDelete = !!user && (user.id === image.uploaded_by || isModerator(user));
 
   return c.render(
-    <Layout context={c} user={user} script={canDelete ? "delete-image" : undefined}>
+    <Layout context={c} user={user} script={canDelete ? "delete" : undefined}>
       <main class="overflow-auto">
         <div class="flex justify-between items-center pb-2 mb-3 border-b">
           <h1 class="text-3xl font-serif">{image.original_filename}</h1>

@@ -134,6 +134,10 @@ export interface Translations {
   "entity.website": string;
   "entity.imageOf": string;
   "entity.referencedBy": string;
+  "entity.delete": string;
+  "entity.confirmDelete": string;
+  "entity.deleteSuccess": string;
+  "entity.deleteFailed": string;
   "entity.cancel": string;
   "entity.editPage": string;
   "entity.versionHistory": string;
@@ -329,6 +333,11 @@ const translations: Record<Language, Translations> = {
     "entity.website": "Website",
     "entity.imageOf": "Image of {name}",
     "entity.referencedBy": "Linked from",
+    "entity.delete": "Delete",
+    "entity.confirmDelete":
+      "Are you sure you want to delete this entity with all its versions? This action cannot be undone.",
+    "entity.deleteSuccess": "Entity deleted successfully",
+    "entity.deleteFailed": "Failed to delete entity",
     "entity.cancel": "Cancel",
     "entity.editPage": "Edit Page",
     "entity.versionHistory": "Version History",
@@ -530,6 +539,11 @@ const translations: Record<Language, Translations> = {
     "entity.website": "Website",
     "entity.imageOf": "Bild von {name}",
     "entity.referencedBy": "Verlinkt von",
+    "entity.delete": "Löschen",
+    "entity.confirmDelete":
+      "Sind Sie sicher, dass Sie diesen Eintrag mit allen Versionen löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+    "entity.deleteSuccess": "Eintrag erfolgreich gelöscht",
+    "entity.deleteFailed": "Löschen des Eintrags fehlgeschlagen",
     "entity.cancel": "Abbrechen",
     "entity.editPage": "Seite bearbeiten",
     "entity.versionHistory": "Versionshistorie",

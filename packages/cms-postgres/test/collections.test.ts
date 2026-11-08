@@ -67,7 +67,7 @@ before(async () => {
     { headline: "Getting started", kind: "guide", views: 50, featured: false, published: "2024-03-01" },
     { headline: "Deep dive", kind: "guide", views: 20, published: null },
     { headline: "Release notes", kind: "news", views: 12, featured: true, published: "2024-06-30" },
-  ];
+  ] as const;
   for (const post of posts) await cms.create("post", { values: { ...post, author: ada } });
 });
 
@@ -143,7 +143,13 @@ describe("find", () => {
 describe("values", () => {
   test("stores booleans and dates as they are submitted", async () => {
     const { entityId } = await cms.create("post", {
-      values: { headline: "Dates", featured: "false", published: "2024-02-29", updated: "2024-05-01T12:30:00+02:00" },
+      // Forms send strings, which are accepted at runtime
+      values: {
+        headline: "Dates",
+        featured: "false" as unknown as boolean,
+        published: "2024-02-29",
+        updated: "2024-05-01T12:30:00+02:00",
+      },
     });
 
     const post = await cms.get(entityId, { type: "post" });

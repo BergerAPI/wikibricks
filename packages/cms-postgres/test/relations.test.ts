@@ -105,7 +105,7 @@ describe("relations", () => {
     const sections = [
       { block: "projects", heading: "Work", projects: [ids.cli, ids.shop] },
       { block: "feature", item: ids.shop },
-    ];
+    ] as const;
     ({ entityId: ids.home } = await cms.create("page", { values: { name: "Home", sections } }));
 
     assert.deepEqual((await cms.get(ids.home, { type: "page" }))?.values.sections, sections);

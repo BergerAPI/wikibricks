@@ -81,6 +81,7 @@ export const handleEntityPage = async (c: DefaultContext) => {
   // Edits always start from the current version, otherwise saving fails with a conflict
   const canEdit = !!user && c.req.query("edit") !== undefined && !versionId;
   const canReview = isProposal && isModerator(user);
+  const canDelete = isModerator(user) && !canEdit && !versionId;
   const entityUrl = `/entities/${entry.entityId}`;
 
   const fields = fieldsOf(entry.type);
@@ -94,7 +95,7 @@ export const handleEntityPage = async (c: DefaultContext) => {
     <Layout
       context={c}
       user={user}
-      script={canEdit ? "edit-entity" : canReview ? "review-entity" : undefined}
+      script={canEdit ? "edit-entity" : canReview ? "review-entity" : canDelete ? "delete" : undefined}
     >
       <main
         class="overflow-auto"
@@ -113,6 +114,19 @@ export const handleEntityPage = async (c: DefaultContext) => {
               <a href={`${entityUrl}?edit`}>{t("entity.editPage")}</a>
             )}
             <a href={`${entityUrl}/history`}>{t("entity.versionHistory")}</a>
+            {canDelete && (
+              <button
+                type="button"
+                class="border-0! p-0! text-red-600 hover:underline"
+                data-delete-url={entityUrl}
+                data-delete-confirm={t("entity.confirmDelete")}
+                data-delete-success={t("entity.deleteSuccess")}
+                data-delete-failed={t("entity.deleteFailed")}
+                data-delete-redirect="/entities/search"
+              >
+                {t("entity.delete")}
+              </button>
+            )}
           </div>
         </div>
 
@@ -212,7 +226,7 @@ export const handleEntityPageSubmit = async (c: DefaultContext) => {
   }
 };
 
-// The image of a rejected new entry goes too, unless another entry uses it
+// The image of a deleted or rejected entry goes too, unless another entry uses it
 const deleteUnusedImage = async (entry: WikiEntry) => {
   const imageId = parseId(entry.values.image_id);
   if (!imageId || !entry.authorId || (await cms.isReferenced("images", imageId))) return;
@@ -221,6 +235,21 @@ const deleteUnusedImage = async (entry: WikiEntry) => {
     DELETE FROM images WHERE id = ${imageId} AND uploaded_by = ${entry.authorId} RETURNING *
   `;
   if (image) await removeImageFile(image);
+};
+
+export const handleEntityDelete = async (c: DefaultContext) => {
+  const user = c.get("user");
+  if (!user || !isModerator(user)) return c.body("Unauthorized", 401);
+
+  const entityId = parseId(routeParam(c, "id"));
+  if (!entityId) return c.notFound();
+
+  try {
+    await deleteUnusedImage(await cms.delete(entityId));
+    return c.body("OK", 200);
+  } catch (error) {
+    return cmsErrorResponse(c, error);
+  }
 };
 
 export const handleEntityVersionPatch = async (c: DefaultContext) => {

@@ -227,8 +227,89 @@ export type EntriesOf<C extends Collections<any>, T extends keyof C & string, P 
   [K in T]: EntryOf<C, K, P>;
 }[T];
 
-/**
- * Defines a block on its own, keeping its slug exact, so values of blocks fields can be told
- * apart by `block`. Blocks written inline in a collection don't need it.
+/*
+ * Value types for creating and changing entries. Like the parser, they accept null to clear a
+ * field. Collections typed only as Collections fall back to plain records.
  */
-export const defineBlock = <const B extends Block<any>>(block: B) => block;
+
+type SingleInputOf<F> = F extends { type: "text" }
+  ? string
+  : F extends { type: "date" }
+    ? string | Date
+    : F extends { type: "select"; options: readonly (infer Option)[] }
+      ? Option
+      : F extends { type: "number" | "external" | "relation" }
+        ? number
+        : F extends { type: "boolean" }
+          ? boolean
+          : ScalarValue;
+
+export type InputOf<F> = F extends { type: "array"; fields: infer Sub }
+  ? readonly CreateValuesOf<Sub>[]
+  : F extends { type: "blocks"; blocks: readonly (infer B)[] }
+    ? readonly (B extends { slug: infer Slug; fields: infer Sub } ? { block: Slug } & CreateValuesOf<Sub> : never)[]
+    : F extends { type: "relation"; many: true }
+      ? readonly number[]
+      : SingleInputOf<F> | null;
+
+type RequiredKeys<F> = { [K in keyof F]: F[K] extends { required: true } ? K : never }[keyof F];
+
+/** Values for a new entry or list item: required fields have to be there, the rest may be */
+export type CreateValuesOf<F> = string extends keyof F
+  ? Record<string, unknown>
+  : { -readonly [K in RequiredKeys<F>]: Exclude<InputOf<F[K]>, null> } & {
+      -readonly [K in Exclude<keyof F, RequiredKeys<F>>]?: InputOf<F[K]>;
+    };
+
+/** Values changing an entry: only the fields to change */
+export type EditValuesOf<F> = string extends keyof F
+  ? Record<string, unknown>
+  : { -readonly [K in keyof F]?: InputOf<F[K]> };
+
+export type CreateValues<C extends Collections<any>, T extends keyof C & string> = {
+  [K in T]: CreateValuesOf<C[K]["fields"]>;
+}[T];
+
+export type EditValues<C extends Collections<any>, T extends keyof C & string> = {
+  [K in T]: EditValuesOf<C[K]["fields"]>;
+}[T];
+
+/**
+ * Helpers for defining collections and blocks on their own. They check the definition, help
+ * editors complete it, and keep it exact, which the types of values depend on: without them,
+ * a block's slug or a select's options would turn into plain strings. With a type argument,
+ * they also check every field's `meta` against it.
+ *
+ * ```ts
+ * const { defineCollection } = define<{ label: string }>();
+ * ```
+ */
+// Turns options a definition doesn't know into errors, which inference alone lets through
+type CommonFieldKeys = "required" | "unique" | "validate" | "meta";
+type VariantOf<F> = Extract<FieldType<any>, { type: F extends { type: infer T } ? T : never }>;
+
+type CheckField<F> = {
+  [K in keyof F]: K extends "fields"
+    ? CheckFields<F[K]>
+    : K extends "blocks"
+      ? CheckBlocks<F[K]>
+      : K extends keyof VariantOf<F> | CommonFieldKeys
+        ? F[K]
+        : never;
+};
+type CheckFields<F> = { [K in keyof F]: CheckField<F[K]> };
+// Its own type, so mapping keeps arrays arrays
+type CheckBlocks<B> = { [I in keyof B]: CheckBlock<B[I]> };
+type CheckBlock<B> = {
+  [K in keyof B]: K extends "fields" ? CheckFields<B[K]> : K extends keyof Block<any> ? B[K] : never;
+};
+export type CheckCollection<C> = {
+  [K in keyof C]: K extends "fields" ? CheckFields<C[K]> : K extends keyof Collection<any> ? C[K] : never;
+};
+
+export const define = <M = undefined>() => ({
+  defineCollection: <const C extends Collection<M>>(collection: C & CheckCollection<C>): C => collection,
+  defineBlock: <const B extends Block<M>>(block: B & CheckBlock<B>): B => block,
+});
+
+export const { defineCollection, defineBlock } = define<any>();

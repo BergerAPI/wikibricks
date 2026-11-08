@@ -2,7 +2,9 @@ export type { AdapterFactory, DatabaseAdapter, NewVersion, Store } from "./adapt
 export { createCMS, type Cms, type CmsOptions } from "./cms";
 export { CmsError, type CmsErrorCode } from "./errors";
 export {
+  define,
   defineBlock,
+  defineCollection,
   isListField,
   isManyRelation,
   isSingleValue,
@@ -11,6 +13,10 @@ export {
   type Collection,
   type Collections,
   type Condition,
+  type CreateValues,
+  type CreateValuesOf,
+  type EditValues,
+  type EditValuesOf,
   type EntriesOf,
   type Entry,
   type EntryOf,

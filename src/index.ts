@@ -16,6 +16,7 @@ import {
 } from "./routes/auth";
 import { handleChangesPage } from "./routes/changes";
 import {
+  handleEntityDelete,
   handleEntityPage,
   handleEntityPageSubmit,
   handleEntityVersionPatch,
@@ -69,6 +70,7 @@ app.post("/entities/new", handleNewEntitySubmit);
 app.get("/entities/search", handleSearchPage);
 app.get("/entities/:id", handleEntityPage);
 app.post("/entities/:id", handleEntityPageSubmit);
+app.delete("/entities/:id", handleEntityDelete);
 app.get("/entities/:id/history", handleEntityHistoryPage);
 app.patch("/entities/:id/:version", handleEntityVersionPatch);
 

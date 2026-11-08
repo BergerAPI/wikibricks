@@ -1,12 +1,24 @@
 import type { AdapterFactory, NewVersion, Store } from "./adapter";
 import { CmsError } from "./errors";
 import { relationIds, withRelated } from "./populate";
-import type { Collections, EntriesOf, Entry, FindQuery, Reference, ReviewStatus, Values } from "./types";
+import type {
+  CheckCollection,
+  Collections,
+  CreateValues,
+  EditValues,
+  EntriesOf,
+  Entry,
+  FindQuery,
+  Reference,
+  ReviewStatus,
+  Values,
+} from "./types";
 import { parseFields, sameValue } from "./values";
 
 export type CmsOptions<C extends Collections<any>> = {
   db: AdapterFactory;
-  collections: C;
+  // Checked like defineCollection, so unknown options in collections written here are errors too
+  collections: C & { [K in keyof C]: CheckCollection<C[K]> };
   /**
    * Whether new versions wait for someone to approve them, which is the default.
    * Collections can override it. Without review, every change is published right away.
@@ -65,9 +77,12 @@ export const createCMS = <const C extends Collections<any>>({ db, collections, r
     return versionId;
   };
 
-  const create = (type: Type, { values, authorId = null }: { values: Record<string, unknown> } & Actor) =>
+  const create = <T extends Type>(
+    type: T,
+    { values, authorId = null }: { values: CreateValues<C, T> } & Actor,
+  ) =>
     adapter.transaction(async (store) => {
-      const parsed = await parseFields(collections[type].fields, values, "create", store);
+      const parsed = await parseFields(collections[type].fields, values as Record<string, unknown>, "create", store);
       await checkUnique(store, type, parsed);
 
       if (collections[type].singleton) {
@@ -87,24 +102,31 @@ export const createCMS = <const C extends Collections<any>>({ db, collections, r
       return { entityId, versionId };
     });
 
-  const propose = (
+  const propose = <T extends Type = Type>(
     entityId: number,
     {
       values,
+      type,
       changeMessage = "",
       authorId = null,
       baseVersionId,
-    }: { values: Record<string, unknown>; changeMessage?: string; baseVersionId?: number } & Actor,
+    }: {
+      values: EditValues<C, T>;
+      /** The entry's collection, which types the values and is checked */
+      type?: T;
+      changeMessage?: string;
+      baseVersionId?: number;
+    } & Actor,
   ) =>
     adapter.transaction(async (store) => {
       const lock = await store.lockEntity(entityId);
-      if (!lock) throw new CmsError("not_found");
+      if (!lock || (type !== undefined && lock.type !== type)) throw new CmsError("not_found");
       if (baseVersionId !== undefined && baseVersionId !== lock.headVersionId) throw new CmsError("stale");
 
       const current = await store.getEntry(entityId);
       if (!current) throw new CmsError("not_found");
 
-      const parsed = await parseFields(collections[current.type].fields, values, "edit", store);
+      const parsed = await parseFields(collections[current.type].fields, values as Record<string, unknown>, "edit", store);
       const changed = Object.fromEntries(
         Object.entries(parsed).filter(([name, value]) => !sameValue(value, current.values[name])),
       );
@@ -174,12 +196,13 @@ export const createCMS = <const C extends Collections<any>>({ db, collections, r
       (await find<T, P>({ type, limit: 1, ...options })).items[0] as EntriesOf<C, T, P> | undefined,
 
     /** Creates the entry of a singleton collection, or changes it once it exists */
-    saveSingle: async (
-      type: Type,
-      options: { values: Record<string, unknown>; changeMessage?: string } & Actor,
+    saveSingle: async <T extends Type>(
+      type: T,
+      options: { values: CreateValues<C, T>; changeMessage?: string } & Actor,
     ) => {
       const entityId = await adapter.firstEntityId(type);
-      return entityId ? { entityId, versionId: await propose(entityId, options) } : create(type, options);
+      if (!entityId) return create(type, options);
+      return { entityId, versionId: await propose<T>(entityId, { ...options, type }) };
     },
 
     history: (entityId: number, limit = 100) => adapter.history(entityId, limit),

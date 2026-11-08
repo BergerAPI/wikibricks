@@ -146,7 +146,7 @@ describe("lists in postgres", () => {
 
   test("names the invalid value by its path", async () => {
     const create = (sections: unknown) =>
-      errorOf(cms.create("page", { values: { title: "Invalid", sections } }));
+      errorOf(cms.create("page", { values: { title: "Invalid", sections: sections as never } }));
 
     assert.equal(await create("hero"), "invalid sections");
     assert.equal(await create([{ block: "video" }]), "invalid sections.0.block");

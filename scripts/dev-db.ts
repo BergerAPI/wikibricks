@@ -10,6 +10,7 @@
  */
 import { PGlite } from "@electric-sql/pglite";
 import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
+import type { CreateValues } from "@wikibricks/cms";
 import bcrypt from "bcryptjs";
 import { rm } from "node:fs/promises";
 import { createServer } from "node:net";
@@ -74,13 +75,12 @@ async function seed() {
   const user = Object.fromEntries(users.map((it) => [it.username, it.id]));
 
   // Goes through the same review as entries made in the app
-  const add = async (
-    type: EntityType,
-    name: string,
-    values: Record<string, string | number>,
+  const add = async <T extends EntityType>(
+    type: T,
+    values: CreateValues<typeof cms.collections, T>,
     { authorId = user.admin, approve = true } = {},
   ) => {
-    const { entityId, versionId } = await cms.create(type, { values: { name, ...values }, authorId });
+    const { entityId, versionId } = await cms.create(type, { values, authorId });
     if (approve)
       await cms.review(entityId, versionId, {
         status: "approved",
@@ -90,18 +90,21 @@ async function seed() {
     return entityId;
   };
 
-  const lego = await add("brand", "LEGO", {
+  const lego = await add("brand", {
+    name: "LEGO",
     description: "Danish toy company, founded in 1932.",
     country: "Denmark",
     website: "lego.com",
   });
-  const cobi = await add("brand", "Cobi", {
+  const cobi = await add("brand", {
+    name: "Cobi",
     description: "Polish maker of construction blocks.",
     country: "Poland",
     website: "cobi.eu",
   });
 
-  const farm = await add("set", "Farm House", {
+  const farm = await add("set", {
+    name: "Farm House",
     description: "A small farm with animals and a tractor.",
     pieces: 512,
     size: "M",
@@ -109,7 +112,8 @@ async function seed() {
     issued: "2019",
     brand_id: lego,
   });
-  await add("set", "Millennium Falcon", {
+  await add("set", {
+    name: "Millennium Falcon",
     description: "The largest Star Wars set for a long time.",
     pieces: 7541,
     size: "XL",
@@ -117,7 +121,8 @@ async function seed() {
     issued: "10.2017",
     brand_id: lego,
   });
-  await add("set", "Hogwarts Castle", {
+  await add("set", {
+    name: "Hogwarts Castle",
     description: "The castle with the Great Hall and towers.",
     pieces: 6020,
     size: "XL",
@@ -125,7 +130,8 @@ async function seed() {
     issued: "01.09.2018",
     brand_id: lego,
   });
-  await add("set", "City Bus", {
+  await add("set", {
+    name: "City Bus",
     description: "A bus with a driver and passengers.",
     pieces: 280,
     size: "S",
@@ -133,13 +139,13 @@ async function seed() {
     issued: "2021",
     brand_id: cobi,
   });
-  await add("wiki", "Sorting Bricks", { description: "Sort by color first, then by shape." });
+  await add("wiki", { name: "Sorting Bricks", description: "Sort by color first, then by shape." });
 
   // Something for the moderators to review
   await add(
     "set",
-    "Ninjago City",
     {
+      name: "Ninjago City",
       description: "A tall city with many floors.",
       pieces: 4867,
       size: "XL",
