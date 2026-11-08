@@ -101,7 +101,7 @@ describe("lists in postgres", () => {
       values: { title: "Home", sections: sections() },
     });
 
-    const page = await cms.get(entityId);
+    const page = await cms.get(entityId, { type: "page" });
     assert.deepEqual(page?.values, { title: "Home", sections: sections() });
   });
 
@@ -110,7 +110,7 @@ describe("lists in postgres", () => {
       values: { title: "Sparse", sections: [{ block: "hero", heading: "Hi" }, { block: "columns" }] },
     });
 
-    const page = await cms.get(entityId);
+    const page = await cms.get(entityId, { type: "page" });
     assert.deepEqual(page?.values.sections, [
       { block: "hero", heading: "Hi", image: null },
       { block: "columns", columns: [] },
@@ -123,17 +123,17 @@ describe("lists in postgres", () => {
     });
 
     const second = await cms.propose(entityId, { values: { title: "About me" } });
-    assert.deepEqual((await cms.get(entityId, second))?.values.sections, sections());
+    assert.deepEqual((await cms.get(entityId, { type: "page", versionId: second }))?.values.sections, sections());
 
     const third = await cms.propose(entityId, {
       values: { sections: [{ block: "text", body: "Shorter" }] },
     });
-    assert.deepEqual((await cms.get(entityId, third))?.values, {
+    assert.deepEqual((await cms.get(entityId, { type: "page", versionId: third }))?.values, {
       title: "About me",
       sections: [{ block: "text", body: "Shorter" }],
     });
-    assert.deepEqual((await cms.get(entityId, first))?.values.sections, sections());
-    assert.deepEqual((await cms.get(entityId, second))?.values.sections, sections());
+    assert.deepEqual((await cms.get(entityId, { type: "page", versionId: first }))?.values.sections, sections());
+    assert.deepEqual((await cms.get(entityId, { type: "page", versionId: second }))?.values.sections, sections());
   });
 
   test("treats resubmitting the same lists as no change", async () => {
@@ -166,10 +166,10 @@ describe("lists in postgres", () => {
       { label: "Demo", url: null },
     ];
     const { entityId } = await cms.create("project", { values: { links } });
-    assert.deepEqual((await cms.get(entityId))?.values.links, links);
+    assert.deepEqual((await cms.get(entityId, { type: "project" }))?.values.links, links);
 
     const cleared = await cms.propose(entityId, { values: { links: [] } });
-    assert.deepEqual((await cms.get(entityId, cleared))?.values.links, []);
+    assert.deepEqual((await cms.get(entityId, { type: "project", versionId: cleared }))?.values.links, []);
   });
 
   test("finds references from inside blocks", async () => {

@@ -1,6 +1,7 @@
 import type { AdapterFactory, NewVersion, Store } from "./adapter";
 import { CmsError } from "./errors";
-import type { Collections, Entry, FindQuery, Reference, ReviewStatus, Values } from "./types";
+import { relationIds, withRelated } from "./populate";
+import type { Collections, EntriesOf, Entry, FindQuery, Reference, ReviewStatus, Values } from "./types";
 import { parseFields, sameValue } from "./values";
 
 export type CmsOptions<C extends Collections<any>> = {
@@ -19,7 +20,7 @@ export type CmsOptions<C extends Collections<any>> = {
  */
 type Actor = { authorId?: number | null };
 
-export const createCMS = <C extends Collections<any>>({ db, collections, review = true }: CmsOptions<C>) => {
+export const createCMS = <const C extends Collections<any>>({ db, collections, review = true }: CmsOptions<C>) => {
   type Type = keyof C & string;
 
   const adapter = db(collections);
@@ -120,8 +121,29 @@ export const createCMS = <C extends Collections<any>>({ db, collections, review 
       });
     });
 
-  const find = async (query: FindQuery<Type> = {}) =>
-    (await adapter.find(query)) as { total: number; items: Entry<Type>[] };
+  // Replaces the IDs in relations with the entries they point to
+  const populate = async (entries: Entry[]) => {
+    const ids = new Set<number>();
+    for (const entry of entries) relationIds(collections[entry.type].fields, entry.values, ids);
+    if (ids.size === 0) return entries;
+
+    const { items } = await adapter.find({ where: { id: { in: [...ids] } } });
+    const related = new Map(items.map((item) => [item.entityId, item]));
+    return entries.map((entry) => ({
+      ...entry,
+      values: withRelated(collections[entry.type].fields, entry.values, related),
+    }));
+  };
+
+  const find = async <T extends Type = Type, P extends boolean = false>(
+    query: FindQuery<T> & { populate?: P } = {},
+  ) => {
+    const { total, items } = await adapter.find(query);
+    return {
+      total,
+      items: (query.populate ? await populate(items) : items) as EntriesOf<C, T, P>[],
+    };
+  };
 
   return {
     collections,
@@ -131,14 +153,25 @@ export const createCMS = <C extends Collections<any>>({ db, collections, review 
     /** Brings the database up to date. Call this once before serving requests. */
     init: () => adapter.init(),
 
-    get: (entityId: number, versionId?: number) =>
-      adapter.getEntry(entityId, versionId) as Promise<Entry<Type> | undefined>,
+    /**
+     * The current version of an entry, or the given one. With a type, only finds entries of
+     * that collection, and their values are typed accordingly.
+     */
+    get: async <T extends Type = Type, P extends boolean = false>(
+      entityId: number,
+      { versionId, type, populate: withEntries }: { versionId?: number; type?: T; populate?: P } = {},
+    ) => {
+      const entry = await adapter.getEntry(entityId, versionId);
+      if (!entry || (type !== undefined && entry.type !== type)) return;
+      return (withEntries ? (await populate([entry]))[0] : entry) as EntriesOf<C, T, P>;
+    },
 
     /** Current versions of entries, filtered and sorted by their values */
     find,
 
     /** The current entry of a singleton collection */
-    getSingle: async (type: Type) => (await find({ type, limit: 1 })).items[0],
+    getSingle: async <T extends Type, P extends boolean = false>(type: T, options: { populate?: P } = {}) =>
+      (await find<T, P>({ type, limit: 1, ...options })).items[0] as EntriesOf<C, T, P> | undefined,
 
     /** Creates the entry of a singleton collection, or changes it once it exists */
     saveSingle: async (
@@ -182,7 +215,7 @@ export const createCMS = <C extends Collections<any>>({ db, collections, review 
         reviewerId = null,
       }: { status: Exclude<ReviewStatus, "pending">; comment?: string; reviewerId?: number | null },
     ) =>
-      adapter.transaction(async (store): Promise<{ deleted?: Entry<Type> }> => {
+      adapter.transaction(async (store): Promise<{ deleted?: EntriesOf<C, Type> }> => {
         const lock = await store.lockEntity(entityId);
         if (!lock) throw new CmsError("not_found");
 
@@ -204,11 +237,25 @@ export const createCMS = <C extends Collections<any>>({ db, collections, review 
 
         if (status === "rejected" && lock.headVersionId === null) {
           await store.deleteEntity(entityId);
-          return { deleted: entry };
+          return { deleted: entry as EntriesOf<C, Type> };
         }
         if (status === "rejected" && collections[entry.type].versions === false)
           await store.pruneVersions(entityId);
         return {};
+      }),
+
+    /**
+     * Deletes an entry with all its versions. Returns its current version, or its latest one
+     * if it was never approved, so the app can clean up after it.
+     */
+    delete: (entityId: number) =>
+      adapter.transaction(async (store) => {
+        const lock = await store.lockEntity(entityId);
+        if (!lock) throw new CmsError("not_found");
+
+        const entry = await store.getEntry(entityId, lock.headVersionId ?? lock.latestVersionId);
+        await store.deleteEntity(entityId);
+        return entry as EntriesOf<C, Type>;
       }),
   };
 };

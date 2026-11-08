@@ -70,7 +70,7 @@ export const handleEntityPage = async (c: DefaultContext) => {
   const versionId = versionParam === undefined ? undefined : parseId(versionParam);
   if (!entityId || (versionParam !== undefined && !versionId)) return c.notFound();
 
-  const entry = await cms.get(entityId, versionId);
+  const entry = await cms.get(entityId, { versionId });
   if (!entry) return c.notFound();
 
   // Like in the history, unreviewed and rejected versions are only for moderators and their author

@@ -146,7 +146,7 @@ describe("values", () => {
       values: { headline: "Dates", featured: "false", published: "2024-02-29", updated: "2024-05-01T12:30:00+02:00" },
     });
 
-    const post = await cms.get(entityId);
+    const post = await cms.get(entityId, { type: "post" });
     assert.equal(post?.values.featured, false);
     assert.equal(post?.values.published, "2024-02-29");
     assert.equal(post?.values.updated, "2024-05-01T10:30:00.000Z");
@@ -204,7 +204,7 @@ describe("collections", () => {
     const history = await cms.history(entityId);
     assert.equal(history?.title, "Three");
     assert.deepEqual(history?.versions.map((version) => version.versionId), [third]);
-    assert.equal(await cms.get(entityId, first), undefined);
+    assert.equal(await cms.get(entityId, { versionId: first }), undefined);
   });
 
   test("has exactly one entry in a singleton", async () => {

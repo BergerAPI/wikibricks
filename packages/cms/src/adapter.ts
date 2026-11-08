@@ -28,7 +28,9 @@ export interface Store {
   /** The current version of an entry, or the given one */
   getEntry(entityId: number, versionId?: number): Promise<Entry | undefined>;
   /** Locks an entry against concurrent changes until the transaction ends */
-  lockEntity(entityId: number): Promise<{ type: string; headVersionId: number | null } | undefined>;
+  lockEntity(
+    entityId: number,
+  ): Promise<{ type: string; headVersionId: number | null; latestVersionId: number } | undefined>;
   /** Waits for and holds a lock on any name until the transaction ends */
   lock(key: string): Promise<void>;
   /** The collection of an entry, if it exists */

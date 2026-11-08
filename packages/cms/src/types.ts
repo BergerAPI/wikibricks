@@ -127,6 +127,8 @@ export type FindQuery<T extends string = string> = {
   sort?: string | string[];
   limit?: number;
   offset?: number;
+  /** Replaces the IDs in relations with the entries they point to, missing ones with null */
+  populate?: boolean;
 };
 
 export type ReviewStatus = "pending" | "approved" | "rejected";
@@ -150,12 +152,12 @@ export type Version = {
 };
 
 /** An entry in a given version, with the values of its collection's fields */
-export type Entry<T extends string = string> = Version & {
+export type Entry<T extends string = string, V = Values> = Version & {
   type: T;
   /** The value of the collection's title field */
   title: string | null;
   entityCreatedAt: Date;
-  values: Values;
+  values: V;
 };
 
 /** A version together with the type and title of its entry */
@@ -169,3 +171,64 @@ export type Reference<T extends string = string> = {
   /** The field holding the reference, like "brand" or "sections" for one inside a list */
   field: string;
 };
+
+/*
+ * Value types worked out from the collections, so values don't need casts. Collections typed
+ * only as Collections fall back to plain Values. With populate, relations hold the entries
+ * they point to, with the IDs of their own relations.
+ */
+
+type TargetsOf<F> = F extends { to: infer T } ? (T extends readonly (infer Each)[] ? Each : T) : never;
+
+type Nullable<F, V> = F extends { required: true } ? V : V | null;
+
+type SingleValueOf<F> = F extends { type: "text" | "date" }
+  ? string
+  : F extends { type: "select"; options: readonly (infer Option)[] }
+    ? Option
+    : F extends { type: "number" | "external" }
+      ? number
+      : F extends { type: "boolean" }
+        ? boolean
+        : ScalarValue;
+
+type RelatedEntry<C, T> = C extends Collections<any>
+  ? T extends keyof C & string
+    ? EntryOf<C, T>
+    : Entry
+  : Entry;
+
+export type ValueOf<F, C = unknown, P extends boolean = false> = F extends { type: "array"; fields: infer Sub }
+  ? ValuesOf<Sub, C, P>[]
+  : F extends { type: "blocks"; blocks: readonly (infer B)[] }
+    ? (B extends { slug: infer Slug; fields: infer Sub } ? { block: Slug } & ValuesOf<Sub, C, P> : never)[]
+    : F extends { type: "relation"; many: true }
+      ? P extends true
+        ? RelatedEntry<C, TargetsOf<F>>[]
+        : number[]
+      : F extends { type: "relation" }
+        ? P extends true
+          ? RelatedEntry<C, TargetsOf<F>> | null
+          : Nullable<F, number>
+        : Nullable<F, SingleValueOf<F>>;
+
+export type ValuesOf<F, C = unknown, P extends boolean = false> = {
+  -readonly [K in keyof F]: ValueOf<F[K], C, P>;
+};
+
+/** An entry of one collection, with typed values */
+export type EntryOf<C extends Collections<any>, T extends keyof C & string, P extends boolean = false> = Entry<
+  T,
+  ValuesOf<C[T]["fields"], C, P>
+>;
+
+/** An entry of any of the given collections, telling them apart by `type` */
+export type EntriesOf<C extends Collections<any>, T extends keyof C & string, P extends boolean = false> = {
+  [K in T]: EntryOf<C, K, P>;
+}[T];
+
+/**
+ * Defines a block on its own, keeping its slug exact, so values of blocks fields can be told
+ * apart by `block`. Blocks written inline in a collection don't need it.
+ */
+export const defineBlock = <const B extends Block<any>>(block: B) => block;

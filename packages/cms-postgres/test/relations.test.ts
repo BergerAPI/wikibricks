@@ -1,22 +1,22 @@
-import { CmsError, createCMS, type Block } from "@wikibricks/cms";
+import { CmsError, createCMS, defineBlock } from "@wikibricks/cms";
 import assert from "node:assert/strict";
 import { after, before, describe, test } from "node:test";
 import type postgres from "postgres";
 import { postgresAdapter } from "../src";
 import { startDatabase } from "./database";
 
-const projectList = {
+const projectList = defineBlock({
   slug: "projects",
   fields: {
     heading: { type: "text" },
     projects: { type: "relation", to: "project", many: true },
   },
-} satisfies Block;
+});
 
-const feature = {
+const feature = defineBlock({
   slug: "feature",
   fields: { item: { type: "relation", to: ["project", "post"] } },
-} satisfies Block;
+});
 
 const collections = {
   tag: { title: "name", fields: { name: { type: "text", required: true } } },
@@ -74,15 +74,16 @@ after(() => stop());
 
 describe("relations", () => {
   test("stores relations to many entries in order", async () => {
-    assert.deepEqual((await cms.get(ids.shop))?.values.tags, [ids.web, ids.design]);
+    assert.deepEqual((await cms.get(ids.shop, { type: "project" }))?.values.tags, [ids.web, ids.design]);
 
     const reordered = await cms.propose(ids.shop, { values: { tags: [ids.design, ids.web, ids.design] } });
-    assert.deepEqual((await cms.get(ids.shop, reordered))?.values.tags, [ids.design, ids.web]);
+    const shop = await cms.get(ids.shop, { type: "project", versionId: reordered });
+    assert.deepEqual(shop?.values.tags, [ids.design, ids.web]);
   });
 
   test("carries relations over when they aren't changed", async () => {
     const renamed = await cms.propose(ids.cli, { values: { name: "Command line" } });
-    assert.deepEqual((await cms.get(ids.cli, renamed))?.values.tags, [ids.rust]);
+    assert.deepEqual((await cms.get(ids.cli, { type: "project", versionId: renamed }))?.values.tags, [ids.rust]);
   });
 
   test("only relates to entries of the given collections", async () => {
@@ -97,7 +98,7 @@ describe("relations", () => {
 
     const { entityId } = await cms.create("post", { values: { name: "Launch", related: ids.shop } });
     const reply = await cms.create("post", { values: { name: "Reply", related: entityId } });
-    assert.equal((await cms.get(reply.entityId))?.values.related, entityId);
+    assert.equal((await cms.get(reply.entityId, { type: "post" }))?.values.related, entityId);
   });
 
   test("stores relations inside blocks", async () => {
@@ -107,7 +108,7 @@ describe("relations", () => {
     ];
     ({ entityId: ids.home } = await cms.create("page", { values: { name: "Home", sections } }));
 
-    assert.deepEqual((await cms.get(ids.home))?.values.sections, sections);
+    assert.deepEqual((await cms.get(ids.home, { type: "page" }))?.values.sections, sections);
   });
 
   test("finds entries by the entries they relate to", async () => {
@@ -150,6 +151,74 @@ describe("relations", () => {
     });
 
     await reviewed.review(draft.entityId, draft.versionId, { status: "rejected" });
-    assert.deepEqual((await cms.get(entityId))?.values.tags, [ids.web]);
+    assert.deepEqual((await cms.get(entityId, { type: "project" }))?.values.tags, [ids.web]);
+  });
+});
+
+describe("populate", () => {
+  test("replaces relations with the entries they point to", async () => {
+    const shop = await cms.get(ids.shop, { type: "project", populate: true });
+    assert.deepEqual(
+      shop?.values.tags.map((tag) => tag.values.name),
+      ["design", "web"],
+    );
+
+    const { entityId } = await cms.create("post", { values: { name: "Case study", related: ids.shop } });
+    const post = await cms.get(entityId, { type: "post", populate: true });
+    assert.equal(post?.values.related?.title, "Shop");
+    // Only one level deep: the shop's own relations stay IDs
+    assert.deepEqual(post?.values.related?.values, (await cms.get(ids.shop))?.values);
+  });
+
+  test("replaces relations inside blocks", async () => {
+    const home = await cms.get(ids.home, { type: "page", populate: true });
+    const [list, feature] = home?.values.sections ?? [];
+
+    assert.equal(list.block, "projects");
+    assert.deepEqual(list.block === "projects" && list.projects.map((project) => project.title), [
+      "Command line",
+      "Shop",
+    ]);
+    assert.equal(feature.block === "feature" && feature.item?.title, "Shop");
+  });
+
+  test("populates found entries and leaves out missing ones", async () => {
+    const { entityId: lone } = await cms.create("tag", { values: { name: "lone" } });
+    const { entityId } = await cms.create("project", { values: { name: "Lonely", tags: [lone, ids.rust] } });
+    await cms.delete(lone);
+
+    const { items } = await cms.find({ type: "project", where: { id: entityId }, populate: true });
+    assert.deepEqual(
+      items[0].values.tags.map((tag) => tag.title),
+      ["rust"],
+    );
+  });
+});
+
+describe("delete", () => {
+  test("deletes an entry with its versions and returns it", async () => {
+    const { entityId } = await cms.create("tag", { values: { name: "temporary" } });
+    await cms.propose(entityId, { values: { name: "temporary tag" } });
+
+    const deleted = await cms.delete(entityId);
+    assert.equal(deleted.title, "temporary tag");
+    assert.equal(await cms.get(entityId), undefined);
+    assert.equal(await cms.history(entityId), undefined);
+    assert.equal(await errorOf(cms.delete(entityId)), "not_found");
+  });
+
+  test("deletes entries that were never approved", async () => {
+    const reviewed = createCMS({ db: postgresAdapter({ sql }), collections, review: true });
+    const { entityId } = await reviewed.create("tag", { values: { name: "unapproved" } });
+
+    assert.equal((await reviewed.delete(entityId)).title, "unapproved");
+  });
+
+  test("clears relations to the deleted entry", async () => {
+    const { entityId: target } = await cms.create("project", { values: { name: "Gone soon" } });
+    const { entityId } = await cms.create("post", { values: { name: "Pointer", related: target } });
+
+    await cms.delete(target);
+    assert.equal((await cms.get(entityId, { type: "post" }))?.values.related, null);
   });
 });

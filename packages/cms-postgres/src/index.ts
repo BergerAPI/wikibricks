@@ -104,10 +104,18 @@ const createStore = (
     },
 
     async lockEntity(entityId) {
-      const [entity] = await db<{ type: string; head_version_id: number | null }[]>`
-        SELECT type, head_version_id FROM entities WHERE id = ${entityId} FOR NO KEY UPDATE
+      const [entity] = await db<{ type: string; head_version_id: number | null; latest_version_id: number }[]>`
+        SELECT type, head_version_id,
+          (SELECT MAX(id) FROM entity_versions WHERE entity_id = e.id) AS latest_version_id
+        FROM entities e WHERE id = ${entityId} FOR NO KEY UPDATE
       `;
-      return entity && { type: entity.type, headVersionId: entity.head_version_id };
+      return (
+        entity && {
+          type: entity.type,
+          headVersionId: entity.head_version_id,
+          latestVersionId: entity.latest_version_id,
+        }
+      );
     },
 
     async lock(key) {
