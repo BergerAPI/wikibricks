@@ -1,3 +1,4 @@
+import { cms } from "../../collections";
 import { InfoBox, InfoBoxImage, InfoBoxRow } from "../../components/info-box";
 import { Table, TableHead } from "../../components/table";
 import { sql, type User } from "../../database";
@@ -17,16 +18,7 @@ export const handleUserPage = async (c: DefaultContext) => {
   `;
   if (!user) return c.notFound();
 
-  const recentActivity = await sql<
-    { entity_name: string; entity_id: number; created_at: Date; version_number: number }[]
-  >`
-    SELECT e.name AS entity_name, e.id AS entity_id, v.created_at, v.version_number
-    FROM entity_versions v
-    JOIN entities e ON v.entity_id = e.id
-    WHERE v.created_by = ${userId}
-    ORDER BY v.created_at DESC
-    LIMIT 10
-  `;
+  const recentActivity = await cms.activity(userId);
 
   return c.render(
     <Layout context={c} user={currentUser}>
@@ -58,12 +50,12 @@ export const handleUserPage = async (c: DefaultContext) => {
                   {recentActivity.map((activity) => (
                     <tr>
                       <td>
-                        <a href={`/entities/${activity.entity_id}`}>
-                          {activity.entity_name}
+                        <a href={`/entities/${activity.entityId}`}>
+                          {activity.title}
                         </a>
                       </td>
-                      <td>{activity.version_number}</td>
-                      <td>{formatDate(activity.created_at)}</td>
+                      <td>{activity.versionNumber}</td>
+                      <td>{formatDate(activity.createdAt)}</td>
                     </tr>
                   ))}
                 </tbody>

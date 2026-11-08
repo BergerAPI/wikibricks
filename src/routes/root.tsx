@@ -1,16 +1,16 @@
 import { Layout } from "../layout";
 import type { DefaultContext } from "../utils";
-import { sql, type EntityView } from "../database";
+import { cms } from "../collections";
 import { useTranslation } from "../translation";
 
 export const handleRootPage = async (c: DefaultContext) => {
   const user = c.get("user");
   const { t } = useTranslation(c);
 
-  const [sets, brands] = await Promise.all([
-    sql<EntityView[]>`SELECT * FROM set_view ORDER BY version_created_at DESC LIMIT 3`,
-    sql<EntityView[]>`SELECT * FROM brand_view ORDER BY version_created_at DESC LIMIT 3`,
-  ]);
+  // The most recently changed sets and brands
+  const [sets, brands] = await Promise.all(
+    (["set", "brand"] as const).map(async (type) => (await cms.find({ type, sort: "-updatedAt", limit: 3 })).items),
+  );
 
   return c.render(
     <Layout context={c} user={user}>
@@ -48,7 +48,7 @@ export const handleRootPage = async (c: DefaultContext) => {
           <ul>
             {sets.map((it) => (
               <li>
-                <a href={`/entities/${it.id}`}>{it.name}</a>
+                <a href={`/entities/${it.entityId}`}>{it.title}</a>
               </li>
             ))}
           </ul>
@@ -64,7 +64,7 @@ export const handleRootPage = async (c: DefaultContext) => {
           <ul>
             {brands.map((it) => (
               <li>
-                <a href={`/entities/${it.id}`}>{it.name}</a>
+                <a href={`/entities/${it.entityId}`}>{it.title}</a>
               </li>
             ))}
           </ul>

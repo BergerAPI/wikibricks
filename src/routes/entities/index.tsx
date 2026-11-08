@@ -1,88 +1,59 @@
+import type { Field } from "@wikibricks/cms";
+import { cms, fieldsOf, type FieldUi, type WikiEntry } from "../../collections";
 import { EntityFieldInput } from "../../components/entity-field";
 import { InfoBox, InfoBoxImage, InfoBoxRow } from "../../components/info-box";
-import { sql, type EntityView, type Image, type Queryable } from "../../database";
-import {
-  displayField,
-  entityDefinitions,
-  isEntityType,
-  loadFieldOptions,
-  loadReferenceNames,
-  parseFields,
-  type EntityTypeDefinition,
-  type FieldOption,
-} from "../../entity-types";
+import { sql, type Image } from "../../database";
+import { displayField, loadFieldOptions, loadRelationNames, type FieldOption } from "../../fields";
 import { Layout } from "../../layout";
 import { removeImageFile } from "../../services/image-storage";
 import type { EditEntityRequest, ReviewVersionRequest } from "../../shared/contracts";
 import { useTranslation, type TranslationFunctions } from "../../translation";
 import { isModerator, parseId, readJson, routeParam, type DefaultContext } from "../../utils";
-
-/**
- * Loads an entity in its current version, or in the given version if one is passed.
- */
-const getEntity = async (entityId: number, versionId?: number, db: Queryable = sql) => {
-  const [info] = await db<{ type: string }[]>`SELECT type FROM entities WHERE id = ${entityId}`;
-  if (!info || !isEntityType(info.type)) return;
-
-  // Every entity type has a view for its current version and one for all versions
-  const [entity] = await (versionId === undefined
-    ? db<EntityView[]>`SELECT * FROM ${db(`${info.type}_view`)} WHERE id = ${entityId}`
-    : db<EntityView[]>`
-        SELECT * FROM ${db(`${info.type}_versions_view`)}
-        WHERE id = ${entityId} AND version_id = ${versionId}
-      `);
-  return entity;
-};
-
-const lockEntity = async (db: Queryable, entityId: number) => {
-  const [entity] = await db<{ head_version_id: number | null }[]>`
-    SELECT head_version_id FROM entities WHERE id = ${entityId} FOR NO KEY UPDATE
-  `;
-  return entity;
-};
+import { cmsErrorResponse } from "./errors";
 
 const EntityInfoBox = ({
-  entity,
-  definition,
+  entry,
+  fields,
   editable,
   options,
-  references,
+  relationNames,
   t,
 }: {
-  entity: EntityView;
-  definition: EntityTypeDefinition;
+  entry: WikiEntry;
+  fields: Record<string, Field<FieldUi>>;
   editable: boolean;
   options: Record<string, FieldOption[]>;
-  references: Record<string, string>;
+  relationNames: Record<string, string>;
   t: TranslationFunctions["t"];
 }) => (
-  <InfoBox title={entity.name}>
+  <InfoBox title={entry.title ?? ""}>
     <InfoBoxImage
-      src={entity.image_id ? `/images/serve/${entity.image_id}` : "https://placehold.co/800x800"}
-      alt={t("entity.imageOf", { name: entity.name })}
+      src={entry.values.image_id ? `/images/serve/${entry.values.image_id}` : "https://placehold.co/800x800"}
+      alt={t("entity.imageOf", { name: entry.title ?? "" })}
     />
 
-    {Object.entries(definition.fields).map(([key, field]) => {
-      const value = entity[key] == null ? "" : String(entity[key]);
-      if (!value && !editable) return null;
+    {Object.entries(fields).map(([name, field]) => {
+      const label = field.meta.label;
+      const value = entry.values[name] == null ? "" : String(entry.values[name]);
+      if (!label || (!value && !editable)) return null;
 
       if (editable)
         return (
-          <InfoBoxRow label={t(field.label)}>
+          <InfoBoxRow label={t(label)}>
             <EntityFieldInput
               t={t}
               field={field}
               value={value}
-              options={options[key]}
+              options={options[name]}
               class="flex-1 border-none outline-none h-6"
-              data-edit-field={key}
+              data-edit-field={name}
             />
           </InfoBoxRow>
         );
 
-      const { text, href } = displayField(field, value, references[key]);
+      const { text, href } = displayField(field, value, relationNames[name]);
       return (
-        <InfoBoxRow label={t(field.label)}>
+        <InfoBoxRow label={t(label)}>
           {href ? <a href={href}>{text}</a> : <span>{text}</span>}
         </InfoBoxRow>
       );
@@ -99,23 +70,24 @@ export const handleEntityPage = async (c: DefaultContext) => {
   const versionId = versionParam === undefined ? undefined : parseId(versionParam);
   if (!entityId || (versionParam !== undefined && !versionId)) return c.notFound();
 
-  const entity = await getEntity(entityId, versionId);
-  if (!entity) return c.notFound();
+  const entry = await cms.get(entityId, versionId);
+  if (!entry) return c.notFound();
 
   // Like in the history, unreviewed and rejected versions are only for moderators and their author
-  if (entity.review_status !== "approved" && !isModerator(user) && entity.created_by !== user?.id)
+  if (entry.status !== "approved" && !isModerator(user) && entry.authorId !== user?.id)
     return c.notFound();
 
-  const isProposal = entity.review_status === "pending";
+  const isProposal = entry.status === "pending";
   // Edits always start from the current version, otherwise saving fails with a conflict
   const canEdit = !!user && c.req.query("edit") !== undefined && !versionId;
   const canReview = isProposal && isModerator(user);
-  const entityUrl = `/entities/${entity.id}`;
+  const entityUrl = `/entities/${entry.entityId}`;
 
-  const definition = entityDefinitions[entity.type];
-  const [options, references] = await Promise.all([
-    canEdit ? loadFieldOptions(definition.fields) : {},
-    loadReferenceNames(entity, definition.fields),
+  const fields = fieldsOf(entry.type);
+  const [options, relationNames, references] = await Promise.all([
+    canEdit ? loadFieldOptions(fields) : {},
+    loadRelationNames(entry, fields),
+    cms.referencing(entry.entityId),
   ]);
 
   return c.render(
@@ -127,13 +99,13 @@ export const handleEntityPage = async (c: DefaultContext) => {
       <main
         class="overflow-auto"
         data-edit-url={canEdit ? entityUrl : undefined}
-        data-base-version-id={canEdit ? entity.version_id : undefined}
-        data-review-url={canReview ? `${entityUrl}/${entity.version_id}` : undefined}
+        data-base-version-id={canEdit ? entry.versionId : undefined}
+        data-review-url={canReview ? `${entityUrl}/${entry.versionId}` : undefined}
         data-history-url={canEdit || canReview ? `${entityUrl}/history` : undefined}
       >
         <div class="flex justify-between items-center pb-2 mb-3 border-b">
           <h1 class="text-3xl font-serif">
-            {versionId ? `${entity.name}: Version ${entity.version_number}` : entity.name}
+            {versionId ? `${entry.title}: Version ${entry.versionNumber}` : entry.title}
           </h1>
           <div class="space-x-2">
             {!isProposal && canEdit && <a href={entityUrl}>{t("entity.cancel")}</a>}
@@ -171,14 +143,14 @@ export const handleEntityPage = async (c: DefaultContext) => {
           </div>
         )}
 
-        {Object.keys(definition.fields).length > 0 && (
+        {Object.values(fields).some((field) => field.meta.label) && (
           <EntityInfoBox
             t={t}
             editable={canEdit}
-            entity={entity}
-            definition={definition}
+            entry={entry}
+            fields={fields}
             options={options}
-            references={references}
+            relationNames={relationNames}
           />
         )}
 
@@ -187,8 +159,22 @@ export const handleEntityPage = async (c: DefaultContext) => {
           data-edit-description={canEdit ? "" : undefined}
           class="text-pretty [&>ul]:mt-2 whitespace-pre-wrap"
         >
-          {entity.description}
+          {entry.values.description}
         </div>
+
+        {references.length > 0 && (
+          <section class="clear-both pt-4">
+            <h2 class="text-xl font-serif pb-1 mb-2 border-b">{t("entity.referencedBy")}</h2>
+            <ul>
+              {references.map((reference) => (
+                <li>
+                  {t(`entityType.${reference.type}`)}:{" "}
+                  <a href={`/entities/${reference.entityId}`}>{reference.title}</a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </main>
     </Layout>,
   );
@@ -201,73 +187,40 @@ export const handleEntityPageSubmit = async (c: DefaultContext) => {
   const entityId = parseId(routeParam(c, "id"));
   if (!entityId) return c.notFound();
 
-  const { changeMessage, description, baseVersionId, fields } = await readJson<EditEntityRequest>(c);
+  const { changeMessage, description, baseVersionId, fields = {} } = await readJson<EditEntityRequest>(c);
 
   if (
     typeof changeMessage !== "string" ||
     !changeMessage.trim() ||
     (baseVersionId !== undefined && !parseId(baseVersionId)) ||
-    (description !== undefined && typeof description !== "string")
+    (description !== undefined && typeof description !== "string") ||
+    typeof fields !== "object" ||
+    Array.isArray(fields)
   )
     return c.body("Bad Request", 400);
 
-  return sql.begin(async (tx) => {
-    const current = await lockEntity(tx, entityId);
-    if (!current) return c.notFound();
-    if (baseVersionId !== undefined && baseVersionId !== current.head_version_id)
-      return c.body("The page has changed. Reload before submitting your edit.", 409);
-
-    const entity = await getEntity(entityId, undefined, tx);
-    if (!entity) return c.notFound();
-
-    const definition = entityDefinitions[entity.type];
-    const parsed = await parseFields(definition, fields, "edit", tx);
-    if ("error" in parsed) return c.body(parsed.error, 400);
-
-    const nextDescription = description ?? entity.description;
-    const changed = Object.entries(parsed.values).some(
-      ([key, value]) => String(value ?? "") !== String(entity[key] ?? ""),
-    );
-    if (!changed && nextDescription === entity.description) return c.body("Bad Request", 400);
-
-    const [{ version_number }] = await tx<{ version_number: number }[]>`
-      SELECT COALESCE(MAX(version_number), 0) + 1 AS version_number
-      FROM entity_versions WHERE entity_id = ${entityId}
-    `;
-    // The image may have been deleted in the meantime, and the lock keeps it from going away now
-    const [image] = entity.image_id
-      ? await tx<{ id: number }[]>`SELECT id FROM images WHERE id = ${entity.image_id} FOR KEY SHARE`
-      : [];
-
-    const [{ id: newVersionId }] = await tx<{ id: number }[]>`
-      INSERT INTO entity_versions ${tx({
-        entity_id: entityId,
-        version_number,
-        created_by: user.id,
-        previous_version: entity.version_id,
-        change_message: changeMessage,
-        description: nextDescription,
-        image_id: image?.id ?? null,
-        review_status: "pending",
-      })}
-      RETURNING id
-    `;
-
-    if (definition.table) {
-      // Copy every column of the previous version, including ones without a field
-      const [previous] = await tx<Record<string, unknown>[]>`
-        SELECT * FROM ${tx(definition.table)} WHERE version_id = ${entity.version_id}
-      `;
-      const { version_id: _, created_at: __, ...columns } = previous ?? {};
-
-      await tx`
-        INSERT INTO ${tx(definition.table)}
-        ${tx({ ...columns, ...parsed.values, version_id: newVersionId })}
-      `;
-    }
-
+  try {
+    await cms.propose(entityId, {
+      values: description === undefined ? fields : { ...fields, description },
+      changeMessage,
+      authorId: user.id,
+      baseVersionId: baseVersionId === undefined ? undefined : parseId(baseVersionId),
+    });
     return c.body("OK", 200);
-  });
+  } catch (error) {
+    return cmsErrorResponse(c, error);
+  }
+};
+
+// The image of a rejected new entry goes too, unless another entry uses it
+const deleteUnusedImage = async (entry: WikiEntry) => {
+  const imageId = parseId(entry.values.image_id);
+  if (!imageId || !entry.authorId || (await cms.isReferenced("images", imageId))) return;
+
+  const [image] = await sql<Image[]>`
+    DELETE FROM images WHERE id = ${imageId} AND uploaded_by = ${entry.authorId} RETURNING *
+  `;
+  if (image) await removeImageFile(image);
 };
 
 export const handleEntityVersionPatch = async (c: DefaultContext) => {
@@ -288,63 +241,18 @@ export const handleEntityVersionPatch = async (c: DefaultContext) => {
   )
     return c.body("Bad Request", 400);
 
-  const alreadyReviewed = () =>
-    c.body("This version has already been reviewed. Reload to see the result.", 409);
-
-  let removedImage: Image | undefined;
-
-  const response = await sql.begin(async (tx) => {
-    const current = await lockEntity(tx, entityId);
-    if (!current) return c.notFound();
-
-    const entity = await getEntity(entityId, versionId, tx);
-    if (!entity) return c.notFound();
-    if (entity.review_status !== "pending") return alreadyReviewed();
-
-    if (type === "approved" && (entity.previous_version ?? null) !== current.head_version_id)
-      return c.body(
-        "This proposal cannot be applied to the current version. Resubmit the edit from the current version.",
-        409,
-      );
-
-    const [reviewed] = await tx<{ id: number }[]>`
-      UPDATE entity_versions
-      SET review_status = ${type}, reviewed_at = NOW(), reviewed_by = ${user.id},
-          review_comment = ${reviewMessage}
-      WHERE id = ${entity.version_id} AND entity_id = ${entityId} AND review_status = 'pending'
-      RETURNING id
-    `;
-    if (!reviewed) return alreadyReviewed();
-
-    if (type === "approved")
-      await tx`UPDATE entities SET head_version_id = ${reviewed.id} WHERE id = ${entityId}`;
-
-    // Rejecting the first version of an entity removes the entity, and its image if nothing else uses it
-    if (type === "rejected" && current.head_version_id === null) {
-      const [image] =
-        entity.image_id && entity.created_by
-          ? await tx<{ id: number }[]>`
-              SELECT id FROM images
-              WHERE id = ${entity.image_id} AND uploaded_by = ${entity.created_by}
-              FOR UPDATE
-            `
-          : [];
-
-      await tx`DELETE FROM entities WHERE id = ${entityId}`;
-
-      if (image)
-        [removedImage] = await tx<Image[]>`
-          DELETE FROM images
-          WHERE id = ${image.id}
-            AND NOT EXISTS (SELECT 1 FROM entity_versions WHERE image_id = ${image.id})
-          RETURNING *
-        `;
-    }
-
+  try {
+    const { deleted } = await cms.review(entityId, versionId, {
+      status: type,
+      comment: reviewMessage,
+      reviewerId: user.id,
+    });
+    if (deleted) await deleteUnusedImage(deleted);
     return c.body("OK", 200);
-  });
-
-  // The file can only go once the transaction has been committed
-  if (removedImage) await removeImageFile(removedImage);
-  return response;
+  } catch (error) {
+    return cmsErrorResponse(c, error, {
+      stale:
+        "This proposal cannot be applied to the current version. Resubmit the edit from the current version.",
+    });
+  }
 };

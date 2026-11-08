@@ -9,6 +9,8 @@ const pages = readdirSync("src/client/pages")
 export default defineConfig(({ isSsrBuild }) => isSsrBuild
   ? {
     publicDir: false,
+    // The CMS packages are TypeScript source, so they are bundled instead of imported at runtime
+    ssr: { noExternal: [/^@wikibricks\//] },
     build: {
       outDir: "dist",
       target: "node26",

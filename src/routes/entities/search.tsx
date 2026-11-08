@@ -1,13 +1,10 @@
+import { cms } from "../../collections";
 import { Table, TableHead } from "../../components/table";
-import { sql } from "../../database";
 import { Layout } from "../../layout";
-import { entityTypes, isEntityType, type EntityType } from "../../entity-types";
 import { useTranslation } from "../../translation";
 import { isModerator, type DefaultContext } from "../../utils";
 
 const PAGE_SIZE = 10;
-
-type SearchResult = { id: number; name: string; type: EntityType; created_at: Date };
 
 export const handleSearchPage = async (c: DefaultContext) => {
   const user = c.get("user");
@@ -15,30 +12,16 @@ export const handleSearchPage = async (c: DefaultContext) => {
 
   const page = Math.max(0, Math.floor(Number(c.req.query("page")) || 0));
   const rawType = c.req.query("entity_type") ?? "all";
-  const entityType = isEntityType(rawType) ? rawType : "all";
+  const entityType = cms.isType(rawType) ? rawType : "all";
   const name = (c.req.query("name") ?? "").slice(0, 64);
-  const escapedName = name.replace(/[%_\\]/g, (char) => `\\${char}`);
 
-  const where = sql`
-    WHERE TRUE
-    ${entityType !== "all" ? sql`AND e.type = ${entityType}` : sql``}
-    ${name ? sql`AND e.name ILIKE ${`%${escapedName}%`} ESCAPE '\\'` : sql``}
-  `;
-
-  const [[{ count }], results] = await Promise.all([
-    sql<{ count: string }[]>`
-      SELECT COUNT(*) AS count FROM entities e
-      JOIN entity_versions v ON e.head_version_id = v.id
-      ${where}
-    `,
-    sql<SearchResult[]>`
-      SELECT e.id, e.name, e.type, e.created_at FROM entities e
-      JOIN entity_versions v ON e.head_version_id = v.id
-      ${where}
-      ORDER BY e.created_at DESC, e.id DESC
-      LIMIT ${PAGE_SIZE} OFFSET ${page * PAGE_SIZE}
-    `,
-  ]);
+  const { total, items: results } = await cms.find({
+    type: entityType === "all" ? undefined : entityType,
+    where: name ? { title: { contains: name } } : {},
+    sort: "-createdAt",
+    offset: page * PAGE_SIZE,
+    limit: PAGE_SIZE,
+  });
 
   const pageUrl = (page: number) =>
     `/entities/search?${new URLSearchParams({ page: String(page), entity_type: entityType, name })}`;
@@ -82,7 +65,7 @@ export const handleSearchPage = async (c: DefaultContext) => {
             <div class="border border-t-0 p-2">
               <label class="block text-sm text-gray-600 mb-1">{t("entities.entityType")}</label>
               <select name="entity_type" class="border border-gray-300 w-full p-1">
-                {(["all", ...entityTypes] as const).map((option) => (
+                {(["all", ...cms.types] as const).map((option) => (
                   <option value={option} selected={entityType === option}>
                     {t(`entityType.${option}`)}
                   </option>
@@ -103,12 +86,12 @@ export const handleSearchPage = async (c: DefaultContext) => {
               {results.map((result) => (
                 <tr>
                   <td>
-                    <a href={`/entities/${result.id}`}>{t(`entityType.${result.type}`)}</a>
+                    <a href={`/entities/${result.entityId}`}>{t(`entityType.${result.type}`)}</a>
                   </td>
                   <td>
-                    <a href={`/entities/${result.id}`}>{result.name}</a>
+                    <a href={`/entities/${result.entityId}`}>{result.title}</a>
                   </td>
-                  <td>{formatDate(result.created_at)}</td>
+                  <td>{formatDate(result.entityCreatedAt)}</td>
                 </tr>
               ))}
             </tbody>
@@ -116,7 +99,7 @@ export const handleSearchPage = async (c: DefaultContext) => {
 
           <div class="mt-4 flex justify-center space-x-2">
             {page > 0 && <a href={pageUrl(page - 1)}>{t("action.previous")}</a>}
-            {(page + 1) * PAGE_SIZE < Number(count) && (
+            {(page + 1) * PAGE_SIZE < total && (
               <a href={pageUrl(page + 1)}>{t("action.next")}</a>
             )}
           </div>

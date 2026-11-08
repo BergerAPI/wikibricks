@@ -1,4 +1,6 @@
-import { inputOf, type FieldDefinition, type FieldOption } from "../entity-types";
+import type { Field } from "@wikibricks/cms";
+import type { FieldUi } from "../collections";
+import type { FieldOption } from "../fields";
 import type { TranslationFunctions } from "../translation";
 
 const groupColors = [
@@ -19,18 +21,16 @@ export const EntityFieldInput = ({
   t,
   ...attributes
 }: {
-  field: FieldDefinition;
+  field: Field<FieldUi>;
   value?: string;
   options?: FieldOption[];
   t: TranslationFunctions["t"];
   [attribute: string]: unknown;
 }) => {
-  const input = inputOf(field);
-
-  if (input.kind === "category" || input.kind === "reference") {
+  if (field.type === "select" || field.type === "relation") {
     return (
       <select {...attributes}>
-        <option value="">{t(input.placeholder)}</option>
+        <option value="">{field.meta.placeholder && t(field.meta.placeholder)}</option>
         {options.map((option) => (
           <option
             value={option.value}
@@ -49,7 +49,7 @@ export const EntityFieldInput = ({
   return (
     <input
       {...attributes}
-      type={input.kind === "number" ? "number" : "text"}
+      type={field.type === "number" ? "number" : "text"}
       value={value ?? ""}
     />
   );

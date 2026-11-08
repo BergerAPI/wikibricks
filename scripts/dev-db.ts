@@ -4,6 +4,8 @@
  *   npm run db            keeps the data in .pglite between runs
  *   npm run db -- --reset starts over with fresh sample data
  *
+ * PGLITE_PORT and PGLITE_DIR change the port (5433) and where the data is kept.
+ *
  * Then start the app with DB_CONN set to the printed connection string.
  */
 import { PGlite } from "@electric-sql/pglite";
@@ -14,7 +16,7 @@ import { createServer } from "node:net";
 import { join } from "node:path";
 
 const port = Number(process.env.PGLITE_PORT ?? 5433);
-const dataDir = join(import.meta.dirname, "../.pglite");
+const dataDir = process.env.PGLITE_DIR ?? join(import.meta.dirname, "../.pglite");
 // PGlite is a single Postgres session shared by all connections, so the app gets just one
 const connection = `postgres://postgres:postgres@127.0.0.1:${port}/postgres?max=1`;
 
@@ -38,18 +40,17 @@ await server.start();
 // The app modules connect on import, so they are loaded once the server is up
 process.env.DB_CONN = connection;
 const { sql } = await import("../src/database");
-const { initDatabase } = await import("../src/schema");
-const { entityDefinitions } = await import("../src/entity-types");
-type EntityType = keyof typeof entityDefinitions;
+const { cms } = await import("../src/collections");
+type EntityType = (typeof cms.types)[number];
 
-await initDatabase();
+await cms.init();
 
 const [{ count }] = await sql<{ count: string }[]>`SELECT COUNT(*) AS count FROM users`;
 if (count === "0") await seed();
 
 console.log(`
 Local database running on ${connection}
-Start the app with:  DB_CONN=${connection} npm run dev
+Start the app with:  DB_CONN="${connection}" npm run dev
 Users (password "password"): admin, moderator, alice
 Press Ctrl+C to stop.`);
 
@@ -72,102 +73,87 @@ async function seed() {
   `;
   const user = Object.fromEntries(users.map((it) => [it.username, it.id]));
 
-  // Creates an entity whose first version is approved, unless it is a pending proposal
-  const addEntity = async (
+  // Goes through the same review as entries made in the app
+  const add = async (
     type: EntityType,
     name: string,
-    description: string,
-    fields: Record<string, string | number> = {},
-    { author = user.admin, pending = false } = {},
+    values: Record<string, string | number>,
+    { authorId = user.admin, approve = true } = {},
   ) => {
-    const [entity] = await sql<{ id: number }[]>`
-      INSERT INTO entities (name, type) VALUES (${name}, ${type}) RETURNING id
-    `;
-    const [version] = await sql<{ id: number }[]>`
-      INSERT INTO entity_versions ${sql({
-        entity_id: entity.id,
-        version_number: 1,
-        created_by: author,
-        description,
-        change_message: "Created",
-        review_status: pending ? "pending" : "approved",
-        reviewed_by: pending ? null : user.moderator,
-        reviewed_at: pending ? null : new Date(),
-      })}
-      RETURNING id
-    `;
-
-    const { table } = entityDefinitions[type];
-    if (table) await sql`INSERT INTO ${sql(table)} ${sql({ version_id: version.id, ...fields })}`;
-    if (!pending) await sql`UPDATE entities SET head_version_id = ${version.id} WHERE id = ${entity.id}`;
-
-    return { entityId: entity.id, versionId: version.id };
+    const { entityId, versionId } = await cms.create(type, { values: { name, ...values }, authorId });
+    if (approve)
+      await cms.review(entityId, versionId, {
+        status: "approved",
+        comment: "Looks good",
+        reviewerId: user.moderator,
+      });
+    return entityId;
   };
 
-  const lego = await addEntity("brand", "LEGO", "Danish toy company, founded in 1932.", {
+  const lego = await add("brand", "LEGO", {
+    description: "Danish toy company, founded in 1932.",
     country: "Denmark",
     website: "lego.com",
   });
-  const cobi = await addEntity("brand", "Cobi", "Polish maker of construction blocks.", {
+  const cobi = await add("brand", "Cobi", {
+    description: "Polish maker of construction blocks.",
     country: "Poland",
     website: "cobi.eu",
   });
 
-  const farm = await addEntity("set", "Farm House", "A small farm with animals and a tractor.", {
+  const farm = await add("set", "Farm House", {
+    description: "A small farm with animals and a tractor.",
     pieces: 512,
     size: "M",
     theme: "lego-nature-farm",
     issued: "2019",
-    brand_id: lego.entityId,
+    brand_id: lego,
   });
-  await addEntity("set", "Millennium Falcon", "The largest Star Wars set for a long time.", {
+  await add("set", "Millennium Falcon", {
+    description: "The largest Star Wars set for a long time.",
     pieces: 7541,
     size: "XL",
     theme: "lego-licensed-star-wars",
     issued: "10.2017",
-    brand_id: lego.entityId,
+    brand_id: lego,
   });
-  await addEntity("set", "Hogwarts Castle", "The castle with the Great Hall and towers.", {
+  await add("set", "Hogwarts Castle", {
+    description: "The castle with the Great Hall and towers.",
     pieces: 6020,
     size: "XL",
     theme: "lego-licensed-harry-potter",
     issued: "01.09.2018",
-    brand_id: lego.entityId,
+    brand_id: lego,
   });
-  await addEntity("set", "City Bus", "A bus with a driver and passengers.", {
+  await add("set", "City Bus", {
+    description: "A bus with a driver and passengers.",
     pieces: 280,
     size: "S",
     theme: "lego-architecture-city-vehicles",
     issued: "2021",
-    brand_id: cobi.entityId,
+    brand_id: cobi,
   });
-  await addEntity("wiki", "Sorting Bricks", "Sort by color first, then by shape.");
+  await add("wiki", "Sorting Bricks", { description: "Sort by color first, then by shape." });
 
   // Something for the moderators to review
-  await addEntity(
+  await add(
     "set",
     "Ninjago City",
-    "A tall city with many floors.",
-    { pieces: 4867, size: "XL", theme: "lego-series-ninjago", issued: "2017", brand_id: lego.entityId },
-    { author: user.alice, pending: true },
+    {
+      description: "A tall city with many floors.",
+      pieces: 4867,
+      size: "XL",
+      theme: "lego-series-ninjago",
+      issued: "2017",
+      brand_id: lego,
+    },
+    { authorId: user.alice, approve: false },
   );
-
-  const [proposal] = await sql<{ id: number }[]>`
-    INSERT INTO entity_versions ${sql({
-      entity_id: farm.entityId,
-      version_number: 2,
-      created_by: user.alice,
-      previous_version: farm.versionId,
-      description: "A small farm with animals, a tractor and a barn.",
-      change_message: "Mention the barn and fix the piece count",
-      review_status: "pending",
-    })}
-    RETURNING id
-  `;
-  await sql`
-    INSERT INTO sets (version_id, pieces, size, theme, issued, brand_id)
-    SELECT ${proposal.id}, 520, size, theme, issued, brand_id FROM sets WHERE version_id = ${farm.versionId}
-  `;
+  await cms.propose(farm, {
+    values: { description: "A small farm with animals, a tractor and a barn.", pieces: 520 },
+    changeMessage: "Mention the barn and fix the piece count",
+    authorId: user.alice,
+  });
 
   console.log("Added sample data");
 }

@@ -1,18 +1,20 @@
+import type { Version } from "@wikibricks/cms";
+import { cms } from "../../collections";
 import { Table, TableHead } from "../../components/table";
-import { sql, type EntityVersion } from "../../database";
 import { Layout } from "../../layout";
 import { useTranslation, type TranslationFunctions } from "../../translation";
+import { getUsernames } from "../../users";
 import { isModerator, parseId, routeParam, type DefaultContext } from "../../utils";
-
-type VersionWithUser = EntityVersion & { username: string };
 
 const VersionTable = ({
   entityId,
   versions,
+  usernames,
   translation: { t, formatDate },
 }: {
   entityId: number;
-  versions: VersionWithUser[];
+  versions: Version[];
+  usernames: Map<number, string>;
   translation: TranslationFunctions;
 }) => (
   <Table>
@@ -27,17 +29,19 @@ const VersionTable = ({
         <tr>
           <td>
             <a
-              href={`/entities/${entityId}?version=${version.id}`}
+              href={`/entities/${entityId}?version=${version.versionId}`}
               class="text-primary hover:underline"
             >
-              {version.version_number}
+              {version.versionNumber}
             </a>
           </td>
-          <td>{formatDate(version.created_at)}</td>
+          <td>{formatDate(version.createdAt)}</td>
           <td>
-            <a href={`/users/${version.created_by}`}>{version.username}</a>
+            {version.authorId && (
+              <a href={`/users/${version.authorId}`}>{usernames.get(version.authorId)}</a>
+            )}
           </td>
-          <td>{version.change_message}</td>
+          <td>{version.changeMessage}</td>
         </tr>
       ))}
     </tbody>
@@ -50,46 +54,45 @@ export const handleEntityHistoryPage = async (c: DefaultContext) => {
   const { t } = translation;
 
   const entityId = parseId(routeParam(c, "id"));
-  if (!entityId) return c.notFound();
-
-  const [[entity], versions] = await Promise.all([
-    sql<{ name: string }[]>`SELECT name FROM entities WHERE id = ${entityId}`,
-    sql<VersionWithUser[]>`
-      SELECT v.*, u.username
-      FROM entity_versions v
-      LEFT JOIN users u ON v.created_by = u.id
-      WHERE v.entity_id = ${entityId}
-      ORDER BY v.version_number DESC, v.id DESC
-      LIMIT 100
-    `,
-  ]);
-  if (!entity) return c.notFound();
+  const history = entityId && (await cms.history(entityId));
+  if (!entityId || !history) return c.notFound();
 
   // Pending versions are only visible to moderators and their authors
-  const proposals = versions.filter(
+  const proposals = history.versions.filter(
     (version) =>
-      version.review_status === "pending" && (isModerator(user) || version.created_by === user?.id),
+      version.status === "pending" && (isModerator(user) || version.authorId === user?.id),
   );
-  const approved = versions.filter((version) => version.review_status === "approved");
+  const approved = history.versions.filter((version) => version.status === "approved");
+  const usernames = await getUsernames([...proposals, ...approved].map((version) => version.authorId));
 
   return c.render(
     <Layout context={c} user={user}>
       <main>
         <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
-          {t("entity.history.title")} {entity.name}
+          {t("entity.history.title")} {history.title}
         </h1>
 
         {proposals.length > 0 && (
           <div class="pb-2">
             <p class="text-pretty">
-              {t("entity.history.requestedChanges", { name: entity.name })}
+              {t("entity.history.requestedChanges", { name: history.title ?? "" })}
             </p>
-            <VersionTable entityId={entityId} versions={proposals} translation={translation} />
+            <VersionTable
+              entityId={entityId}
+              versions={proposals}
+              usernames={usernames}
+              translation={translation}
+            />
           </div>
         )}
 
-        <p class="text-pretty">{t("entity.history.versionHistory", { name: entity.name })}</p>
-        <VersionTable entityId={entityId} versions={approved} translation={translation} />
+        <p class="text-pretty">{t("entity.history.versionHistory", { name: history.title ?? "" })}</p>
+        <VersionTable
+          entityId={entityId}
+          versions={approved}
+          usernames={usernames}
+          translation={translation}
+        />
       </main>
     </Layout>,
   );

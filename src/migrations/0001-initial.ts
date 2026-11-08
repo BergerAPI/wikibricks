@@ -1,4 +1,4 @@
-import type { Queryable } from "../database";
+import type { Queryable } from "@wikibricks/cms-postgres";
 
 // Uses IF NOT EXISTS, because databases from before migrations already have these tables
 export default (sql: Queryable) => sql`

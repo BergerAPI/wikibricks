@@ -133,6 +133,7 @@ export interface Translations {
   "entity.country": string;
   "entity.website": string;
   "entity.imageOf": string;
+  "entity.referencedBy": string;
   "entity.cancel": string;
   "entity.editPage": string;
   "entity.versionHistory": string;
@@ -327,6 +328,7 @@ const translations: Record<Language, Translations> = {
     "entity.country": "Country",
     "entity.website": "Website",
     "entity.imageOf": "Image of {name}",
+    "entity.referencedBy": "Linked from",
     "entity.cancel": "Cancel",
     "entity.editPage": "Edit Page",
     "entity.versionHistory": "Version History",
@@ -527,6 +529,7 @@ const translations: Record<Language, Translations> = {
     "entity.country": "Land",
     "entity.website": "Website",
     "entity.imageOf": "Bild von {name}",
+    "entity.referencedBy": "Verlinkt von",
     "entity.cancel": "Abbrechen",
     "entity.editPage": "Seite bearbeiten",
     "entity.versionHistory": "Versionshistorie",

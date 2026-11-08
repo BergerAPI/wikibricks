@@ -1,10 +1,9 @@
+import { cms } from "../collections";
 import { Table, TableHead } from "../components/table";
-import { sql, type EntityVersion } from "../database";
 import { Layout } from "../layout";
 import { useTranslation } from "../translation";
+import { getUsernames } from "../users";
 import { isModerator, type DefaultContext } from "../utils";
-
-type PendingChange = EntityVersion & { entity_name: string; username: string };
 
 export const handleChangesPage = async (c: DefaultContext) => {
   const user = c.get("user");
@@ -12,15 +11,8 @@ export const handleChangesPage = async (c: DefaultContext) => {
 
   if (!isModerator(user)) return c.redirect("/");
 
-  const changes = await sql<PendingChange[]>`
-    SELECT v.*, u.username, e.name AS entity_name
-    FROM entity_versions v
-    JOIN entities e ON v.entity_id = e.id
-    LEFT JOIN users u ON v.created_by = u.id
-    WHERE v.review_status = 'pending'
-    ORDER BY v.created_at DESC, v.id DESC
-    LIMIT 100
-  `;
+  const changes = await cms.pending();
+  const usernames = await getUsernames(changes.map((change) => change.authorId));
 
   return c.render(
     <Layout context={c} user={user}>
@@ -38,15 +30,17 @@ export const handleChangesPage = async (c: DefaultContext) => {
               {changes.map((change) => (
                 <tr>
                   <td>
-                    <a href={`/entities/${change.entity_id}?version=${change.id}`}>
-                      {change.entity_name}
+                    <a href={`/entities/${change.entityId}?version=${change.versionId}`}>
+                      {change.title}
                     </a>
                   </td>
                   <td>
-                    <a href={`/users/${change.created_by}`}>{change.username}</a>
+                    {change.authorId && (
+                      <a href={`/users/${change.authorId}`}>{usernames.get(change.authorId)}</a>
+                    )}
                   </td>
-                  <td>{change.change_message || <em>{t("error.noMessage")}</em>}</td>
-                  <td>{formatDateTime(change.created_at)}</td>
+                  <td>{change.changeMessage || <em>{t("error.noMessage")}</em>}</td>
+                  <td>{formatDateTime(change.createdAt)}</td>
                 </tr>
               ))}
             </tbody>

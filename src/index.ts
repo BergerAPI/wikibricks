@@ -4,6 +4,7 @@ import { Hono } from "hono";
 import { compress } from "hono/compress";
 import { secureHeaders } from "hono/secure-headers";
 import { handleAsset, handlePublicFile } from "./assets";
+import { cms } from "./collections";
 import { handleError, handleNotFound } from "./error";
 import { detectLanguage, handleLanguagePreference } from "./language";
 import {
@@ -33,7 +34,6 @@ import {
 import { handleImprintPage, handlePrivacyPage, handleTermsPage } from "./routes/legal";
 import { handleRootPage } from "./routes/root";
 import { handleUserPage } from "./routes/users";
-import { initDatabase } from "./schema";
 import { attemptAuthentication, type Variables } from "./utils";
 
 const app = new Hono<{ Variables: Variables }>();
@@ -43,7 +43,7 @@ app.get("/assets/:file", compress(), handleAsset);
 app.get("*", handlePublicFile);
 
 try {
-  await initDatabase();
+  await cms.init();
 } catch (err) {
   console.error("Failed to initialize database:", err);
   process.exit(1);
