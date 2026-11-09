@@ -72,6 +72,14 @@ export interface Translations {
   "entities.name": string;
   "entities.date": string;
   "entities.searchByName": string;
+  "entities.noResults": string;
+  "entities.clearSearch": string;
+  "entities.min": string;
+  "entities.max": string;
+  "entities.anyValue": string;
+  "entities.invalidFilter": string;
+  "field.yes": string;
+  "field.no": string;
   "entities.advancedSearch": string;
   "entities.entityType": string;
   "entities.changeRequests": string;
@@ -268,6 +276,14 @@ const translations: Record<Language, Translations> = {
     "entities.name": "Name",
     "entities.date": "Date",
     "entities.searchByName": "Search by name",
+    "entities.noResults": "No matching entries found.",
+    "entities.clearSearch": "Clear search and filters",
+    "entities.min": "Minimum",
+    "entities.max": "Maximum",
+    "entities.anyValue": "Any",
+    "entities.invalidFilter": "Invalid search filter. Check the selected values and use whole numbers for numeric filters.",
+    "field.yes": "Yes",
+    "field.no": "No",
     "entities.advancedSearch": "Advanced search",
     "entities.entityType": "Entity Type:",
     "entities.changeRequests": "Change Requests",
@@ -474,6 +490,14 @@ const translations: Record<Language, Translations> = {
     "entities.name": "Name",
     "entities.date": "Datum",
     "entities.searchByName": "Nach Name suchen",
+    "entities.noResults": "Keine passenden Einträge gefunden.",
+    "entities.clearSearch": "Suche und Filter zurücksetzen",
+    "entities.min": "Minimum",
+    "entities.max": "Maximum",
+    "entities.anyValue": "Alle",
+    "entities.invalidFilter": "Ungültiger Suchfilter. Prüfen Sie die Auswahl und verwenden Sie ganze Zahlen für Zahlenfilter.",
+    "field.yes": "Ja",
+    "field.no": "Nein",
     "entities.advancedSearch": "Erweiterte Suche",
     "entities.entityType": "Elementtyp:",
     "entities.changeRequests": "Änderungsanfragen",
