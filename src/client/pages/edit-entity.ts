@@ -1,3 +1,4 @@
+import { validateRelationPickers } from "../relation-picker";
 import type { EditEntityRequest, EntityFieldValues } from "../../shared/contracts";
 
 const page = document.querySelector<HTMLElement>("[data-edit-url]");
@@ -23,6 +24,7 @@ function setupEdit(page: HTMLElement) {
   const initialDescription = valueOf(description);
 
   save.addEventListener("click", async () => {
+    if (!validateRelationPickers(page)) return;
     save.disabled = true;
 
     const changes: EntityFieldValues = {};

@@ -1,6 +1,6 @@
-import type { Field } from "@wikibricks/cms";
+import { targetsOf, type Field } from "@wikibricks/cms";
 import type { Category } from "./categories";
-import { cms, type EntityType, type FieldUi, type WikiEntry } from "./collections";
+import { cms, fieldsOf, type EntityType, type FieldUi, type WikiEntry } from "./collections";
 
 export type FieldOption = {
   value: string;
@@ -8,6 +8,11 @@ export type FieldOption = {
   depth: number;
   disabled: boolean;
 };
+
+export type FieldOptions = { items: FieldOption[]; lookupUrl?: string };
+
+// Beyond this size, relation fields look up matching entries instead of listing them all.
+const RELATION_SELECT_LIMIT = 40;
 
 // Parent categories are shown as disabled group headers
 const treeOptions = (tree: Category[], depth = 0): FieldOption[] =>
@@ -20,24 +25,37 @@ const treeOptions = (tree: Category[], depth = 0): FieldOption[] =>
 /**
  * Loads the choices of all select and relation fields, keyed by field name.
  */
-export const loadFieldOptions = async (fields: Record<string, Field<FieldUi>>) => {
-  const options: Record<string, FieldOption[]> = {};
+export const loadFieldOptions = async (type: EntityType, values: Record<string, unknown> = {}) => {
+  const options: Record<string, FieldOptions> = {};
 
-  for (const [name, field] of Object.entries(fields)) {
+  for (const [name, field] of Object.entries(fieldsOf(type))) {
     if (field.type === "select") {
-      options[name] = field.meta.tree
-        ? treeOptions(field.meta.tree)
-        : field.options.map((value) => ({ value, label: value, depth: 0, disabled: false }));
+      options[name] = {
+        items: field.meta.tree
+          ? treeOptions(field.meta.tree)
+          : field.options.map((value) => ({ value, label: value, depth: 0, disabled: false })),
+      };
     }
 
     if (field.type === "relation") {
-      const { items } = await cms.find({ type: field.to as EntityType, sort: "title", limit: 500 });
-      options[name] = items.map((entry) => ({
-        value: String(entry.entityId),
-        label: entry.title ?? String(entry.entityId),
-        depth: 0,
-        disabled: false,
-      }));
+      const where = { type: { in: [...targetsOf(field)] } };
+      const result = await cms.find({ where, sort: "title", limit: RELATION_SELECT_LIMIT });
+      const remote = result.total > RELATION_SELECT_LIMIT;
+      let items = result.items;
+      if (remote) {
+        items = values[name]
+          ? (await cms.find({ where: { ...where, id: Number(values[name]) }, limit: 1 })).items
+          : [];
+      }
+      options[name] = {
+        items: items.map((entry) => ({
+          value: String(entry.entityId),
+          label: entry.title ?? String(entry.entityId),
+          depth: 0,
+          disabled: false,
+        })),
+        lookupUrl: remote ? `/entities/options/${type}/${name}` : undefined,
+      };
     }
   }
 

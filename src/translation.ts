@@ -80,6 +80,13 @@ export interface Translations {
   "entities.invalidFilter": string;
   "field.yes": string;
   "field.no": string;
+  "relation.search": string;
+  "relation.choose": string;
+  "relation.hint": string;
+  "relation.loading": string;
+  "relation.empty": string;
+  "relation.more": string;
+  "relation.error": string;
   "entities.advancedSearch": string;
   "entities.entityType": string;
   "entities.changeRequests": string;
@@ -284,6 +291,13 @@ const translations: Record<Language, Translations> = {
     "entities.invalidFilter": "Invalid search filter. Check the selected values and use whole numbers for numeric filters.",
     "field.yes": "Yes",
     "field.no": "No",
+    "relation.search": "Search by name…",
+    "relation.choose": "Choose an entry from the suggestions.",
+    "relation.hint": "Type a name and choose a suggestion.",
+    "relation.loading": "Searching…",
+    "relation.empty": "No matching entries found.",
+    "relation.more": "More matches available. Refine your search.",
+    "relation.error": "Could not load suggestions. Type again to retry.",
     "entities.advancedSearch": "Advanced search",
     "entities.entityType": "Entity Type:",
     "entities.changeRequests": "Change Requests",
@@ -498,6 +512,13 @@ const translations: Record<Language, Translations> = {
     "entities.invalidFilter": "Ungültiger Suchfilter. Prüfen Sie die Auswahl und verwenden Sie ganze Zahlen für Zahlenfilter.",
     "field.yes": "Ja",
     "field.no": "Nein",
+    "relation.search": "Nach Name suchen…",
+    "relation.choose": "Wählen Sie einen Eintrag aus den Vorschlägen.",
+    "relation.hint": "Namen eingeben und einen Vorschlag auswählen.",
+    "relation.loading": "Suche läuft…",
+    "relation.empty": "Keine passenden Einträge gefunden.",
+    "relation.more": "Weitere Treffer vorhanden. Grenzen Sie die Suche ein.",
+    "relation.error": "Vorschläge konnten nicht geladen werden. Zum Wiederholen erneut tippen.",
     "entities.advancedSearch": "Erweiterte Suche",
     "entities.entityType": "Elementtyp:",
     "entities.changeRequests": "Änderungsanfragen",

@@ -3,6 +3,11 @@
  */
 export type EntityFieldValues = Record<string, string>;
 
+export type RelationOptionsResponse = {
+  options: { value: string; label: string }[];
+  more: boolean;
+};
+
 export type CreateEntityRequest = {
   // One of the entity types defined on the server
   entity_type: string;

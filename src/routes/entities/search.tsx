@@ -24,7 +24,9 @@ export const handleSearchPage = async (c: DefaultContext) => {
   } catch {
     return c.text(t("entities.invalidFilter"), 400);
   }
-  const options = await loadFieldOptions(fields);
+  const options = entityType === "all" ? {} : await loadFieldOptions(entityType,
+    Object.fromEntries(Object.keys(fields).map((key) => [key, filters.params.get(`filter.${key}`)])),
+  );
 
   const { total, items: results } = await cms.find({
     type: entityType === "all" ? undefined : entityType,

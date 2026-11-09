@@ -15,7 +15,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
   if (!user) return c.redirect("/login?redirect=/entities/new");
 
   const options = await Promise.all(
-    cms.types.map((type) => loadFieldOptions(fieldsOf(type))),
+    cms.types.map((type) => loadFieldOptions(type)),
   );
 
   return c.render(

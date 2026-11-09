@@ -3,7 +3,7 @@ import { cms, fieldsOf, type FieldUi, type WikiEntry } from "../../collections";
 import { EntityFieldInput } from "../../components/entity-field";
 import { InfoBox, InfoBoxImage, InfoBoxRow } from "../../components/info-box";
 import { sql, type Image } from "../../database";
-import { displayField, loadFieldOptions, loadRelationNames, type FieldOption } from "../../fields";
+import { displayField, loadFieldOptions, loadRelationNames, type FieldOptions } from "../../fields";
 import { Layout } from "../../layout";
 import { removeImageFile } from "../../services/image-storage";
 import type { EditEntityRequest, ReviewVersionRequest } from "../../shared/contracts";
@@ -22,7 +22,7 @@ const EntityInfoBox = ({
   entry: WikiEntry;
   fields: Record<string, Field<FieldUi>>;
   editable: boolean;
-  options: Record<string, FieldOption[]>;
+  options: Record<string, FieldOptions>;
   relationNames: Record<string, string>;
   t: TranslationFunctions["t"];
 }) => (
@@ -87,7 +87,7 @@ export const handleEntityPage = async (c: DefaultContext) => {
 
   const fields = fieldsOf(entry.type);
   const [options, relationNames, references] = await Promise.all([
-    canEdit ? loadFieldOptions(fields) : {},
+    canEdit ? loadFieldOptions(entry.type, entry.values) : {},
     loadRelationNames(entry, fields),
     cms.referencing(entry.entityId),
   ]);

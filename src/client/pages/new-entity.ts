@@ -1,3 +1,4 @@
+import { validateRelationPickers } from "../relation-picker";
 import type {
   CreateEntityRequest,
   CreateEntityResponse,
@@ -63,6 +64,7 @@ function setupCreation(page: HTMLElement) {
   }
 
   submitButton.addEventListener("click", async () => {
+    if (!validateRelationPickers(page.querySelector(`#tab-${typeSelect.value}`)!)) return;
     submitButton.disabled = fileInput.disabled = typeSelect.disabled = true;
     errorBox.textContent = "";
 

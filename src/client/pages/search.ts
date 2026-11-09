@@ -1,3 +1,5 @@
+import "../relation-picker";
+
 const type = document.querySelector<HTMLSelectElement>("#entity_type");
 type?.addEventListener("change", () => {
   if (!type.form) return;
