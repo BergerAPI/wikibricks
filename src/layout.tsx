@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from "hono/jsx";
 import { html } from "hono/html";
 import type { User } from "./database";
-import { assetUrl, pageScriptUrl } from "./assets";
+import { assetUrl } from "./assets";
 import { LanguageSwitcher } from "./components/language-switcher";
 import { useTranslation } from "./translation";
 import { DefaultContext } from "./utils";
@@ -31,14 +31,14 @@ export const Layout = ({
         <meta name="description" content={t("site.tagline")} />
         <meta http-equiv="X-UA-Compatible" content="ie=edge" />
         <link rel="stylesheet" href={assetUrl("global.css")} />
-        {script && <script type="module" src={pageScriptUrl(script)}></script>}
+        <script type="module" src={assetUrl("src/client/site.ts")}></script>
         <title>{title ?? t("site.title")}</title>
         <link
           rel="icon"
           href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>😳</text></svg>"
         />
       </head>
-      <body>
+      <body data-include-script={script ? `pages/${script}` : undefined}>
         <div class="container bg-white m-auto px-4 sm:px-6 lg:px-8">
           <header class="py-3 mb-5 sm:mb-8">
             <div class="flex flex-wrap items-center gap-x-3 gap-y-3 md:gap-x-6">

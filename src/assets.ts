@@ -43,8 +43,6 @@ export function assetUrl(source: string): string {
   return "/" + entry.file;
 }
 
-export const pageScriptUrl = (script: string) => assetUrl(`src/client/pages/${script}.ts`);
-
 async function readFirst(directories: string[], file: string) {
   for (const directory of directories) {
     try {

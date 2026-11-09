@@ -1,10 +1,9 @@
-import { validateRelationPickers } from "../relation-picker";
+import { validateForm } from "../forms";
 import type { EditEntityRequest, EntityFieldValues } from "../../shared/contracts";
 
-const page = document.querySelector<HTMLElement>("[data-edit-url]");
-if (page) setupEdit(page);
-
-function setupEdit(page: HTMLElement) {
+export default function initialize(root: HTMLElement) {
+  const page = root.querySelector<HTMLElement>("[data-edit-url]");
+  if (!page) return;
   const { editUrl, historyUrl, baseVersionId } = page.dataset;
   const save = page.querySelector<HTMLButtonElement>("#save");
   const message = page.querySelector<HTMLInputElement>("#change_message");
@@ -24,7 +23,7 @@ function setupEdit(page: HTMLElement) {
   const initialDescription = valueOf(description);
 
   save.addEventListener("click", async () => {
-    if (!validateRelationPickers(page)) return;
+    if (!validateForm(page)) return;
     save.disabled = true;
 
     const changes: EntityFieldValues = {};

@@ -1,0 +1,77 @@
+@import "tom-select/dist/css/tom-select.css" layer(base);
+
+.wiki-select { font: inherit; }
+.wiki-select .ts-control {
+  --ts-pr-min: 2rem;
+  min-height: 44px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid var(--color-gray-300);
+  border-radius: 4px;
+  background: white;
+  box-shadow: none;
+  font: inherit;
+  line-height: 24px;
+}
+.wiki-select.single .ts-control::after {
+  content: "";
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin-top: -5px;
+  border-right: 1.5px solid var(--color-gray-500);
+  border-bottom: 1.5px solid var(--color-gray-500);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+.wiki-select.focus .ts-control {
+  outline: 2px solid var(--color-blue-600);
+  outline-offset: 2px;
+}
+.wiki-select.validation-error .ts-control { border-color: var(--color-red-500); }
+.wiki-select .ts-control .item {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.wiki-select .ts-dropdown {
+  z-index: 50;
+  overflow: hidden;
+  border: 1px solid var(--color-gray-300);
+  border-radius: 4px;
+  background: white;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 10%);
+  font-size: 14px;
+  line-height: 20px;
+}
+.wiki-select .ts-dropdown.drop-up { top: auto; bottom: 100%; margin: 0 0 4px; }
+.wiki-select .dropdown-input-wrap { padding: 8px; border-bottom: 1px solid var(--color-gray-200); }
+.wiki-select .ts-dropdown .dropdown-input { width: 100%; min-height: 44px; font-size: 16px; }
+.wiki-select .ts-dropdown-content { max-height: 240px; overscroll-behavior: contain; }
+.wiki-select .ts-dropdown .option {
+  position: relative;
+  min-height: 44px;
+  overflow: hidden;
+  padding: 12px 12px 12px 32px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--color-gray-900);
+}
+.wiki-select .ts-dropdown .active { background: var(--color-blue-50); color: var(--color-blue-900); }
+.wiki-select .ts-dropdown .selected::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin-top: -7px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='m3 8 3 3 7-7' stroke='%231e40af' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.wiki-select .ts-dropdown .optgroup-header { padding: 8px 12px; background: white; color: var(--color-gray-500); font-size: 12px; font-weight: 600; }
+.wiki-select .wiki-select-status { border-top: 1px solid var(--color-gray-200); padding: 8px 12px; color: var(--color-gray-500); font-size: 14px; }
+.wiki-select .wiki-select-status:empty { display: none; }
+.wiki-select.disabled .ts-control { opacity: 1; background: var(--color-gray-50); color: var(--color-gray-400); }

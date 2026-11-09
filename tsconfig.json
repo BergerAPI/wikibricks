@@ -13,5 +13,5 @@
     "lib": ["ES2022"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "scripts/**/*.ts", "packages/*/src/**/*.ts", "packages/*/test/**/*.ts"],
-  "exclude": ["src/client"]
+  "exclude": ["src/client", "src/components/**/script.ts"]
 }

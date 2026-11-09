@@ -28,7 +28,7 @@
     input,
     textarea,
     select {
-        @apply min-w-0 max-w-full border px-2 py-2 text-base;
+        @apply min-w-0 max-w-full rounded border border-gray-300 bg-white px-2 py-2 text-base;
     }
 
     input,
@@ -52,7 +52,7 @@
         background-repeat: no-repeat;
 
         /* The right padding keeps the text clear of the arrow. */
-        @apply rounded-none pr-8 bg-white appearance-none;
+        @apply rounded border-gray-300 pr-8 bg-white appearance-none;
     }
 
     :focus-visible {

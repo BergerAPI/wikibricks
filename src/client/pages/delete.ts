@@ -1,5 +1,6 @@
-const button = document.querySelector<HTMLButtonElement>("[data-delete-url]");
-if (button) setupDeletion(button);
+export default function initialize(root: HTMLElement) {
+  for (const button of root.querySelectorAll<HTMLButtonElement>("[data-delete-url]")) setupDeletion(button);
+}
 
 function setupDeletion(button: HTMLButtonElement) {
   const { deleteUrl, deleteConfirm, deleteSuccess, deleteFailed, deleteRedirect = "/" } = button.dataset;

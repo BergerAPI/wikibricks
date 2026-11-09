@@ -1,6 +1,6 @@
 import { targetsOf } from "@wikibricks/cms";
 import { cms, fieldsOf } from "../../collections";
-import type { RelationOptionsResponse } from "../../shared/contracts";
+import type { SelectOptionsResponse } from "../../shared/contracts";
 import type { DefaultContext } from "../../utils";
 
 export const handleRelationOptions = async (c: DefaultContext) => {
@@ -19,5 +19,5 @@ export const handleRelationOptions = async (c: DefaultContext) => {
   return c.json({
     options: items.map((entry) => ({ value: String(entry.entityId), label: entry.title ?? String(entry.entityId) })),
     more: total > items.length,
-  } satisfies RelationOptionsResponse);
+  } satisfies SelectOptionsResponse);
 };

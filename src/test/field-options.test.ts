@@ -5,7 +5,7 @@ import { Hono } from "hono";
 import { cms } from "../collections";
 import { loadFieldOptions } from "../fields";
 import { handleRelationOptions } from "../routes/entities/options";
-import type { RelationOptionsResponse } from "../shared/contracts";
+import type { SelectOptionsResponse } from "../shared/contracts";
 
 afterEach(() => mock.restoreAll());
 
@@ -44,7 +44,9 @@ test("does not serialize the first page into an unselected large picker", async 
 test("keeps CMS select options as ordinary selects", async () => {
   const find = mock.method(cms, "find", async () => ({ total: 0, items: [] }));
   const options = (await loadFieldOptions("set")).theme;
-  assert.ok(options.items.some((option) => option.value === "lego-nature-farm"));
+  assert.deepEqual(options.items.find((option) => option.value === "lego-nature-farm"), {
+    value: "lego-nature-farm", label: "Bauernhof", group: "Lego / Natur",
+  });
   assert.equal(options.lookupUrl, undefined);
   assert.equal(find.mock.callCount(), 1);
 });
@@ -54,7 +56,7 @@ test("looks up bounded suggestions using the CMS relation's targets", async () =
   const app = new Hono().get("/entities/options/:type/:field", handleRelationOptions);
   const response = await app.request("/entities/options/set/brand_id?q=Choice");
   assert.equal(response.status, 200);
-  const body = await response.json() as RelationOptionsResponse;
+  const body = await response.json() as SelectOptionsResponse;
   assert.equal(body.options.length, 20);
   assert.equal(body.more, true);
   const query = find.mock.calls[0].arguments[0]!;

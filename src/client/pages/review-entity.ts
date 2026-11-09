@@ -1,9 +1,8 @@
 import type { ReviewVersionRequest } from "../../shared/contracts";
 
-const page = document.querySelector<HTMLElement>("[data-review-url]");
-if (page) setupReview(page);
-
-function setupReview(page: HTMLElement) {
+export default function initialize(root: HTMLElement) {
+  const page = root.querySelector<HTMLElement>("[data-review-url]");
+  if (!page) return;
   const { reviewUrl, historyUrl } = page.dataset;
   const message = page.querySelector<HTMLInputElement>("#review_message");
   const approve = page.querySelector<HTMLButtonElement>("#approve");

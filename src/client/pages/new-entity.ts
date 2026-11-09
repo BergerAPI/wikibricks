@@ -1,4 +1,4 @@
-import { validateRelationPickers } from "../relation-picker";
+import { validateForm } from "../forms";
 import type {
   CreateEntityRequest,
   CreateEntityResponse,
@@ -6,10 +6,9 @@ import type {
   UploadImageResponse,
 } from "../../shared/contracts";
 
-const page = document.querySelector<HTMLElement>("[data-create-url]");
-if (page) setupCreation(page);
-
-function setupCreation(page: HTMLElement) {
+export default function initialize(root: HTMLElement) {
+  const page = root.querySelector<HTMLElement>("[data-create-url]");
+  if (!page) return;
   const { createUrl, uploadUrl } = page.dataset;
   const fileInput = page.querySelector<HTMLInputElement>("#image_file");
   const submitButton = page.querySelector<HTMLButtonElement>("#submit_button");
@@ -30,8 +29,8 @@ function setupCreation(page: HTMLElement) {
   const valueOf = (name: string) =>
     page.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[name="${name}"]`)?.value ?? "";
 
-  function collectRequest(): CreateEntityRequest {
-    const entityType = typeSelect!.value;
+  const collectRequest = (): CreateEntityRequest => {
+    const entityType = typeSelect.value;
 
     // Every input in the tab of the selected type is one of its fields
     const fields: EntityFieldValues = {};
@@ -48,7 +47,7 @@ function setupCreation(page: HTMLElement) {
       image_id: imageId,
       fields,
     };
-  }
+  };
 
   async function post<T>(url: string, body: BodyInit, headers?: HeadersInit): Promise<T> {
     const response = await fetch(url, { method: "POST", body, headers });
@@ -64,7 +63,7 @@ function setupCreation(page: HTMLElement) {
   }
 
   submitButton.addEventListener("click", async () => {
-    if (!validateRelationPickers(page.querySelector(`#tab-${typeSelect.value}`)!)) return;
+    if (!validateForm(page)) return;
     submitButton.disabled = fileInput.disabled = typeSelect.disabled = true;
     errorBox.textContent = "";
 

@@ -1,19 +1,28 @@
 import type { Field } from "@wikibricks/cms";
+import type { JSX } from "hono/jsx";
 import type { FieldUi } from "../collections";
-import type { FieldOptions } from "../fields";
+import type { FieldOption, FieldOptions } from "../fields";
 import type { TranslationFunctions } from "../translation";
+import { Select } from "./select";
 
-const groupColors = [
-  "bg-neutral-400",
-  "bg-neutral-300",
-  "bg-neutral-200",
-  "bg-neutral-100",
-];
+const optionGroups = (options: FieldOption[]) => {
+  const groups: { label: string; items: FieldOption[] }[] = [];
+  for (const option of options) {
+    const label = option.group ?? "";
+    if (groups.at(-1)?.label !== label) groups.push({ label, items: [] });
+    groups.at(-1)!.items.push(option);
+  }
+  return groups;
+};
 
-/**
- * Renders the input for an entity field based on its definition.
- * Extra attributes (id, name, class, data-*) are passed to the input element.
- */
+type FieldInputProps = Omit<JSX.IntrinsicElements["input"], "type" | "value" | "children"> & {
+  field: Field<FieldUi>;
+  value?: string;
+  options?: FieldOptions;
+  emptyLabel?: string;
+  t: TranslationFunctions["t"];
+};
+
 export const EntityFieldInput = ({
   field,
   value,
@@ -21,83 +30,37 @@ export const EntityFieldInput = ({
   emptyLabel,
   t,
   ...attributes
-}: {
-  field: Field<FieldUi>;
-  value?: string;
-  options?: FieldOptions;
-  emptyLabel?: string;
-  t: TranslationFunctions["t"];
-  [attribute: string]: unknown;
-}) => {
-  if (field.type === "relation" && options.lookupUrl) {
-    const { name, "data-edit-field": editField, ...inputAttributes } = attributes;
-    const id = String(attributes.id ?? `relation-${editField ?? name}`);
-    const selected = options.items.find((option) => option.value === value);
-    return (
-      <div data-relation-picker data-options-url={options.lookupUrl}>
-        <input
-          {...inputAttributes}
-          id={id}
-          type="search"
-          list={`${id}-options`}
-          autocomplete="off"
-          autocapitalize="none"
-          spellcheck={false}
-          aria-label={attributes["aria-label"] ?? (field.meta.label && t(field.meta.label))}
-          aria-describedby={`${id}-status`}
-          value={selected?.label ?? ""}
-          placeholder={t("relation.search")}
-          data-relation-search
-          data-invalid-message={t("relation.choose")}
-          data-loading-message={t("relation.loading")}
-          data-empty-message={t("relation.empty")}
-          data-more-message={t("relation.more")}
-          data-error-message={t("relation.error")}
-        />
-        <input type="hidden" name={typeof name === "string" ? name : undefined} data-edit-field={editField} data-relation-value value={value ?? ""} />
-        <datalist id={`${id}-options`}>
-          {options.items.map((option) => (
-            <option value={`${option.label} (#${option.value})`} data-id={option.value} data-label={option.label} />
-          ))}
-        </datalist>
-        <p id={`${id}-status`} role="status" class="mt-1 text-xs text-gray-600">{t("relation.hint")}</p>
-      </div>
-    );
-  }
-
+}: FieldInputProps) => {
   if (field.type === "boolean") {
     return (
-      <select {...attributes} class={`${attributes.class ?? ""} pr-8`}>
-        <option value="">{emptyLabel}</option>
+      <Select {...attributes} t={t}>
+        <option value="">{emptyLabel ?? t("select.placeholder")}</option>
         <option value="true" selected={value === "true"}>{t("field.yes")}</option>
         <option value="false" selected={value === "false"}>{t("field.no")}</option>
-      </select>
+      </Select>
     );
   }
 
   if (field.type === "select" || field.type === "relation") {
     return (
-      <select {...attributes} class={`${attributes.class ?? ""} pr-8`}>
-        <option value="">{emptyLabel ?? (field.meta.placeholder && t(field.meta.placeholder))}</option>
-        {options.items.map((option) => (
-          <option
-            value={option.value}
-            selected={option.value === value}
-            disabled={option.disabled}
-            style={{ fontWeight: option.disabled ? "bold" : "normal" }}
-            class={option.disabled ? groupColors[option.depth] : ""}
-          >
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <Select {...attributes} t={t} lookupUrl={options.lookupUrl}>
+        <option value="">{emptyLabel ?? t(field.meta.placeholder ?? "select.placeholder")}</option>
+        {optionGroups(options.items).map((group) => {
+          const choices = group.items.map((option) => <option value={option.value} selected={option.value === value}>{option.label}</option>);
+          return group.label ? <optgroup label={group.label}>{choices}</optgroup> : choices;
+        })}
+      </Select>
     );
   }
+
+  let type = "text";
+  if (field.type === "number") type = "number";
+  if (field.type === "date") type = field.time ? "datetime-local" : "date";
 
   return (
     <input
       {...attributes}
-      type={field.type === "number" ? "number" : field.type === "date" ? (field.time ? "datetime-local" : "date") : "text"}
+      type={type}
       value={value ?? ""}
     />
   );

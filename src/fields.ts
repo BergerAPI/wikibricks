@@ -5,8 +5,7 @@ import { cms, fieldsOf, type EntityType, type FieldUi, type WikiEntry } from "./
 export type FieldOption = {
   value: string;
   label: string;
-  depth: number;
-  disabled: boolean;
+  group?: string;
 };
 
 export type FieldOptions = { items: FieldOption[]; lookupUrl?: string };
@@ -14,13 +13,11 @@ export type FieldOptions = { items: FieldOption[]; lookupUrl?: string };
 // Beyond this size, relation fields look up matching entries instead of listing them all.
 const RELATION_SELECT_LIMIT = 40;
 
-// Parent categories are shown as disabled group headers
-const treeOptions = (tree: Category[], depth = 0): FieldOption[] =>
-  tree.flatMap((category) => {
-    const hasChildren = !!category.children?.length;
-    const option = { value: category.id, label: category.name, depth, disabled: hasChildren };
-    return hasChildren ? [option, ...treeOptions(category.children!, depth + 1)] : [option];
-  });
+const treeOptions = (tree: Category[], path: string[] = []): FieldOption[] =>
+  tree.flatMap(({ id, name, children }) => children?.length
+    ? treeOptions(children, [...path, name])
+    : [{ value: id, label: name, group: path.join(" / ") }],
+  );
 
 /**
  * Loads the choices of all select and relation fields, keyed by field name.
@@ -33,7 +30,7 @@ export const loadFieldOptions = async (type: EntityType, values: Record<string, 
       options[name] = {
         items: field.meta.tree
           ? treeOptions(field.meta.tree)
-          : field.options.map((value) => ({ value, label: value, depth: 0, disabled: false })),
+          : field.options.map((value) => ({ value, label: value })),
       };
     }
 
@@ -51,8 +48,6 @@ export const loadFieldOptions = async (type: EntityType, values: Record<string, 
         items: items.map((entry) => ({
           value: String(entry.entityId),
           label: entry.title ?? String(entry.entityId),
-          depth: 0,
-          disabled: false,
         })),
         lookupUrl: remote ? `/entities/options/${type}/${name}` : undefined,
       };

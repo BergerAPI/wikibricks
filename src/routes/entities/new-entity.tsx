@@ -1,5 +1,6 @@
 import { cms, fieldsOf } from "../../collections";
 import { EntityFieldInput } from "../../components/entity-field";
+import { Select } from "../../components/select";
 import { sql } from "../../database";
 import { loadFieldOptions } from "../../fields";
 import { Layout } from "../../layout";
@@ -32,9 +33,9 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
         ></div>
 
         <div>
-          <label class="block mb-3">
+          <label for="entity_type" class="block mb-3">
             <span class="font-semibold">{t("entities.entityTypeLabel")}</span>
-            <select
+            <Select t={t}
               class="mt-1 block w-full"
               name="entity_type"
               id="entity_type"
@@ -42,7 +43,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
               {cms.types.map((type) => (
                 <option value={type}>{t(`entityType.${type}`)}</option>
               ))}
-            </select>
+            </Select>
           </label>
 
           <label class="block mb-3">
@@ -98,7 +99,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
                         options={options[index][key]}
                         id={`${type}-${key}`}
                         name={key}
-                        class="border p-2 rounded w-full"
+                        class="mt-1 block w-full"
                       />
                     </label>
                   ),

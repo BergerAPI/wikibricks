@@ -9,12 +9,13 @@
       "DOM",
       "DOM.Iterable"
     ],
-    "types": [],
+    "types": ["vite/client"],
     "isolatedModules": true,
     "noEmit": true
   },
   "include": [
     "**/*.ts",
+    "../components/**/script.ts",
     "../shared/**/*.ts"
   ],
   "exclude": []

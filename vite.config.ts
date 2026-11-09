@@ -1,10 +1,5 @@
-import { readdirSync } from "node:fs";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
-
-const pages = readdirSync("src/client/pages")
-  .filter(file => file.endsWith(".ts"))
-  .map(file => `src/client/pages/${file}`);
 
 export default defineConfig(({ isSsrBuild }) => isSsrBuild
   ? {
@@ -14,7 +9,7 @@ export default defineConfig(({ isSsrBuild }) => isSsrBuild
     build: {
       outDir: "dist",
       target: "node26",
-      rollupOptions: { input: "src/index.ts" },
+      rolldownOptions: { input: "src/index.ts" },
     },
   }
   : {
@@ -25,6 +20,8 @@ export default defineConfig(({ isSsrBuild }) => isSsrBuild
       copyPublicDir: false,
       manifest: true,
       modulePreload: { polyfill: false },
-      rollupOptions: { input: ["global.css", ...pages] },
+      rolldownOptions: {
+        input: ["global.css", "src/client/site.ts"],
+      },
     },
   });

@@ -1,5 +1,6 @@
 import { cms, fieldsOf } from "../../collections";
 import { EntityFieldInput } from "../../components/entity-field";
+import { Select } from "../../components/select";
 import { Table, TableHead } from "../../components/table";
 import { loadFieldOptions } from "../../fields";
 import { Layout } from "../../layout";
@@ -79,13 +80,13 @@ export const handleSearchPage = async (c: DefaultContext) => {
             </summary>
             <div class="border border-t-0 p-2">
               <label for="entity_type" class="block text-sm text-gray-600 mb-1">{t("entities.entityType")}</label>
-              <select id="entity_type" name="entity_type" class="border border-gray-300 w-full">
+              <Select t={t} id="entity_type" name="entity_type" class="w-full">
                 {(["all", ...cms.types] as const).map((option) => (
                   <option value={option} selected={entityType === option}>
                     {t(`entityType.${option}`)}
                   </option>
                 ))}
-              </select>
+              </Select>
               <div data-specific-filters class="mt-3 grid items-start gap-3 sm:grid-cols-2 empty:hidden">
                 {Object.entries(fields).map(([key, field]) =>
                   field.type === "number" ? (

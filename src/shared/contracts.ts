@@ -3,7 +3,7 @@
  */
 export type EntityFieldValues = Record<string, string>;
 
-export type RelationOptionsResponse = {
+export type SelectOptionsResponse = {
   options: { value: string; label: string }[];
   more: boolean;
 };

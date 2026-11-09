@@ -19,8 +19,6 @@
     "typecheck": "tsc --noEmit && tsc -p src/client/tsconfig.json"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1163.0",
-    "@aws-sdk/s3-request-presigner": "^3.1163.0",
     "@hono/node-server": "^2.1.6",
     "@wikibricks/cms": "*",
     "@wikibricks/cms-postgres": "*",
@@ -37,6 +35,7 @@
     "@types/node": "^26.6.6",
     "concurrently": "^10.0.6",
     "tailwindcss": "^4.3.4",
+    "tom-select": "^2.7.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.6"

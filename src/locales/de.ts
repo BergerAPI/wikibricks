@@ -1,0 +1,223 @@
+import type en from "./en";
+
+export default {
+  // Layout and Navigation
+  "site.title": "Wikibricks - Dein Ort für alle Stein-Bedürfnisse",
+  "site.tagline": "Wikibricks",
+  "nav.search": "Wikibricks durchsuchen",
+  "nav.search.placeholder": "Wikibricks durchsuchen",
+  "nav.search.button": "Suchen",
+  "nav.login": "Anmelden",
+  "nav.logout": "Abmelden",
+  "nav.language": "Sprache",
+  "nav.register": "Konto erstellen",
+  "nav.createAccount": "Konto erstellen",
+
+  // Common Actions
+  "action.search": "Suchen",
+  "action.previous": "Zurück",
+  "action.next": "Weiter",
+  "action.seeAll": "Alle anzeigen",
+  "action.returnHome": "Zur Startseite",
+  "action.addEntity": "Element hinzufügen",
+  "action.submit": "Absenden",
+
+  // Authentication
+  "auth.login": "Anmelden",
+  "auth.register": "Konto erstellen",
+  "auth.username": "Benutzername",
+  "auth.password": "Passwort",
+  "auth.confirmPassword": "Passwort bestätigen",
+  "auth.createAccount": "Konto erstellen",
+  "auth.loginButton": "Anmelden",
+  "auth.dontHaveAccount": "Haben Sie noch kein Konto?",
+  "auth.alreadyHaveAccount": "Haben Sie bereits ein Konto?",
+  "auth.createOneHere": "Hier erstellen",
+  "auth.logInHere": "Hier anmelden",
+  "auth.usernameLength": "Benutzername muss zwischen 3-255 Zeichen lang sein",
+  "auth.passwordLength": "Passwort muss mindestens 6 Zeichen lang sein",
+
+  // Error Messages
+  "error.pageNotFound": "Seite nicht gefunden",
+  "error.somethingWentWrong": "Etwas ist schief gelaufen",
+  "error.pageNotFoundMessage": "Die gesuchte Seite existiert nicht.",
+  "error.unexpectedErrorMessage":
+    "Es ist ein unerwarteter Fehler aufgetreten. Bitte versuchen Sie es später erneut. Ein Administrator wurde benachrichtigt.",
+  "error.allFieldsRequired": "Alle Felder sind erforderlich",
+  "error.usernameLength":
+    "Benutzername muss zwischen 3-255 Zeichen lang sein",
+  "error.passwordLength": "Passwort muss mindestens 6 Zeichen lang sein",
+  "error.passwordsDoNotMatch": "Passwörter stimmen nicht überein",
+  "error.usernameExists": "Benutzername existiert bereits",
+  "error.accountCreationError":
+    "Bei der Erstellung Ihres Kontos ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.",
+  "error.invalidCredentials": "Ungültiger Benutzername oder Passwort",
+  "error.usernamePasswordRequired":
+    "Benutzername und Passwort sind erforderlich",
+  "error.noMessage": "Keine Nachricht",
+
+  // Homepage
+  "home.welcome": "Willkommen bei Wikibricks!",
+  "home.description":
+    "Entdecken Sie eine Welt der Kreativität und des Ingenieurswesens mit Brick Wiki, der ultimativen Ressource für Spielstein-Enthusiasten. Ob Sie ein erfahrener Baumeister oder ein neugieriger Neuling sind, wir haben alles, was Sie brauchen, um das faszinierende Universum der Spielsteine zu erkunden.",
+  "home.browseSets": "Sets durchsuchen: ",
+  "home.browseSetsBrief":
+    "Erkunden Sie detaillierte Informationen zu ikonischen Sets Ihrer Lieblingsmarken.",
+  "home.learnBrands": "Über Marken lernen: ",
+  "home.learnBrandsBrief":
+    "Tauchen Sie ein in die Geschichte und das Erbe großer Marken wie LEGO, BlueBrixx und mehr.",
+  "home.exploreBricks": "Steine erkunden: ",
+  "home.exploreBricksBrief":
+    "Entdecken Sie einzigartige Steintypen, ihre Verwendung und wie sie Ihre Kreationen zum Leben erwecken.",
+  "home.latestSets": "Neueste Sets",
+  "home.brands": "Marken",
+
+  // Entity Management
+  "entities.title": "Elemente",
+  "entities.type": "Typ",
+  "entities.name": "Name",
+  "entities.date": "Datum",
+  "entities.searchByName": "Nach Name suchen",
+  "entities.noResults": "Keine passenden Einträge gefunden.",
+  "entities.clearSearch": "Suche und Filter zurücksetzen",
+  "entities.min": "Minimum",
+  "entities.max": "Maximum",
+  "entities.anyValue": "Alle",
+  "entities.invalidFilter": "Ungültiger Suchfilter. Prüfen Sie die Auswahl und verwenden Sie ganze Zahlen für Zahlenfilter.",
+  "field.yes": "Ja",
+  "field.no": "Nein",
+  "select.search": "Nach Name suchen…",
+  "select.placeholder": "Auswählen…",
+  "select.loading": "Suche läuft…",
+  "select.empty": "Keine passenden Einträge gefunden.",
+  "select.more": "Weitere Treffer vorhanden. Grenzen Sie die Suche ein.",
+  "select.error": "Vorschläge konnten nicht geladen werden. Zum Wiederholen erneut tippen.",
+  "entities.advancedSearch": "Erweiterte Suche",
+  "entities.entityType": "Elementtyp:",
+  "entities.changeRequests": "Änderungsanfragen",
+  "entities.addNew": "Neu hinzufügen",
+  "entities.entityTypeLabel": "Elementtyp",
+  "entities.nameLabel": "Name",
+  "entities.descriptionLabel": "Beschreibung",
+  "entities.imageLabel": "Bild",
+  "entities.selectBrand": "Marke auswählen",
+  "entities.selectTheme": "Thema auswählen",
+
+  // Entity Types
+  "entityType.all": "Alle",
+  "entityType.set": "Set",
+  "entityType.brand": "Marke",
+  "entityType.wiki": "Wiki",
+
+  // User Profile
+  "user.title": "Benutzer:",
+  "user.recentActivity": "Letzte Aktivitäten",
+  "user.noRecentActivity": "Keine aktuellen Aktivitäten",
+  "user.entity": "Element",
+  "user.version": "Version",
+  "user.userId": "Benutzer-ID",
+  "user.permissionLevel": "Berechtigungsstufe",
+  "user.memberSince": "Mitglied seit",
+  "user.imageOf": "Bild von",
+
+  // Changes
+  "changes.title": "Änderungsanfragen",
+  "changes.set": "Set",
+  "changes.changedBy": "Geändert von",
+  "changes.message": "Nachricht",
+
+  // Footer
+  "footer.content":
+    "Inhalt ist unter CC BY-SA verfügbar, sofern nicht anders vermerkt.",
+  "footer.legal": "Rechtliche Informationen",
+  "footer.privacy": "Datenschutz",
+  "footer.imprint": "Impressum",
+  "footer.terms": "Nutzungsbedingungen",
+  "footer.version": "Version",
+
+  // Entity History
+  "entity.history.title": "Versionshistorie:",
+  "entity.history.requestedChanges":
+    "Angeforderte Änderungen für {name}. Klicken Sie auf eine vorgeschlagene Version, um Details zu sehen. In absteigender Reihenfolge aufgelistet.",
+  "entity.history.versionHistory":
+    "Versionshistorie für {name}. Klicken Sie auf eine Version, um Details zu sehen. In absteigender Reihenfolge aufgelistet.",
+  "entity.history.version": "Version",
+  "entity.history.created": "Erstellt",
+  "entity.history.author": "Autor",
+  "entity.history.changeMessage": "Änderungsnachricht",
+
+  // Entity Page
+  "entity.pieces": "Teile",
+  "entity.size": "Größe",
+  "entity.theme": "Thema",
+  "entity.issued": "Ausgegeben",
+  "entity.issuedHint": "YYYY oder MM.YYYY oder DD.MM.YYYY",
+  "entity.brand": "Marke",
+  "entity.country": "Land",
+  "entity.website": "Website",
+  "entity.imageOf": "Bild von {name}",
+  "entity.referencedBy": "Verlinkt von",
+  "entity.delete": "Löschen",
+  "entity.confirmDelete":
+    "Sind Sie sicher, dass Sie diesen Eintrag mit allen Versionen löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+  "entity.deleteSuccess": "Eintrag erfolgreich gelöscht",
+  "entity.deleteFailed": "Löschen des Eintrags fehlgeschlagen",
+  "entity.cancel": "Abbrechen",
+  "entity.editPage": "Seite bearbeiten",
+  "entity.versionHistory": "Versionshistorie",
+  "entity.changeMessage": "Änderungsnachricht",
+  "entity.save": "Speichern",
+  "entity.reviewMessage": "Überprüfungsnachricht",
+  "entity.approve": "Genehmigen",
+  "entity.reject": "Ablehnen",
+  "entity.approveTooltip":
+    "Die Genehmigung einer Änderung setzt die HEAD-Version auf diese Version und den Überprüfungsstatus auf 'genehmigt'",
+  "entity.rejectTooltip":
+    "Die Ablehnung einer Änderung verwirft die Anfrage, die neue HEAD-Version zu werden, und jede Möglichkeit, in HEAD zusammengeführt zu werden.",
+
+  // Demo
+  "demo.title": "Übersetzungs-Demo",
+
+  // Images
+  "images.uploadTitle": "Bild Hochladen",
+  "images.selectImage": "Bild Auswählen",
+  "images.uploadLimits":
+    "Unterstützte Formate: JPEG, PNG, GIF, WebP, SVG, BMP. Max. Größe: 10MB",
+  "images.altText": "Alt-Text (optional)",
+  "images.altTextPlaceholder":
+    "Beschreiben Sie das Bild für die Barrierefreiheit",
+  "images.altTextHelp":
+    "Alternativer Text hilft Nutzern mit Bildschirmlesegeräten das Bild zu verstehen",
+  "images.entityId": "Entity-ID",
+  "images.entityIdHelp": "Dieses Bild mit einer bestimmten Entity verknüpfen",
+  "images.versionId": "Versions-ID",
+  "images.versionIdHelp":
+    "Dieses Bild mit einer bestimmten Version verknüpfen",
+  "images.uploadButton": "Bild Hochladen",
+  "images.uploading": "Wird hochgeladen...",
+  "images.noFileSelected": "Bitte wählen Sie eine Datei zum Hochladen aus",
+  "images.fileTooLarge": "Dateigröße überschreitet das 10MB-Limit",
+  "images.uploadFailed": "Upload fehlgeschlagen",
+  "images.uploadSuccess": "Bild erfolgreich hochgeladen! ID: ",
+  "images.viewImage": "Bild Anzeigen",
+  "images.preview": "Vorschau",
+  "images.myImages": "Meine Bilder",
+  "images.uploadNew": "Neues Bild Hochladen",
+  "images.noImages": "Sie haben noch keine Bilder hochgeladen",
+  "images.uploadFirst": "Ihr Erstes Bild Hochladen",
+  "images.details": "Bild-Details",
+  "images.filename": "Dateiname",
+  "images.originalName": "Ursprünglicher Name",
+  "images.fileSize": "Dateigröße",
+  "images.dimensions": "Abmessungen",
+  "images.unknown": "Unbekannt",
+  "images.uploadedBy": "Hochgeladen Von",
+  "images.unknownUser": "Unbekannter Benutzer",
+  "images.uploadedAt": "Hochgeladen Am",
+  "images.viewFull": "Vollgröße Anzeigen",
+  "images.delete": "Löschen",
+  "images.confirmDelete":
+    "Sind Sie sicher, dass Sie dieses Bild löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+  "images.deleteSuccess": "Bild erfolgreich gelöscht",
+  "images.deleteFailed": "Löschen des Bildes fehlgeschlagen",
+} satisfies Record<keyof typeof en, string>;

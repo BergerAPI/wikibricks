@@ -45,7 +45,7 @@ const EntityInfoBox = ({
               field={field}
               value={value}
               options={options[name]}
-              class="block w-full px-1"
+              class="block w-full"
               aria-label={t(label)}
               data-edit-field={name}
             />
