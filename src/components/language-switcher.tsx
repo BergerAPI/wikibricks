@@ -12,7 +12,7 @@ export const LanguageSwitcher = ({ context }: { context: DefaultContext }) => {
   const { pathname, search } = new URL(context.req.url);
 
   return (
-    <form method="post" action="/language" aria-label={t("nav.language")} class="inline-flex gap-3 text-sm">
+    <form method="post" action="/language" aria-label={t("nav.language")} class="inline-flex items-center gap-3 text-sm">
       <input type="hidden" name="returnTo" value={pathname + search} />
       {getAvailableLanguages().map((option) =>
         option === language ? (
@@ -25,7 +25,7 @@ export const LanguageSwitcher = ({ context }: { context: DefaultContext }) => {
             name="lang"
             value={option}
             lang={option}
-            class="border-0! p-0! text-blue-800 hover:underline cursor-pointer"
+            class="border-0 px-2 text-blue-800 hover:underline"
           >
             {languageNames[option]}
           </button>

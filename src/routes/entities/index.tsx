@@ -45,7 +45,8 @@ const EntityInfoBox = ({
               field={field}
               value={value}
               options={options[name]}
-              class="flex-1 border-none outline-none h-6"
+              class="block w-full px-1"
+              aria-label={t(label)}
               data-edit-field={name}
             />
           </InfoBoxRow>
@@ -98,17 +99,17 @@ export const handleEntityPage = async (c: DefaultContext) => {
       script={canEdit ? "edit-entity" : canReview ? "review-entity" : canDelete ? "delete" : undefined}
     >
       <main
-        class="overflow-auto"
+        class="flow-root"
         data-edit-url={canEdit ? entityUrl : undefined}
         data-base-version-id={canEdit ? entry.versionId : undefined}
         data-review-url={canReview ? `${entityUrl}/${entry.versionId}` : undefined}
         data-history-url={canEdit || canReview ? `${entityUrl}/history` : undefined}
       >
-        <div class="flex justify-between items-center pb-2 mb-3 border-b">
+        <div class="flex flex-wrap justify-between items-center gap-x-4 gap-y-2 pb-2 mb-3 border-b">
           <h1 class="text-3xl font-serif">
             {versionId ? `${entry.title}: Version ${entry.versionNumber}` : entry.title}
           </h1>
-          <div class="space-x-2">
+          <div class="flex flex-wrap items-center gap-x-4 [&>a]:inline-flex [&>a]:min-h-11 [&>a]:items-center">
             {!isProposal && canEdit && <a href={entityUrl}>{t("entity.cancel")}</a>}
             {!isProposal && !canEdit && user && (
               <a href={`${entityUrl}?edit`}>{t("entity.editPage")}</a>
@@ -117,7 +118,7 @@ export const handleEntityPage = async (c: DefaultContext) => {
             {canDelete && (
               <button
                 type="button"
-                class="border-0! p-0! text-red-600 hover:underline"
+                class="border-0 px-0 text-red-600 hover:underline"
                 data-delete-url={entityUrl}
                 data-delete-confirm={t("entity.confirmDelete")}
                 data-delete-success={t("entity.deleteSuccess")}
@@ -131,10 +132,10 @@ export const handleEntityPage = async (c: DefaultContext) => {
         </div>
 
         {canEdit && (
-          <div class="mb-3 pb-2 border-b flex items-center gap-2">
-            <label class="flex items-center flex-1 space-x-1">
+          <div class="mb-3 pb-2 border-b flex flex-wrap items-end gap-2">
+            <label class="min-w-0 w-full sm:w-auto sm:flex-1 space-y-1">
               <span>{t("entity.changeMessage")}</span>
-              <input class="flex-1" id="change_message" />
+              <input class="block w-full" id="change_message" />
             </label>
             <button id="save" type="button">
               {t("entity.save")}
@@ -143,10 +144,10 @@ export const handleEntityPage = async (c: DefaultContext) => {
         )}
 
         {canReview && (
-          <div class="mb-3 pb-2 border-b flex items-center gap-2">
-            <label class="flex items-center flex-1 space-x-1">
+          <div class="mb-3 pb-2 border-b flex flex-wrap items-end gap-2">
+            <label class="min-w-0 w-full sm:w-auto sm:flex-1 space-y-1">
               <span>{t("entity.reviewMessage")}</span>
-              <input class="flex-1" id="review_message" />
+              <input class="block w-full" id="review_message" />
             </label>
             <button title={t("entity.approveTooltip")} id="approve" type="button">
               {t("entity.approve")}
@@ -170,6 +171,9 @@ export const handleEntityPage = async (c: DefaultContext) => {
 
         <div
           contenteditable={canEdit}
+          role={canEdit ? "textbox" : undefined}
+          aria-label={canEdit ? t("entities.descriptionLabel") : undefined}
+          aria-multiline={canEdit ? "true" : undefined}
           data-edit-description={canEdit ? "" : undefined}
           class="text-pretty [&>ul]:mt-2 whitespace-pre-wrap"
         >

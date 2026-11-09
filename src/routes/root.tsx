@@ -39,9 +39,9 @@ export const handleRootPage = async (c: DefaultContext) => {
         </ul>
 
         <section id="sets" class="mt-8">
-          <div class="pb-2 mb-3 border-b flex items-center gap-4">
+          <div class="pb-2 mb-3 border-b flex flex-wrap items-center gap-x-4">
             <h2 class="text-2xl font-serif">{t("home.latestSets")}</h2>
-            <a class="text-sm" href="/entities/search?entity_type=set">
+            <a class="inline-flex min-h-11 items-center text-sm" href="/entities/search?entity_type=set">
               {t("action.seeAll")}
             </a>
           </div>
@@ -55,9 +55,9 @@ export const handleRootPage = async (c: DefaultContext) => {
         </section>
 
         <section id="brands" class="mt-8">
-          <div class="pb-2 mb-3 border-b flex items-center gap-4">
+          <div class="pb-2 mb-3 border-b flex flex-wrap items-center gap-x-4">
             <h2 class="text-2xl font-serif">{t("home.brands")}</h2>
-            <a class="text-sm" href="/entities/search?entity_type=brand">
+            <a class="inline-flex min-h-11 items-center text-sm" href="/entities/search?entity_type=brand">
               {t("action.seeAll")}
             </a>
           </div>

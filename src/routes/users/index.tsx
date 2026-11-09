@@ -22,7 +22,7 @@ export const handleUserPage = async (c: DefaultContext) => {
 
   return c.render(
     <Layout context={c} user={currentUser}>
-      <main class="overflow-auto">
+      <main>
         <div class="flex justify-between items-center pb-2 mb-3 border-b">
           <h1 class="text-3xl font-serif">
             {t("user.title")}
@@ -30,8 +30,24 @@ export const handleUserPage = async (c: DefaultContext) => {
           </h1>
         </div>
 
-        <div class="flex">
-          <section class="flex-1">
+        <div class="flex flex-col items-start gap-4 md:flex-row md:gap-0">
+          <InfoBox title={user.username}>
+            <InfoBoxImage
+              class="max-w-40"
+              src={`https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(user.username)}`}
+              alt={`${t("user.imageOf")} ${user.username}`}
+            />
+
+            <InfoBoxRow label={t("user.userId")}>{user.id}</InfoBoxRow>
+            <InfoBoxRow label={t("user.permissionLevel")}>
+              {user.permission_level}
+            </InfoBoxRow>
+            <InfoBoxRow label={t("user.memberSince")}>
+              {formatDate(user.created_at)}
+            </InfoBoxRow>
+          </InfoBox>
+
+          <section class="min-w-0 w-full md:order-first md:flex-1">
             <h2 class="text-2xl font-serif mb-4">{t("user.recentActivity")}</h2>
             {recentActivity.length === 0 ? (
               <div class="bg-background border p-2 rounded">
@@ -55,28 +71,13 @@ export const handleUserPage = async (c: DefaultContext) => {
                         </a>
                       </td>
                       <td>{activity.versionNumber}</td>
-                      <td>{formatDate(activity.createdAt)}</td>
+                      <td class="whitespace-nowrap">{formatDate(activity.createdAt)}</td>
                     </tr>
                   ))}
                 </tbody>
               </Table>
             )}
           </section>
-
-          <InfoBox title={user.username}>
-            <InfoBoxImage
-              src={`https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(user.username)}`}
-              alt={`${t("user.imageOf")} ${user.username}`}
-            />
-
-            <InfoBoxRow label={t("user.userId")}>{user.id}</InfoBoxRow>
-            <InfoBoxRow label={t("user.permissionLevel")}>
-              {user.permission_level}
-            </InfoBoxRow>
-            <InfoBoxRow label={t("user.memberSince")}>
-              {formatDate(user.created_at)}
-            </InfoBoxRow>
-          </InfoBox>
         </div>
       </main>
     </Layout>,

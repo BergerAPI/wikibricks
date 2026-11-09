@@ -119,11 +119,11 @@ export const handleImagePage = async (c: DefaultContext) => {
 
   return c.render(
     <Layout context={c} user={user} script={canDelete ? "delete" : undefined}>
-      <main class="overflow-auto">
-        <div class="flex justify-between items-center pb-2 mb-3 border-b">
+      <main>
+        <div class="flex flex-wrap justify-between items-center gap-x-4 gap-y-2 pb-2 mb-3 border-b">
           <h1 class="text-3xl font-serif">{image.original_filename}</h1>
-          <div class="space-x-2">
-            <a href={getImageUrl(image)} target="_blank" class="text-blue-600 hover:underline">
+          <div class="flex flex-wrap items-center gap-x-4">
+            <a href={getImageUrl(image)} target="_blank" class="inline-flex min-h-11 items-center text-blue-600 hover:underline">
               {t("images.viewFull")}
             </a>
             {canDelete && (

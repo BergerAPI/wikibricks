@@ -29,7 +29,7 @@ export const EntityFieldInput = ({
 }) => {
   if (field.type === "select" || field.type === "relation") {
     return (
-      <select {...attributes}>
+      <select {...attributes} class={`${attributes.class ?? ""} pr-8`}>
         <option value="">{field.meta.placeholder && t(field.meta.placeholder)}</option>
         {options.map((option) => (
           <option

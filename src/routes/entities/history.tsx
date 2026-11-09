@@ -35,7 +35,7 @@ const VersionTable = ({
               {version.versionNumber}
             </a>
           </td>
-          <td>{formatDate(version.createdAt)}</td>
+          <td class="whitespace-nowrap">{formatDate(version.createdAt)}</td>
           <td>
             {version.authorId && (
               <a href={`/users/${version.authorId}`}>{usernames.get(version.authorId)}</a>

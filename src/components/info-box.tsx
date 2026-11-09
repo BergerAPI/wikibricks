@@ -1,8 +1,12 @@
 import type { PropsWithChildren } from "hono/jsx";
 
 export const InfoBox = ({ title, children }: PropsWithChildren<{ title: string }>) => (
-  <div class="sm:float-right sm:clear-both sm:ml-2 sm:w-64 w-full bg-background border mb-2 p-1">
-    <table class="m-auto border-spacing-0.5 leading-6">
+  <div class="md:float-right md:clear-both md:ml-4 md:w-64 w-full shrink-0 bg-background border mb-4 p-2">
+    <table class="w-full table-fixed border-spacing-0.5 leading-6">
+      <colgroup>
+        <col class="w-2/5" />
+        <col />
+      </colgroup>
       <tbody>
         <tr>
           <th colspan={2} class="infobox-above">
@@ -15,11 +19,11 @@ export const InfoBox = ({ title, children }: PropsWithChildren<{ title: string }
   </div>
 );
 
-export const InfoBoxImage = ({ src, alt }: { src: string; alt: string }) => (
+export const InfoBoxImage = ({ src, alt, class: className = "" }: { src: string; alt: string; class?: string }) => (
   <tr>
     <td colspan={2}>
       <img
-        class="px-1"
+        class={`mx-auto w-full h-auto px-1 ${className}`}
         src={src}
         width="800"
         height="800"
@@ -32,10 +36,10 @@ export const InfoBoxImage = ({ src, alt }: { src: string; alt: string }) => (
 );
 
 export const InfoBoxRow = ({ label, children }: PropsWithChildren<{ label: string }>) => (
-  <tr class="h-6">
-    <th scope="row" class="text-left">
+  <tr>
+    <th scope="row" class="py-1 pr-2 text-left align-top hyphens-auto">
       {label}
     </th>
-    <td class="text-left">{children}</td>
+    <td class="py-1 text-left align-top">{children}</td>
   </tr>
 );

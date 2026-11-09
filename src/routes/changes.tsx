@@ -18,34 +18,32 @@ export const handleChangesPage = async (c: DefaultContext) => {
     <Layout context={c} user={user}>
       <main>
         <h1 class="text-3xl font-serif pb-2 mb-3 border-b">{t("changes.title")}</h1>
-        <div class="min-w-full overflow-x-auto">
-          <Table>
-            <TableHead>
-              <th>{t("changes.set")}</th>
-              <th>{t("changes.changedBy")}</th>
-              <th>{t("changes.message")}</th>
-              <th>{t("entities.date")}</th>
-            </TableHead>
-            <tbody>
-              {changes.map((change) => (
-                <tr>
-                  <td>
-                    <a href={`/entities/${change.entityId}?version=${change.versionId}`}>
-                      {change.title}
-                    </a>
-                  </td>
-                  <td>
-                    {change.authorId && (
-                      <a href={`/users/${change.authorId}`}>{usernames.get(change.authorId)}</a>
-                    )}
-                  </td>
-                  <td>{change.changeMessage || <em>{t("error.noMessage")}</em>}</td>
-                  <td>{formatDateTime(change.createdAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </div>
+        <Table>
+          <TableHead>
+            <th>{t("changes.set")}</th>
+            <th>{t("changes.changedBy")}</th>
+            <th>{t("changes.message")}</th>
+            <th>{t("entities.date")}</th>
+          </TableHead>
+          <tbody>
+            {changes.map((change) => (
+              <tr>
+                <td>
+                  <a href={`/entities/${change.entityId}?version=${change.versionId}`}>
+                    {change.title}
+                  </a>
+                </td>
+                <td>
+                  {change.authorId && (
+                    <a href={`/users/${change.authorId}`}>{usernames.get(change.authorId)}</a>
+                  )}
+                </td>
+                <td>{change.changeMessage || <em>{t("error.noMessage")}</em>}</td>
+                <td class="whitespace-nowrap">{formatDateTime(change.createdAt)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
       </main>
     </Layout>,
   );

@@ -12,40 +12,59 @@
     ::file-selector-button {
       border-color: var(--color-gray-200, currentColor);
     }
-  }
+    body {
+        @apply bg-background text-[#202122] leading-6;
+    }
 
-body {
-    @apply bg-background text-[#202122] leading-5;
-}
+    main {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
 
-a {
-    @apply text-blue-800 hover:underline;
-}
+    a {
+        @apply text-blue-800 hover:underline;
+    }
 
-input,
-textarea {
-    @apply border p-1;
-}
+    input,
+    textarea,
+    select {
+        @apply min-w-0 max-w-full border px-2 py-2 text-base;
+    }
 
-button {
-    @apply border p-1;
-}
+    input,
+    select,
+    button {
+        @apply min-h-11;
+    }
 
-select {
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-    background-position: right 0.5rem center;
-    background-size: 1.5em 1.5em;
-    background-repeat: no-repeat;
+    textarea {
+        @apply min-h-28 resize-y;
+    }
 
-    /* The right padding keeps the text clear of the arrow */
-    @apply border rounded-none p-1 pr-8 bg-white appearance-none;
-}
+    button {
+        @apply cursor-pointer border px-3 py-2 disabled:cursor-default;
+    }
 
-ol,
-ul {
-    @apply pl-5 space-y-2 list-disc marker:text-gray-950;
-}
+    select {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+        background-position: right 0.5rem center;
+        background-size: 1.5em 1.5em;
+        background-repeat: no-repeat;
 
-[contenteditable] {
-    @apply outline-none;
+        /* The right padding keeps the text clear of the arrow. */
+        @apply rounded-none pr-8 bg-white appearance-none;
+    }
+
+    :focus-visible {
+        @apply outline-2 outline-offset-2 outline-blue-600;
+    }
+
+    ol,
+    ul {
+        @apply pl-5 space-y-2 list-disc marker:text-gray-950;
+    }
+
+    [contenteditable="true"] {
+        @apply min-h-32 border border-dashed border-blue-300 p-2;
+    }
 }
