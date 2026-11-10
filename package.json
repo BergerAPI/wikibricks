@@ -25,19 +25,31 @@
     "bcryptjs": "^3.0.3",
     "dotenv": "^18.0.9",
     "hono": "^4.13.16",
+    "markdown-it": "^15.0.3",
     "postgres": "^4.1.0",
     "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.15",
     "@electric-sql/pglite-socket": "^0.2.18",
+    "@tailwindcss/typography": "^0.5.20",
     "@tailwindcss/vite": "^4.3.4",
+    "@tiptap/core": "^3.33.0",
+    "@tiptap/pm": "^3.33.0",
+    "@tiptap/starter-kit": "^3.33.0",
+    "@types/markdown-it": "^14.2.0",
     "@types/node": "^26.6.6",
     "concurrently": "^10.0.6",
+    "prosemirror-markdown": "^1.13.9",
     "tailwindcss": "^4.3.4",
     "tom-select": "^2.7.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.6"
+  },
+  "overrides": {
+    "@tailwindcss/typography": {
+      "postcss-selector-parser": "^6.1.5"
+    }
   }
 }

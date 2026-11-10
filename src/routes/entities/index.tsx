@@ -2,6 +2,7 @@ import type { Field } from "@wikibricks/cms";
 import { cms, fieldsOf, type FieldUi, type WikiEntry } from "../../collections";
 import { EntityFieldInput } from "../../components/entity-field";
 import { InfoBox, InfoBoxImage, InfoBoxRow } from "../../components/info-box";
+import { RichText, RichTextEditor } from "../../components/rich-text";
 import { sql, type Image } from "../../database";
 import { displayField, loadFieldOptions, loadRelationNames, type FieldOptions } from "../../fields";
 import { Layout } from "../../layout";
@@ -137,7 +138,7 @@ export const handleEntityPage = async (c: DefaultContext) => {
               <span>{t("entity.changeMessage")}</span>
               <input class="block w-full" id="change_message" />
             </label>
-            <button id="save" type="button">
+            <button id="save" type="button" disabled>
               {t("entity.save")}
             </button>
           </div>
@@ -169,16 +170,9 @@ export const handleEntityPage = async (c: DefaultContext) => {
           />
         )}
 
-        <div
-          contenteditable={canEdit}
-          role={canEdit ? "textbox" : undefined}
-          aria-label={canEdit ? t("entities.descriptionLabel") : undefined}
-          aria-multiline={canEdit ? "true" : undefined}
-          data-edit-description={canEdit ? "" : undefined}
-          class="text-pretty [&>ul]:mt-2 whitespace-pre-wrap"
-        >
-          {entry.values.description}
-        </div>
+        {canEdit
+          ? <RichTextEditor id="description" name="description" value={entry.values.description} t={t} referenceUrl="/entities/options" />
+          : <RichText value={entry.values.description} />}
 
         {references.length > 0 && (
           <section class="clear-both pt-4">

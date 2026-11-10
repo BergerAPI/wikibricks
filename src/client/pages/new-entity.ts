@@ -1,4 +1,4 @@
-import { validateForm } from "../forms";
+import { validateForm, waitForEditors } from "../forms";
 import { request, sendJson } from "../http";
 import type {
   CreateEntityRequest,
@@ -16,6 +16,7 @@ export default function initialize(root: HTMLElement) {
   const typeSelect = page.querySelector<HTMLSelectElement>("#entity_type");
   const errorBox = page.querySelector<HTMLElement>("#error");
   if (!createUrl || !uploadUrl || !fileInput || !submitButton || !typeSelect || !errorBox) return;
+  const stopWaiting = waitForEditors(page, submitButton);
 
   // Keeps an uploaded image across retries, until a different file is picked
   let imageId: number | null = null;
@@ -76,4 +77,6 @@ export default function initialize(root: HTMLElement) {
       submitButton.disabled = fileInput.disabled = typeSelect.disabled = false;
     }
   });
+
+  return stopWaiting;
 }

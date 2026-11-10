@@ -22,6 +22,11 @@ export default defineConfig(({ isSsrBuild }) => isSsrBuild
       modulePreload: { polyfill: false },
       rolldownOptions: {
         input: ["global.css", "src/client/site.ts"],
+        // Keep the serializer without ProseMirror Markdown's unused default parser.
+        treeshake: {
+          manualPureFunctions: ["MarkdownParser", "MarkdownIt"],
+          moduleSideEffects: [{ test: /[\\/]markdown-it[\\/]/, sideEffects: false }],
+        },
       },
     },
   });

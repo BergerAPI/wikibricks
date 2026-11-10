@@ -1,6 +1,7 @@
 import { cms, fieldsOf } from "../../collections";
 import { EntityFieldInput } from "../../components/entity-field";
 import { Select } from "../../components/select";
+import { RichTextEditor } from "../../components/rich-text";
 import { sql } from "../../database";
 import { loadFieldOptions } from "../../fields";
 import { Layout } from "../../layout";
@@ -33,8 +34,8 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
         ></div>
 
         <div>
-          <label for="entity_type" class="block mb-3">
-            <span class="font-semibold">{t("entities.entityTypeLabel")}</span>
+          <div class="mb-3">
+            <label for="entity_type" class="font-semibold">{t("entities.entityTypeLabel")}</label>
             <Select t={t}
               class="mt-1 block w-full"
               name="entity_type"
@@ -44,7 +45,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
                 <option value={type}>{t(`entityType.${type}`)}</option>
               ))}
             </Select>
-          </label>
+          </div>
 
           <label class="block mb-3">
             <span class="font-semibold">{t("entities.nameLabel")}</span>
@@ -56,15 +57,10 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
             />
           </label>
 
-          <label class="block mb-3">
-            <span class="font-semibold">{t("entities.descriptionLabel")}</span>
-            <textarea
-              name="description"
-              id="description"
-              value=""
-              class="border p-2 rounded w-full"
-            />
-          </label>
+          <div class="mb-3">
+            <p class="font-semibold">{t("entities.descriptionLabel")}</p>
+            <RichTextEditor id="description" name="description" value="" t={t} referenceUrl="/entities/options" />
+          </div>
 
           <label class="block mb-3">
             <span class="font-semibold">{t("entities.imageLabel")}</span>
@@ -87,11 +83,11 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
               {Object.entries(fieldsOf(type)).map(
                 ([key, field]) =>
                   field.meta.label && (
-                    <label htmlFor={`${type}-${key}`} class="block mb-3">
-                      <span class="font-semibold">
+                    <div class="mb-3">
+                      <label for={`${type}-${key}`} class="font-semibold">
                         {t(field.meta.label)}
                         {field.meta.hint && ` (${t(field.meta.hint)})`}
-                      </span>
+                      </label>
 
                       <EntityFieldInput
                         t={t}
@@ -101,13 +97,13 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
                         name={key}
                         class="mt-1 block w-full"
                       />
-                    </label>
+                    </div>
                   ),
               )}
             </div>
           ))}
 
-          <button id="submit_button" type="button">
+          <button id="submit_button" type="button" disabled>
             {t("action.submit")}
           </button>
         </div>

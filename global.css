@@ -1,4 +1,5 @@
 @import "tailwindcss" source("./src");
+@plugin "@tailwindcss/typography";
 
 @theme {
     --color-background: #f9f9f9;
@@ -64,7 +65,4 @@
         @apply pl-5 space-y-2 list-disc marker:text-gray-950;
     }
 
-    [contenteditable="true"] {
-        @apply min-h-32 border border-dashed border-blue-300 p-2;
-    }
 }

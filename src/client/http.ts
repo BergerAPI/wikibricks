@@ -1,7 +1,12 @@
-export async function request(url: string, options: RequestInit): Promise<Response> {
+export async function request(
+  url: string,
+  options: RequestInit,
+): Promise<Response> {
   const response = await fetch(url, options);
   if (!response.ok) {
-    throw new Error((await response.text()) || `Request failed (${response.status})`);
+    throw new Error(
+      (await response.text()) || `Request failed (${response.status})`,
+    );
   }
   return response;
 }

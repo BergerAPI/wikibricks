@@ -30,6 +30,8 @@ async function include(element: HTMLElement) {
     instance.cleanup = cleanup || undefined;
   } catch (error) {
     if (mounted.get(element) === instance) mounted.delete(element);
+    const status = element.querySelector<HTMLElement>("[data-script-status]");
+    if (status && element.dataset.scriptErrorMessage) status.textContent = element.dataset.scriptErrorMessage;
     console.error("Could not initialize component:", script, error);
   }
 }

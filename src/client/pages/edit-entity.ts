@@ -1,4 +1,4 @@
-import { validateForm } from "../forms";
+import { validateForm, waitForEditors } from "../forms";
 import { sendJson } from "../http";
 import type { EditEntityRequest, EntityFieldValues } from "../../shared/contracts";
 
@@ -8,20 +8,16 @@ export default function initialize(root: HTMLElement) {
   const { editUrl, historyUrl, baseVersionId } = page.dataset;
   const save = page.querySelector<HTMLButtonElement>("#save");
   const message = page.querySelector<HTMLInputElement>("#change_message");
-  const description = page.querySelector<HTMLElement>("[data-edit-description]");
+  const description = page.querySelector<HTMLInputElement>('[name="description"]');
   if (!editUrl || !historyUrl || !baseVersionId || !save || !message || !description) return;
 
-  const valueOf = (element: HTMLElement) =>
-    element instanceof HTMLInputElement || element instanceof HTMLSelectElement
-      ? element.value
-      : element.innerText;
-
   // Only changed values are sent, so remember what each field started with
-  const fields = Array.from(page.querySelectorAll<HTMLElement>("[data-edit-field]"), (element) => ({
+  const fields = Array.from(page.querySelectorAll<HTMLInputElement | HTMLSelectElement>("[data-edit-field]"), (element) => ({
     element,
-    initialValue: valueOf(element),
+    initialValue: element.value,
   }));
-  const initialDescription = valueOf(description);
+  const initialDescription = description.value;
+  const stopWaiting = waitForEditors(page, save);
 
   save.addEventListener("click", async () => {
     if (!validateForm(page)) return;
@@ -29,7 +25,7 @@ export default function initialize(root: HTMLElement) {
 
     const changes: EntityFieldValues = {};
     for (const { element, initialValue } of fields) {
-      if (valueOf(element) !== initialValue) changes[element.dataset.editField!] = valueOf(element);
+      if (element.value !== initialValue) changes[element.dataset.editField!] = element.value;
     }
 
     const request: EditEntityRequest = {
@@ -37,7 +33,7 @@ export default function initialize(root: HTMLElement) {
       baseVersionId: Number(baseVersionId),
       changeMessage: message.value,
     };
-    if (valueOf(description) !== initialDescription) request.description = valueOf(description);
+    if (description.value !== initialDescription) request.description = description.value;
 
     try {
       await sendJson(editUrl, request);
@@ -48,4 +44,6 @@ export default function initialize(root: HTMLElement) {
       save.disabled = false;
     }
   });
+
+  return stopWaiting;
 }

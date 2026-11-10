@@ -1,6 +1,27 @@
 import type en from "./en";
 
 export default {
+  "editor.entity": "Element verlinken",
+  "editor.searchEntities": "Elemente suchen",
+  "editor.insertReference": "Verweis einfügen",
+  "editor.invalidLink": "Geben Sie eine Webadresse, einen E-Mail-Link oder einen Seitenpfad ein.",
+  "editor.formatting": "Beschreibung formatieren",
+  "editor.paragraph": "Absatz",
+  "editor.heading": "Überschrift",
+  "editor.subheading": "Unterüberschrift",
+  "editor.bold": "Fett",
+  "editor.italic": "Kursiv",
+  "editor.bulletList": "Aufzählung",
+  "editor.orderedList": "Nummerierte Liste",
+  "editor.blockquote": "Zitat",
+  "editor.link": "Link",
+  "editor.undo": "Rückgängig",
+  "editor.redo": "Wiederholen",
+  "editor.linkAddress": "Link-Adresse",
+  "editor.applyLink": "Übernehmen",
+  "editor.removeLink": "Link entfernen",
+  "editor.loading": "Editor wird geladen…",
+  "editor.error": "Der Editor konnte nicht geladen werden. Laden Sie die Seite erneut.",
   // Layout and Navigation
   "site.title": "Wikibricks - Dein Ort für alle Stein-Bedürfnisse",
   "site.tagline": "Wikibricks",
