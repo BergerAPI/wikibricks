@@ -11,8 +11,7 @@ function setupDeletion(button: HTMLButtonElement) {
     button.disabled = true;
 
     try {
-      const response = await fetch(deleteUrl, { method: "DELETE" });
-      if (!response.ok) throw new Error(`Request failed (${response.status})`);
+      await request(deleteUrl, { method: "DELETE" });
       window.alert(deleteSuccess);
       window.location.href = deleteRedirect;
     } catch (error) {
@@ -22,3 +21,5 @@ function setupDeletion(button: HTMLButtonElement) {
     }
   });
 }
+import { request } from "../http";
+

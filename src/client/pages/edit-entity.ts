@@ -1,4 +1,5 @@
 import { validateForm } from "../forms";
+import { sendJson } from "../http";
 import type { EditEntityRequest, EntityFieldValues } from "../../shared/contracts";
 
 export default function initialize(root: HTMLElement) {
@@ -39,12 +40,7 @@ export default function initialize(root: HTMLElement) {
     if (valueOf(description) !== initialDescription) request.description = valueOf(description);
 
     try {
-      const response = await fetch(editUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(request),
-      });
-      if (!response.ok) throw new Error((await response.text()) || `Edit failed (${response.status})`);
+      await sendJson(editUrl, request);
       window.location.href = historyUrl;
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "Edit failed");

@@ -1,4 +1,5 @@
 import { validateForm } from "../forms";
+import { request, sendJson } from "../http";
 import type {
   CreateEntityRequest,
   CreateEntityResponse,
@@ -49,16 +50,11 @@ export default function initialize(root: HTMLElement) {
     };
   };
 
-  async function post<T>(url: string, body: BodyInit, headers?: HeadersInit): Promise<T> {
-    const response = await fetch(url, { method: "POST", body, headers });
-    if (!response.ok) throw new Error((await response.text()) || `Request failed (${response.status})`);
-    return response.json();
-  }
-
   async function uploadImage(file: File) {
     const body = new FormData();
     body.append("file", file);
-    const { id } = await post<UploadImageResponse>(uploadUrl!, body);
+    const response = await request(uploadUrl!, { method: "POST", body });
+    const { id } = await response.json() as UploadImageResponse;
     return id;
   }
 
@@ -71,11 +67,8 @@ export default function initialize(root: HTMLElement) {
       const file = fileInput.files?.[0];
       if (file && imageId === null) imageId = await uploadImage(file);
 
-      const { id, entity_id } = await post<CreateEntityResponse>(
-        createUrl,
-        JSON.stringify(collectRequest()),
-        { "Content-Type": "application/json" },
-      );
+      const response = await sendJson(createUrl, collectRequest());
+      const { id, entity_id } = await response.json() as CreateEntityResponse;
       window.location.href = `/entities/${entity_id}?version=${id}`;
     } catch (error) {
       errorBox.textContent = error instanceof Error ? error.message : "Network error. Please try again.";

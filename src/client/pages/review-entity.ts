@@ -1,4 +1,5 @@
 import type { ReviewVersionRequest } from "../../shared/contracts";
+import { sendJson } from "../http";
 
 export default function initialize(root: HTMLElement) {
   const page = root.querySelector<HTMLElement>("[data-review-url]");
@@ -19,12 +20,7 @@ export default function initialize(root: HTMLElement) {
     };
 
     try {
-      const response = await fetch(reviewUrl, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(request),
-      });
-      if (!response.ok) throw new Error((await response.text()) || `Review failed (${response.status})`);
+      await sendJson(reviewUrl, request, "PATCH");
       window.location.href = type === "approved" ? historyUrl : "/changes";
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "Review failed");
