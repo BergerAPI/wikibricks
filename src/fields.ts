@@ -1,12 +1,9 @@
 import { targetsOf, type Field } from "@wikibricks/cms";
 import type { Category } from "./categories";
 import { cms, fieldsOf, type EntityType, type FieldUi, type WikiEntry } from "./collections";
+import type { SelectOption } from "./shared/contracts";
 
-export type FieldOption = {
-  value: string;
-  label: string;
-  group?: string;
-};
+export type FieldOption = SelectOption;
 
 export type FieldOptions = { items: FieldOption[]; lookupUrl?: string };
 

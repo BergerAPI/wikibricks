@@ -73,7 +73,12 @@ export default function mount(element: HTMLElement) {
           return;
         }
         this.clearOptions((option) => option.value === "" || this.items.includes(option.value));
-        done(result.options.map((option) => ({ value: option.value, text: option.label })), []);
+        this.clearOptionGroups();
+        const groups = [...new Set(result.options.flatMap((option) => option.group ? [option.group] : []))];
+        done(
+          result.options.map((option) => ({ value: option.value, text: option.label, optgroup: option.group })),
+          groups.map((label) => ({ value: label, label })),
+        );
         status.textContent = result.more ? messages.moreMessage! : !result.options.length ? messages.emptyMessage! : "";
         this.positionDropdown();
       } catch {
@@ -121,6 +126,9 @@ export default function mount(element: HTMLElement) {
   };
   const position = () => control.positionDropdown();
   const form = native.form;
+  // Let Tom Select's click handler manage focus; native focus would toggle it twice.
+  const preventPointerFocus = (event: MouseEvent) => event.preventDefault();
+  control.control.addEventListener("mousedown", preventPointerFocus);
   native.addEventListener("change", sync);
   native.addEventListener("invalid", invalid);
   form?.addEventListener("reset", reset);
@@ -137,6 +145,7 @@ export default function mount(element: HTMLElement) {
     native.removeEventListener("invalid", invalid);
     form?.removeEventListener("reset", reset);
     window.visualViewport?.removeEventListener("resize", position);
+    control.control.removeEventListener("mousedown", preventPointerFocus);
     const selected = Array.from(native.selectedOptions, (option) => ({ value: option.value, label: option.label }));
     control.destroy();
     labels.forEach(({ label, htmlFor }) => { label.htmlFor = htmlFor; });

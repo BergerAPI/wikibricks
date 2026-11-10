@@ -24,7 +24,7 @@ import {
 import { handleEntityHistoryPage } from "./routes/entities/history";
 import { handleNewEntityPage, handleNewEntitySubmit } from "./routes/entities/new-entity";
 import { handleSearchPage } from "./routes/entities/search";
-import { handleRelationOptions } from "./routes/entities/options";
+import { handleEntityOptions, handleRelationOptions } from "./routes/entities/options";
 import {
   handleImageDelete,
   handleImageInfo,
@@ -69,6 +69,7 @@ app.post("/logout", handleLogoutSubmit);
 app.get("/entities/new", handleNewEntityPage);
 app.post("/entities/new", handleNewEntitySubmit);
 app.get("/entities/search", handleSearchPage);
+app.get("/entities/options", handleEntityOptions);
 app.get("/entities/options/:type/:field", handleRelationOptions);
 app.get("/entities/:id", handleEntityPage);
 app.post("/entities/:id", handleEntityPageSubmit);

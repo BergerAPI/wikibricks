@@ -4,7 +4,7 @@ import type { FindQuery } from "@wikibricks/cms";
 import { Hono } from "hono";
 import { cms } from "../collections";
 import { loadFieldOptions } from "../fields";
-import { handleRelationOptions } from "../routes/entities/options";
+import { handleEntityOptions, handleRelationOptions } from "../routes/entities/options";
 import type { SelectOptionsResponse } from "../shared/contracts";
 
 afterEach(() => mock.restoreAll());
@@ -70,4 +70,23 @@ test("only exposes options for defined relation fields", async () => {
   for (const path of ["unknown/brand_id", "set/unknown", "set/pieces"])
     assert.equal((await app.request(`/entities/options/${path}`)).status, 404);
   assert.equal(find.mock.callCount(), 0);
+});
+
+test("searches all CMS entity types for editor references with bounded, grouped results", async () => {
+  const find = mock.method(cms, "find", async () => ({ total: 55, items: [
+    { entityId: 2, title: "Cobi", type: "brand" },
+    { entityId: 6, title: "City Bus", type: "set" },
+  ] }));
+  const app = new Hono().get("/entities/options", handleEntityOptions);
+  const response = await app.request("/entities/options?q=Ci");
+  assert.equal(response.status, 200);
+  const body = await response.json() as SelectOptionsResponse;
+  assert.deepEqual(body.options, [
+    { value: "2", label: "Cobi", group: "Marke" },
+    { value: "6", label: "City Bus", group: "Set" },
+  ]);
+  assert.equal(body.more, true);
+  const query = find.mock.calls[0].arguments[0]!;
+  assert.deepEqual(query.where, { title: { contains: "Ci" } });
+  assert.equal(query.limit, 20);
 });

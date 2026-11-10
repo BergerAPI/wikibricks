@@ -3,8 +3,10 @@
  */
 export type EntityFieldValues = Record<string, string>;
 
+export type SelectOption = { value: string; label: string; group?: string };
+
 export type SelectOptionsResponse = {
-  options: { value: string; label: string }[];
+  options: SelectOption[];
   more: boolean;
 };
 
