@@ -1,23 +1,18 @@
 # WikiBricks
 
-Requires Node.js 26+ and PostgreSQL.
+Requires Node.js 26+. Production also needs PostgreSQL.
 
 ```sh
 npm install
 npm run dev
 ```
 
-Open http://localhost:3000. Set `DB_CONN` in `.env` to use an existing database.
+Open http://localhost:3000. This starts a local database with sample data, the
+server and the client build. Local users `admin`, `moderator`, and `alice` use the
+password `password`. Data stays in `.pglite/`; `npm run dev -- --reset` recreates it.
 
-For a local database with sample data, run this in a separate terminal:
-
-```sh
-npm run db
-```
-
-Start the app with the connection string it prints. Local users `admin`,
-`moderator`, and `alice` use the password `password`. Data stays in `.pglite/`;
-`npm run db -- --reset` recreates it.
+Settings live in one `.env` file, see `.env.example`. None are needed for
+development. Set `DB_CONN` there to use an existing database instead of the local one.
 
 ```sh
 npm test       # tests

@@ -10,11 +10,11 @@
   },
   "scripts": {
     "build": "npm run typecheck && vite build --ssr && vite build",
-    "dev": "vite build && concurrently --kill-others --names server,client npm:dev:server npm:dev:client",
+    "dev": "tsx scripts/dev.ts",
     "dev:server": "tsx watch src/index.ts",
     "dev:client": "vite build --watch",
     "start": "node dist/index.js",
-    "db": "tsx scripts/dev-db.ts",
+    "db": "tsx scripts/dev.ts --db-only",
     "test": "tsx --test packages/*/test/*.test.ts src/test/*.test.ts",
     "typecheck": "tsc --noEmit && tsc -p src/client/tsconfig.json"
   },
@@ -39,7 +39,6 @@
     "@tiptap/starter-kit": "^3.33.0",
     "@types/markdown-it": "^14.2.0",
     "@types/node": "^26.6.6",
-    "concurrently": "^10.0.6",
     "prosemirror-markdown": "^1.13.9",
     "tailwindcss": "^4.3.4",
     "tom-select": "^2.7.0",
