@@ -36,3 +36,4 @@ uploads/
 
 # local database (npm run db)
 .pglite/
+.pglite.corrupt-*/

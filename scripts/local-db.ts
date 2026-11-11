@@ -1,8 +1,8 @@
 import { PGlite } from "@electric-sql/pglite";
 import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
-import { rm } from "node:fs/promises";
+import { mkdtemp, rename, rm } from "node:fs/promises";
 import { createServer } from "node:net";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 const port = Number(process.env.PGLITE_PORT ?? 5433);
 const dataDir = process.env.PGLITE_DIR ?? join(import.meta.dirname, "../.pglite");
@@ -13,6 +13,30 @@ const isPortFree = () =>
       .once("error", () => resolve(false))
       .listen(port, "127.0.0.1", () => probe.close(() => resolve(true)));
   });
+
+async function openLocalDatabase() {
+  let invalidCheckpoint = false;
+  try {
+    return await PGlite.create({
+      dataDir,
+      onStderr: (line) => {
+        if (/\bPANIC:\s+could not locate a valid checkpoint record\b/.test(line)) {
+          invalidCheckpoint = true;
+        }
+        return false;
+      },
+    });
+  } catch (error) {
+    if (!invalidCheckpoint) throw error;
+
+    const directory = resolve(dataDir);
+    const archive = join(await mkdtemp(`${directory}.corrupt-`), "data");
+    await rename(directory, archive);
+    console.warn(`The local database has an invalid checkpoint. Saved its files to ${archive}.`);
+    console.warn("Starting a fresh local database with sample data.");
+    return PGlite.create(dataDir);
+  }
+}
 
 /**
  * Runs a local Postgres for development, backed by PGlite. The data stays in .pglite
@@ -25,7 +49,7 @@ export async function startLocalDatabase({ reset = false } = {}) {
   if (!(await isPortFree())) throw new Error(`Port ${port} is in use. Is the local database already running?`);
   if (reset) await rm(dataDir, { recursive: true, force: true });
 
-  const db = new PGlite(dataDir);
+  const db = await openLocalDatabase();
   const server = new PGLiteSocketServer({ db, port, maxConnections: 20 });
   await server.start();
 
