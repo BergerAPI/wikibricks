@@ -13,7 +13,8 @@ export const handleSearchPage = async (c: DefaultContext) => {
   const user = c.get("user");
   const { t, formatDate } = useTranslation(c);
 
-  const page = Math.max(0, Math.floor(Number(c.req.query("page")) || 0));
+  const requestedPage = Math.floor(Number(c.req.query("page")));
+  const page = requestedPage > 0 && Number.isSafeInteger(requestedPage * PAGE_SIZE) ? requestedPage : 0;
   const rawType = c.req.query("entity_type") ?? "all";
   const entityType = cms.isType(rawType) ? rawType : "all";
   const name = (c.req.query("name") ?? "").slice(0, 64);
@@ -43,6 +44,9 @@ export const handleSearchPage = async (c: DefaultContext) => {
     searchUrl({ entity_type: type === "all" ? "" : type, name });
   const pageUrl = (page: number) =>
     searchUrl({ ...Object.fromEntries(filters.params), entity_type: entityType, name, page: page ? String(page) : "" });
+
+  // A bookmark can point past the last page after the result count changes.
+  if (page > 0 && total > 0 && page * PAGE_SIZE >= total) return c.redirect(pageUrl(0));
 
   return c.render(
     <Layout context={c} user={user}>
