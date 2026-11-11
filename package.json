@@ -23,6 +23,7 @@
     "@wikibricks/cms": "*",
     "@wikibricks/cms-postgres": "*",
     "bcryptjs": "^3.0.3",
+    "diff": "^9.0.0",
     "dotenv": "^18.0.9",
     "hono": "^4.13.16",
     "markdown-it": "^15.0.3",

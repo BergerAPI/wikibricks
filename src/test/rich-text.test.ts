@@ -3,6 +3,26 @@ import { test } from "node:test";
 import { RichText, RichTextEditor } from "../components/rich-text";
 import type { TranslationFunctions } from "../translation";
 
+test("review descriptions highlight changed words within the rendered text", () => {
+  const html = String(RichText({
+    previous: { value: "## Unchanged heading\n\nBuild a red castle.\n\n**Shared formatting**", t },
+    value: "## Unchanged heading\n\nBuild a blue castle.\n\n**Shared formatting**",
+  }));
+  assert.match(html, /Build a <del[^>]*><span[^>]*>review.before <\/span>red<\/del><ins[^>]*><span[^>]*>review.after <\/span>blue<\/ins> castle\./);
+  assert.equal((html.match(/<h2>Unchanged heading<\/h2>/g) ?? []).length, 1);
+  assert.equal((html.match(/<strong>Shared formatting<\/strong>/g) ?? []).length, 1);
+});
+
+test("review highlights edits in adjacent formatted paragraphs without duplicating the shared words", () => {
+  const html = String(RichText({
+    previous: { value: "Build a **red** castle.\n\nAdd a *small* tower.", t },
+    value: "Build a **blue** castle.\n\nAdd a *tall* tower.",
+  }));
+  assert.match(html, /<strong><del[^>]*>[^]*?red<\/del><ins[^>]*>[^]*?blue<\/ins><\/strong>/);
+  assert.match(html, /<em><del[^>]*>[^]*?small<\/del><ins[^>]*>[^]*?tall<\/ins><\/em>/);
+  assert.equal((html.match(/Build a/g) ?? []).length, 1);
+});
+
 const t: TranslationFunctions["t"] = (key) => key;
 
 test("renders formatted descriptions without loading editor code", () => {

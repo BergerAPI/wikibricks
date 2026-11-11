@@ -12,7 +12,7 @@ import { useTranslation, type TranslationFunctions } from "../../translation";
 import { getUsernames } from "../../users";
 import { isModerator, parseId, readJson, routeParam, type DefaultContext } from "../../utils";
 import { cmsErrorResponse } from "./errors";
-import { ReviewNotice, VersionChanges } from "./review";
+import { ChangedValue, ReviewNotice } from "./review";
 
 // Change and review messages are one-line summaries
 const MAX_MESSAGE_LENGTH = 2000;
@@ -23,6 +23,8 @@ const EntityInfoBox = ({
   editable,
   options,
   relationNames,
+  previous,
+  previousRelationNames,
   t,
 }: {
   entry: WikiEntry;
@@ -30,10 +32,24 @@ const EntityInfoBox = ({
   editable: boolean;
   options: Record<string, FieldOptions>;
   relationNames: Record<string, string>;
+  previous?: WikiEntry;
+  previousRelationNames: Record<string, string>;
   t: TranslationFunctions["t"];
 }) => (
   <InfoBox title={entry.title ?? ""}>
-    {entry.values.image_id && (
+    {previous && previous.values.image_id !== entry.values.image_id ? (
+      <tr>
+        <td colspan={2}>
+          <div class="grid grid-cols-2 items-center gap-2 [&>del]:p-1 [&>ins]:p-1">
+            <ChangedValue
+              before={previous.values.image_id ? <img src={`/images/serve/${previous.values.image_id}`} alt={t("review.before")} loading="lazy" /> : null}
+              after={entry.values.image_id ? <img src={`/images/serve/${entry.values.image_id}`} alt={t("review.after")} loading="lazy" /> : null}
+              t={t}
+            />
+          </div>
+        </td>
+      </tr>
+    ) : entry.values.image_id && (
       <InfoBoxImage
         src={`/images/serve/${entry.values.image_id}`}
         alt={t("entity.imageOf", { name: entry.title ?? "" })}
@@ -43,7 +59,9 @@ const EntityInfoBox = ({
     {Object.entries(fields).map(([name, field]) => {
       const label = field.meta.label;
       const value = entry.values[name] == null ? "" : String(entry.values[name]);
-      if (!label || (!value && !editable)) return null;
+      const previousValue = String(previous?.values[name] ?? "");
+      const changed = !!previous && previousValue !== value;
+      if (!label || (!value && !editable && !changed)) return null;
 
       if (editable)
         return (
@@ -61,10 +79,17 @@ const EntityInfoBox = ({
           </InfoBoxRow>
         );
 
-      const { text, href } = displayField(field, value, relationNames[name]);
+      const show = (value: string, relationName?: string) => {
+        if (!value) return null;
+        const { text, href } = displayField(field, value, relationName);
+        return href ? <a href={href}>{text}</a> : text;
+      };
+      const current = show(value, relationNames[name]);
       return (
         <InfoBoxRow label={t(label)}>
-          {href ? <a href={href}>{text}</a> : <span>{text}</span>}
+          {changed
+            ? <ChangedValue before={show(previousValue, previousRelationNames[name])} after={current} t={t} />
+            : current}
         </InfoBoxRow>
       );
     })}
@@ -107,6 +132,7 @@ export const handleEntityPage = async (c: DefaultContext) => {
     ? await cms.get(entityId, { versionId: entry.previousVersionId })
     : undefined;
   const previousRelationNames = previous ? await loadRelationNames(previous, fields) : {};
+  const imageChanged = previous && previous.values.image_id !== entry.values.image_id;
   const reviewer = versionId && entry.reviewerId
     ? (await getUsernames([entry.reviewerId])).get(entry.reviewerId)
     : undefined;
@@ -129,7 +155,10 @@ export const handleEntityPage = async (c: DefaultContext) => {
       >
         <div class="flex flex-wrap justify-between items-center gap-x-4 gap-y-2 pb-2 mb-3 border-b">
           <h1 class="text-3xl font-serif">
-            {versionId ? `${entry.title}: ${t("entity.history.version")} ${entry.versionNumber}` : entry.title}
+            {previous && previous.title !== entry.title
+              ? <ChangedValue before={previous.title} after={entry.title} t={t} />
+              : entry.title}
+            {versionId && `: ${t("entity.history.version")} ${entry.versionNumber}`}
           </h1>
           <div class="flex flex-wrap items-center gap-x-4 [&>a]:inline-flex [&>a]:min-h-11 [&>a]:items-center">
             {!isProposal && canEdit && <a href={entityUrl}>{t("entity.cancel")}</a>}
@@ -189,18 +218,7 @@ export const handleEntityPage = async (c: DefaultContext) => {
         {versionId && isProposal && !entry.previousVersionId && (
           <p class="mb-3">{t("review.newEntity")}</p>
         )}
-        {previous && (
-          <VersionChanges
-            entry={entry}
-            previous={previous}
-            fields={fields}
-            relationNames={relationNames}
-            previousRelationNames={previousRelationNames}
-            t={t}
-          />
-        )}
-
-        {Object.values(fields).some((field) => field.meta.label) && (
+        {(imageChanged || Object.values(fields).some((field) => field.meta.label)) && (
           <EntityInfoBox
             t={t}
             editable={canEdit}
@@ -208,12 +226,14 @@ export const handleEntityPage = async (c: DefaultContext) => {
             fields={fields}
             options={options}
             relationNames={relationNames}
+            previous={previous}
+            previousRelationNames={previousRelationNames}
           />
         )}
 
         {canEdit
           ? <RichTextEditor id="description" name="description" value={entry.values.description} t={t} referenceUrl="/entities/options" />
-          : <RichText value={entry.values.description} />}
+          : <RichText value={entry.values.description} previous={previous ? { value: previous.values.description, t } : undefined} />}
 
         {references.length > 0 && (
           <section class="clear-both pt-4">

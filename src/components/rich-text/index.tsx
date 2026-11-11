@@ -2,10 +2,16 @@ import { raw } from "hono/html";
 import { renderMarkdown } from "../../markdown";
 import type { TranslationFunctions } from "../../translation";
 import { Select } from "../select";
+import { DescriptionDiff } from "./diff";
 
-export const RichText = ({ value }: { value: string }) => (
+export const RichText = ({ value, previous }: {
+  value: string;
+  previous?: { value: string; t: TranslationFunctions["t"] };
+}) => (
   <div class="prose max-w-none prose-headings:font-serif prose-a:text-blue-800">
-    {raw(renderMarkdown(value))}
+    {previous && previous.value !== value
+      ? <DescriptionDiff before={previous.value} after={value} beforeLabel={previous.t("review.before")} afterLabel={previous.t("review.after")} />
+      : raw(renderMarkdown(value))}
   </div>
 );
 
