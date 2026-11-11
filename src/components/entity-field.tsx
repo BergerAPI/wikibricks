@@ -5,7 +5,10 @@ import type { FieldOption, FieldOptions } from "../fields";
 import type { TranslationFunctions } from "../translation";
 import { Select } from "./select";
 
-const optionGroups = (options: FieldOption[]) => {
+// Shorter lists are quicker to scan than to search.
+const SEARCHABLE_FROM = 10;
+
+const optionGroups =(options: FieldOption[]) => {
   const groups: { label: string; items: FieldOption[] }[] = [];
   for (const option of options) {
     const label = option.group ?? "";
@@ -33,17 +36,17 @@ export const EntityFieldInput = ({
 }: FieldInputProps) => {
   if (field.type === "boolean") {
     return (
-      <Select {...attributes} t={t}>
+      <select {...attributes}>
         <option value="">{emptyLabel ?? t("select.placeholder")}</option>
         <option value="true" selected={value === "true"}>{t("field.yes")}</option>
         <option value="false" selected={value === "false"}>{t("field.no")}</option>
-      </Select>
+      </select>
     );
   }
 
   if (field.type === "select" || field.type === "relation") {
     return (
-      <Select {...attributes} t={t} lookupUrl={options.lookupUrl}>
+      <Select {...attributes} t={t} lookupUrl={options.lookupUrl} search={options.items.length > SEARCHABLE_FROM}>
         <option value="">{emptyLabel ?? t(field.meta.placeholder ?? "select.placeholder")}</option>
         {optionGroups(options.items).map((group) => {
           const choices = group.items.map((option) => <option value={option.value} selected={option.value === value}>{option.label}</option>);
@@ -62,6 +65,7 @@ export const EntityFieldInput = ({
       {...attributes}
       type={type}
       value={value ?? ""}
+      maxlength={field.type === "text" ? field.maxLength : undefined}
     />
   );
 };

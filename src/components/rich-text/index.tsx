@@ -4,7 +4,7 @@ import type { TranslationFunctions } from "../../translation";
 import { Select } from "../select";
 
 export const RichText = ({ value }: { value: string }) => (
-  <div class="prose max-w-none wrap-break-words prose-headings:font-serif prose-a:text-blue-800">
+  <div class="prose max-w-none prose-headings:font-serif prose-a:text-blue-800">
     {raw(renderMarkdown(value))}
   </div>
 );
@@ -35,7 +35,7 @@ export const RichTextEditor = ({
       data-editor-toolbar
       role="group"
       aria-label={t("editor.formatting")}
-      class="flex flex-wrap gap-0.5 border-b p-1 hidden:hidden"
+      class="flex flex-wrap gap-0.5 border-b p-1"
       hidden
     >
       {(
@@ -49,6 +49,7 @@ export const RichTextEditor = ({
           ["orderedList", "editor.orderedList", "1. ≡"],
           ["blockquote", "editor.blockquote", "❝"],
           ["link", "editor.link", t("editor.link")],
+          ...(referenceUrl ? [["entity", "editor.entity", t("editor.entity")] as const] : []),
           ["undo", "editor.undo", "↶"],
           ["redo", "editor.redo", "↷"],
         ] as const
@@ -63,20 +64,11 @@ export const RichTextEditor = ({
           {icon}
         </button>
       ))}
-      {referenceUrl && (
-        <button
-          type="button"
-          data-command="entity"
-          class="rounded border-transparent px-2 hover:bg-gray-100"
-        >
-          {t("editor.entity")}
-        </button>
-      )}
     </div>
     {referenceUrl && (
       <div
         data-reference-form
-        class="flex flex-wrap items-end gap-2 border-b p-2 hidden:hidden"
+        class="flex flex-wrap items-end gap-2 border-b p-2 [&_.option[data-value='']]:hidden"
         hidden
       >
         <div class="min-w-0 flex-1 basis-48">
@@ -92,9 +84,6 @@ export const RichTextEditor = ({
             <option value="">{t("select.placeholder")}</option>
           </Select>
         </div>
-        <button type="button" data-reference-insert disabled>
-          {t("editor.insertReference")}
-        </button>
         <button type="button" data-reference-cancel>
           {t("entity.cancel")}
         </button>
@@ -102,7 +91,7 @@ export const RichTextEditor = ({
     )}
     <div
       data-link-form
-      class="flex flex-wrap items-end gap-2 border-b p-2 hidden:hidden"
+      class="flex flex-wrap items-end gap-2 border-b p-2"
       hidden
     >
       <label class="min-w-0 flex-1 basis-48">

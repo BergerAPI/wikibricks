@@ -33,3 +33,12 @@ test("uses real option groups for hierarchical CMS choices", () => {
   assert.ok(!html.includes("bg-neutral"));
   assert.ok(!html.includes("disabled"));
 });
+
+test("only makes long lists searchable", () => {
+  const render = (count: number) => String(EntityFieldInput({
+    field: { type: "select", options: [], meta: {} }, t,
+    options: { items: Array.from({ length: count }, (_, index) => ({ value: `${index}`, label: `${index}` })) },
+  }));
+  assert.ok(!render(10).includes("data-include-script"));
+  assert.match(render(11), /data-include-script="components\/select"/);
+});

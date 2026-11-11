@@ -5,6 +5,7 @@ import type { SelectOptionsResponse } from "../../shared/contracts";
 import "./style.css";
 
 TomSelect.define("dropdown_input", dropdownInput);
+// Opens upwards when there is more room above, e.g. over a phone keyboard.
 TomSelect.define("wiki_position", function () {
   this.hook("after", "positionDropdown", () => {
     if (!this.isOpen) return;
@@ -14,28 +15,32 @@ TomSelect.define("wiki_position", function () {
     const below = top + (viewport?.height ?? innerHeight) - rect.bottom;
     const above = rect.top - top;
     const upwards = below < 300 && above > below;
+    // The list gets the room that the search box and the status line leave, between two and five options.
+    const room = (upwards ? above : below) - 96;
     this.dropdown.classList.toggle("drop-up", upwards);
-    this.dropdown_content.style.maxHeight = `${Math.max(88, Math.min(240, (upwards ? above : below) - 96))}px`;
+    this.dropdown_content.style.maxHeight = `${Math.max(88, Math.min(240, room))}px`;
   });
 });
 
+const note = (text: string) => {
+  const node = document.createElement("div");
+  node.className = "wiki-select-status";
+  node.textContent = text;
+  return node;
+};
+
 export default function mount(element: HTMLElement) {
-  const native = element.querySelector("select");
-  if (!native) return;
-  const initialValues = Array.from(native.selectedOptions, (option) => option.value);
-  const originalAriaHidden = native.getAttribute("aria-hidden");
-  const labels = Array.from(native.labels ?? [], (label) => ({ label, htmlFor: label.htmlFor }));
+  const native = element.querySelector("select")!;
   const url = element.dataset.optionsUrl;
   const messages = element.dataset;
-  const status = document.createElement("div");
-  status.className = "wiki-select-status";
+  const fieldName = native.ariaLabel ?? native.labels[0]?.textContent?.trim();
+  const status = note("");
   status.setAttribute("role", "status");
   let request: AbortController | undefined;
-  let resetTimer: ReturnType<typeof setTimeout>;
-  let disposed = false;
 
   const control = new TomSelect(native, {
     plugins: ["dropdown_input", "wiki_position"],
+    // The server has already matched looked-up options.
     searchField: url ? [] : ["text"],
     allowEmptyOption: true,
     create: false,
@@ -44,20 +49,13 @@ export default function mount(element: HTMLElement) {
     loadThrottle: 200,
     shouldLoad: () => true,
     render: {
-      no_results: () => {
-        const node = document.createElement("div");
-        node.textContent = messages.emptyMessage!;
-        return node;
-      },
-      loading: () => {
-        const node = document.createElement("div");
-        node.textContent = messages.loadingMessage!;
-        return node;
-      },
+      no_results: () => note(messages.emptyMessage!),
+      loading: () => note(messages.loadingMessage!),
     },
     onDropdownOpen(this: TomSelect) { if (url) this.load(this.control_input.value); },
     load: url ? async function (this: TomSelect, query: string, done: TomLoadCallback) {
-      if (disposed) return;
+      // Every search replaces the options, so a repeated one has to load again.
+      delete this.loadedSearches[query];
       request?.abort();
       const current = request = new AbortController();
       const endpoint = new URL(url, location.origin);
@@ -67,11 +65,6 @@ export default function mount(element: HTMLElement) {
         const response = await fetch(endpoint, { signal: current.signal });
         if (!response.ok) throw new Error("Lookup failed");
         const result: SelectOptionsResponse = await response.json();
-        if (disposed) return;
-        if (current.signal.aborted) {
-          done([], []);
-          return;
-        }
         this.clearOptions((option) => option.value === "" || this.items.includes(option.value));
         this.clearOptionGroups();
         const groups = [...new Set(result.options.flatMap((option) => option.group ? [option.group] : []))];
@@ -79,12 +72,14 @@ export default function mount(element: HTMLElement) {
           result.options.map((option) => ({ value: option.value, text: option.label, optgroup: option.group })),
           groups.map((label) => ({ value: label, label })),
         );
+        // Enter picks the first match instead of the empty option above it.
+        const first = this.dropdown_content.querySelector<HTMLElement>('[data-selectable]:not([data-value=""])');
+        if (query && first) this.setActiveOption(first);
         status.textContent = result.more ? messages.moreMessage! : !result.options.length ? messages.emptyMessage! : "";
         this.positionDropdown();
       } catch {
-        if (disposed) return;
-        delete this.loadedSearches[query];
-        if (!current.signal.aborted) status.textContent = messages.errorMessage!;
+        // A newer search aborted this one and reports its own result.
+        if (current === request) status.textContent = messages.errorMessage!;
         done([], []);
       }
     } : undefined,
@@ -93,65 +88,11 @@ export default function mount(element: HTMLElement) {
   native.setAttribute("aria-hidden", "true");
   control.dropdown.append(status);
   control.control_input.placeholder = messages.searchLabel!;
-  const label = control.control.getAttribute("aria-labelledby");
-  if (native.getAttribute("aria-label")) control.control.setAttribute("aria-label", native.getAttribute("aria-label")!);
-  const name = native.getAttribute("aria-label") ?? (label ? document.getElementById(label)?.textContent?.trim() : "");
-  control.control_input.setAttribute("aria-label", [name, messages.searchLabel].filter(Boolean).join(": "));
+  // Screen readers hear which field is searched, like "Brand: Search by name…".
+  if (native.ariaLabel) control.control.ariaLabel = native.ariaLabel;
+  control.control_input.ariaLabel = [fieldName, messages.searchLabel].filter(Boolean).join(": ");
 
-  const sync = () => {
-    control.sync();
-    if (native.validity.valid) {
-      status.textContent = "";
-      control.wrapper.classList.remove("validation-error");
-    }
-  };
-  const disabled = () => {
-    if (native.disabled === control.isDisabled) return;
-    native.disabled ? control.disable() : control.enable();
-  };
-  const reset = (event: Event) => {
-    clearTimeout(resetTimer);
-    resetTimer = setTimeout(() => {
-      if (event.defaultPrevented) return;
-      control.setValue(initialValues, true);
-      control.wrapper.classList.remove("validation-error");
-      status.textContent = "";
-    }, 0);
-  };
-  const invalid = (event: Event) => {
-    event.preventDefault();
-    control.wrapper.classList.add("validation-error");
-    control.focus();
-    status.textContent = native.validationMessage;
-  };
-  const position = () => control.positionDropdown();
-  const form = native.form;
   // Let Tom Select's click handler manage focus; native focus would toggle it twice.
-  const preventPointerFocus = (event: MouseEvent) => event.preventDefault();
-  control.control.addEventListener("mousedown", preventPointerFocus);
-  native.addEventListener("change", sync);
-  native.addEventListener("invalid", invalid);
-  form?.addEventListener("reset", reset);
-  const observer = new MutationObserver(disabled);
-  observer.observe(native, { attributes: true, attributeFilter: ["disabled"] });
-  window.visualViewport?.addEventListener("resize", position, { passive: true });
-
-  return () => {
-    disposed = true;
-    request?.abort();
-    clearTimeout(resetTimer);
-    observer.disconnect();
-    native.removeEventListener("change", sync);
-    native.removeEventListener("invalid", invalid);
-    form?.removeEventListener("reset", reset);
-    window.visualViewport?.removeEventListener("resize", position);
-    control.control.removeEventListener("mousedown", preventPointerFocus);
-    const selected = Array.from(native.selectedOptions, (option) => ({ value: option.value, label: option.label }));
-    control.destroy();
-    labels.forEach(({ label, htmlFor }) => { label.htmlFor = htmlFor; });
-    if (originalAriaHidden === null) native.removeAttribute("aria-hidden");
-    else native.setAttribute("aria-hidden", originalAriaHidden);
-    for (const option of selected) if (!Array.from(native.options).some((it) => it.value === option.value)) native.add(new Option(option.label, option.value));
-    for (const option of native.options) option.selected = selected.some((it) => it.value === option.value);
-  };
+  control.control.addEventListener("mousedown", (event) => event.preventDefault());
+  window.visualViewport?.addEventListener("resize", () => control.positionDropdown(), { passive: true });
 }
