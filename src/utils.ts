@@ -7,6 +7,8 @@ import type { Language } from "./translation";
 export type Variables = {
   user?: User | null;
   language?: Language;
+  /** How many changes wait for review, set for moderators only */
+  pendingChanges?: number;
 };
 
 export type DefaultContext = Context<{ Variables: Variables }>;
@@ -17,11 +19,23 @@ export enum PermissionLevel {
   ADMIN = 9,
 }
 
-export const isModerator = (user?: User | null) =>
+type Permissions = Pick<User, "permission_level">;
+
+export const isModerator = (user?: Permissions | null) =>
   !!user && user.permission_level >= PermissionLevel.MODERATOR;
 
-export const isAdmin = (user?: User | null) =>
+export const isAdmin = (user?: Permissions | null) =>
   !!user && user.permission_level >= PermissionLevel.ADMIN;
+
+export const ROLES = {
+  user: PermissionLevel.USER,
+  moderator: PermissionLevel.MODERATOR,
+  admin: PermissionLevel.ADMIN,
+};
+
+export type Role = keyof typeof ROLES;
+
+export const roleOf = (user: Permissions): Role => (isAdmin(user) ? "admin" : isModerator(user) ? "moderator" : "user");
 
 // Reads a path parameter that the handler's route always defines.
 export const routeParam = (c: Context, name: string) => {

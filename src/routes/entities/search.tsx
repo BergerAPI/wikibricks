@@ -5,7 +5,7 @@ import { loadFieldOptions } from "../../fields";
 import { Layout } from "../../layout";
 import { readSearchFilters, searchableFields } from "../../search-filters";
 import { useTranslation } from "../../translation";
-import { isModerator, type DefaultContext } from "../../utils";
+import type { DefaultContext } from "../../utils";
 
 const PAGE_SIZE = 10;
 
@@ -50,7 +50,6 @@ export const handleSearchPage = async (c: DefaultContext) => {
         <div class="flex flex-wrap justify-between items-center gap-x-4 gap-y-2 pb-2 mb-3 border-b">
           <h1 class="text-3xl font-serif">{t("entities.title")}</h1>
           <div class="flex flex-wrap items-center gap-x-4 [&>a]:inline-flex [&>a]:min-h-11 [&>a]:items-center">
-            {isModerator(user) && <a href="/changes">{t("entities.changeRequests")}</a>}
             {user && <a href="/entities/new">{t("action.addEntity")}</a>}
           </div>
         </div>

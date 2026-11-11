@@ -14,7 +14,7 @@ import {
   handleRegisterPage,
   handleRegisterSubmit,
 } from "./routes/auth";
-import { handleChangesPage } from "./routes/changes";
+import { countPendingChanges, handleChangesPage } from "./routes/changes";
 import {
   handleEntityDelete,
   handleEntityPage,
@@ -35,7 +35,7 @@ import {
 } from "./routes/images";
 import { handleImprintPage, handlePrivacyPage, handleTermsPage } from "./routes/legal";
 import { handleRootPage } from "./routes/root";
-import { handleUserPage } from "./routes/users";
+import { handleUserPage, handleUserRoleSubmit } from "./routes/users";
 import { attemptAuthentication, type Variables } from "./utils";
 
 const app = new Hono<{ Variables: Variables }>();
@@ -54,6 +54,7 @@ try {
 app.use(detectLanguage);
 app.post("/language", handleLanguagePreference);
 app.use(attemptAuthentication);
+app.use(countPendingChanges);
 
 app.get("/", handleRootPage);
 app.get("/datenschutz", handlePrivacyPage);
@@ -81,6 +82,7 @@ app.patch("/entities/:id/:version", handleEntityVersionPatch);
 
 app.get("/changes", handleChangesPage);
 app.get("/users/:id", handleUserPage);
+app.post("/users/:id/role", handleUserRoleSubmit);
 
 app.post("/images/upload", limitImageUpload, handleImageUpload);
 app.get("/images/serve/:id", handleImageServe);

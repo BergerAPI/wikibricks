@@ -9,8 +9,10 @@ import { Layout } from "../../layout";
 import { removeImageFile } from "../../services/image-storage";
 import type { EditEntityRequest, ReviewVersionRequest } from "../../shared/contracts";
 import { useTranslation, type TranslationFunctions } from "../../translation";
+import { getUsernames } from "../../users";
 import { isModerator, parseId, readJson, routeParam, type DefaultContext } from "../../utils";
 import { cmsErrorResponse } from "./errors";
+import { ReviewNotice, VersionChanges } from "./review";
 
 // Change and review messages are one-line summaries
 const MAX_MESSAGE_LENGTH = 2000;
@@ -71,7 +73,8 @@ const EntityInfoBox = ({
 
 export const handleEntityPage = async (c: DefaultContext) => {
   const user = c.get("user");
-  const { t } = useTranslation(c);
+  const translation = useTranslation(c);
+  const { t } = translation;
 
   const entityId = parseId(routeParam(c, "id"));
   const versionParam = c.req.query("version");
@@ -99,6 +102,17 @@ export const handleEntityPage = async (c: DefaultContext) => {
     cms.referencing(entry.entityId),
   ]);
 
+  // A specific version is shown with its review and what it changed
+  const previous = versionId && entry.previousVersionId
+    ? await cms.get(entityId, { versionId: entry.previousVersionId })
+    : undefined;
+  const previousRelationNames = previous ? await loadRelationNames(previous, fields) : {};
+  const reviewer = versionId && entry.reviewerId
+    ? (await getUsernames([entry.reviewerId])).get(entry.reviewerId)
+    : undefined;
+  // Only a proposal based on the current version can be approved
+  const isStale = canReview && entry.previousVersionId !== ((await cms.get(entityId))?.versionId ?? null);
+
   return c.render(
     <Layout
       context={c}
@@ -110,7 +124,8 @@ export const handleEntityPage = async (c: DefaultContext) => {
         data-edit-url={canEdit ? entityUrl : undefined}
         data-base-version-id={canEdit ? entry.versionId : undefined}
         data-review-url={canReview ? `${entityUrl}/${entry.versionId}` : undefined}
-        data-history-url={canEdit || canReview ? `${entityUrl}/history` : undefined}
+        data-reject-reason={canReview ? t("review.rejectReason") : undefined}
+        data-history-url={canEdit ? `${entityUrl}/history` : undefined}
       >
         <div class="flex flex-wrap justify-between items-center gap-x-4 gap-y-2 pb-2 mb-3 border-b">
           <h1 class="text-3xl font-serif">
@@ -150,19 +165,39 @@ export const handleEntityPage = async (c: DefaultContext) => {
           </div>
         )}
 
+        {versionId && <ReviewNotice entry={entry} reviewer={reviewer} translation={translation} />}
+
+        {canReview && isStale && (
+          <p class="mb-3 border border-red-400 bg-red-50 p-3">{t("review.stale")}</p>
+        )}
+
         {canReview && (
           <div class="mb-3 pb-2 border-b flex flex-wrap items-end gap-2">
             <label class="min-w-0 w-full sm:w-auto sm:flex-1 space-y-1">
               <span>{t("entity.reviewMessage")}</span>
               <input class="block w-full" id="review_message" maxlength={MAX_MESSAGE_LENGTH} />
             </label>
-            <button title={t("entity.approveTooltip")} id="approve" type="button">
+            <button title={t("entity.approveTooltip")} id="approve" type="button" disabled={isStale}>
               {t("entity.approve")}
             </button>
             <button title={t("entity.rejectTooltip")} id="reject" type="button">
               {t("entity.reject")}
             </button>
           </div>
+        )}
+
+        {versionId && isProposal && !entry.previousVersionId && (
+          <p class="mb-3">{t("review.newEntity")}</p>
+        )}
+        {previous && (
+          <VersionChanges
+            entry={entry}
+            previous={previous}
+            fields={fields}
+            relationNames={relationNames}
+            previousRelationNames={previousRelationNames}
+            t={t}
+          />
         )}
 
         {Object.values(fields).some((field) => field.meta.label) && (
@@ -273,6 +308,10 @@ export const handleEntityVersionPatch = async (c: DefaultContext) => {
     (type !== "approved" && type !== "rejected")
   )
     return c.body("Bad Request", 400);
+
+  // The author of a rejected change should learn what to do differently
+  if (type === "rejected" && !reviewMessage.trim())
+    return c.body(useTranslation(c).t("review.rejectReason"), 400);
 
   try {
     const { deleted } = await cms.review(entityId, versionId, {

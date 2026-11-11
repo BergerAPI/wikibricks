@@ -11,6 +11,7 @@ import type {
   FindQuery,
   Reference,
   ReviewStatus,
+  TitledVersion,
   Values,
 } from "./types";
 import { parseFields, sameValue } from "./values";
@@ -207,8 +208,9 @@ export const createCMS = <const C extends Collections<any>>({ db, collections, r
 
     history: (entityId: number, limit = 100) => adapter.history(entityId, limit),
     /** Versions waiting for review, of all collections */
-    pending: (limit = 100) => adapter.pending(limit),
-    activity: (authorId: number, limit = 10) => adapter.activity(authorId, limit),
+    pending: (limit = 100) => adapter.pending(limit) as Promise<TitledVersion<Type>[]>,
+    /** The latest versions someone wrote, whatever their review status */
+    activity: (authorId: number, limit = 10) => adapter.activity(authorId, limit) as Promise<TitledVersion<Type>[]>,
     /** Entries pointing at an entry, like the sets of a brand */
     referencing: (entityId: number, limit = 100) =>
       adapter.referencing(entityId, limit) as Promise<Reference<Type>[]>,

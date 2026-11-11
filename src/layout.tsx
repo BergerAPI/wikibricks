@@ -4,7 +4,7 @@ import type { User } from "./database";
 import { assetUrl } from "./assets";
 import { LanguageSwitcher } from "./components/language-switcher";
 import { useTranslation } from "./translation";
-import { DefaultContext } from "./utils";
+import type { DefaultContext } from "./utils";
 
 const commitId = (process.env.COMMIT_ID ?? "unknown").slice(0, 7);
 const githubUrl = process.env.GITHUB_URL ?? "https://github.com/BergerAPI/wikibricks";
@@ -22,6 +22,7 @@ export const Layout = ({
   script?: string;
 }) => {
   const { t, language } = useTranslation(context);
+  const pendingChanges = context.get("pendingChanges");
 
   return html`<!DOCTYPE html>${(
     <html lang={language}>
@@ -29,7 +30,6 @@ export const Layout = ({
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="description" content={t("site.tagline")} />
-        <meta http-equiv="X-UA-Compatible" content="ie=edge" />
         <link rel="stylesheet" href={assetUrl("global.css")} />
         <script type="module" src={assetUrl("src/client/site.ts")}></script>
         <title>{title ?? t("site.title")}</title>
@@ -72,6 +72,11 @@ export const Layout = ({
                   </>
                 ) : (
                   <>
+                    {pendingChanges !== undefined && (
+                      <a href="/changes" class={pendingChanges > 0 ? "font-semibold" : ""}>
+                        {t("entities.changeRequests")} ({pendingChanges})
+                      </a>
+                    )}
                     <a href={`/users/${user.id}`}>{user.username}</a>
                     <form method="post" action="/logout" class="inline">
                       <button type="submit" class="border-0 px-0 text-sm text-blue-800 hover:underline">
@@ -106,7 +111,6 @@ export const Layout = ({
                   class="underline text-gray-500 hover:text-gray-800"
                   target="_blank"
                   rel="noopener noreferrer"
-                  title="View commit on GitHub"
                 >
                   #{commitId}
                 </a>
