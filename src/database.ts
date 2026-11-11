@@ -1,7 +1,7 @@
 import postgres from "postgres";
 
 /**
- * A column in the user table
+ * A row of the users table
  */
 export type User = {
   id: number;
@@ -12,7 +12,7 @@ export type User = {
 };
 
 /**
- * A column in the images table
+ * A row of the images table
  */
 export type Image = {
   id: number;

@@ -8,8 +8,12 @@ export const handleRootPage = async (c: DefaultContext) => {
   const { t } = useTranslation(c);
 
   // The most recently changed sets and brands
-  const [sets, brands] = await Promise.all(
-    (["set", "brand"] as const).map(async (type) => (await cms.find({ type, sort: "-updatedAt", limit: 3 })).items),
+  const sections = await Promise.all(
+    ([["set", "home.latestSets"], ["brand", "home.brands"]] as const).map(async ([type, heading]) => ({
+      type,
+      heading,
+      entries: (await cms.find({ type, sort: "-updatedAt", limit: 3 })).items,
+    })),
   );
 
   return c.render(
@@ -38,37 +42,23 @@ export const handleRootPage = async (c: DefaultContext) => {
           </li>
         </ul>
 
-        <section id="sets" class="mt-8">
-          <div class="pb-2 mb-3 border-b flex flex-wrap items-center gap-x-4">
-            <h2 class="text-2xl font-serif">{t("home.latestSets")}</h2>
-            <a class="inline-flex min-h-11 items-center text-sm" href="/entities/search?entity_type=set">
-              {t("action.seeAll")}
-            </a>
-          </div>
-          <ul>
-            {sets.map((it) => (
-              <li>
-                <a href={`/entities/${it.entityId}`}>{it.title}</a>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section id="brands" class="mt-8">
-          <div class="pb-2 mb-3 border-b flex flex-wrap items-center gap-x-4">
-            <h2 class="text-2xl font-serif">{t("home.brands")}</h2>
-            <a class="inline-flex min-h-11 items-center text-sm" href="/entities/search?entity_type=brand">
-              {t("action.seeAll")}
-            </a>
-          </div>
-          <ul>
-            {brands.map((it) => (
-              <li>
-                <a href={`/entities/${it.entityId}`}>{it.title}</a>
-              </li>
-            ))}
-          </ul>
-        </section>
+        {sections.map(({ type, heading, entries }) => (
+          <section id={`${type}s`} class="mt-8">
+            <div class="pb-2 mb-3 border-b flex flex-wrap items-center gap-x-4">
+              <h2 class="text-2xl font-serif">{t(heading)}</h2>
+              <a class="inline-flex min-h-11 items-center text-sm" href={`/entities/search?entity_type=${type}`}>
+                {t("action.seeAll")}
+              </a>
+            </div>
+            <ul>
+              {entries.map((entry) => (
+                <li>
+                  <a href={`/entities/${entry.entityId}`}>{entry.title}</a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
       </main>
     </Layout>,
   );

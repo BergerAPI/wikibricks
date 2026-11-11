@@ -123,13 +123,13 @@ export const handleImagePage = async (c: DefaultContext) => {
         <div class="flex flex-wrap justify-between items-center gap-x-4 gap-y-2 pb-2 mb-3 border-b">
           <h1 class="text-3xl font-serif">{image.original_filename}</h1>
           <div class="flex flex-wrap items-center gap-x-4">
-            <a href={getImageUrl(image)} target="_blank" class="inline-flex min-h-11 items-center text-blue-600 hover:underline">
+            <a href={getImageUrl(image)} target="_blank" class="inline-flex min-h-11 items-center">
               {t("images.viewFull")}
             </a>
             {canDelete && (
               <button
                 type="button"
-                class="text-red-600 hover:underline"
+                class="border-0 px-0 text-red-600 hover:underline"
                 data-delete-url={`/images/${image.id}`}
                 data-delete-confirm={t("images.confirmDelete")}
                 data-delete-success={t("images.deleteSuccess")}
@@ -150,7 +150,7 @@ export const handleImagePage = async (c: DefaultContext) => {
           />
 
           <div>
-            <h3 class="font-semibold text-lg mb-2">{t("images.details")}</h3>
+            <h2 class="font-semibold text-lg mb-2">{t("images.details")}</h2>
             <dl class="space-y-2">
               <Detail label={t("images.filename")}>{image.filename}</Detail>
               <Detail label={t("images.originalName")}>{image.original_filename}</Detail>
@@ -164,7 +164,7 @@ export const handleImagePage = async (c: DefaultContext) => {
               </Detail>
               <Detail label={t("images.uploadedBy")}>
                 {uploader ? (
-                  <a href={`/users/${image.uploaded_by}`} class="text-blue-600 hover:underline">
+                  <a href={`/users/${image.uploaded_by}`}>
                     {uploader.username}
                   </a>
                 ) : (

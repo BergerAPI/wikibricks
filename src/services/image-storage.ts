@@ -49,7 +49,9 @@ const inspectImage = async (buffer: Buffer, mime: string) => {
       await image.stats();
       return { width, height: pageHeight, extension: IMAGE_FORMATS[format].extension };
     }
-  } catch {}
+  } catch {
+    // Whatever sharp can't decode is answered like any other unsupported file.
+  }
 
   throw new ImageUploadError("Upload a valid JPEG, PNG, or WebP image up to 25 megapixels", 415);
 };
