@@ -37,7 +37,7 @@ export const t = (
 };
 
 export const useTranslation = (c: DefaultContext) => {
-  const language = c.get("language") ?? "de";
+  const language = c.get("language") ?? "en";
   const locale = locales[language];
 
   return {

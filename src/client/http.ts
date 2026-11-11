@@ -1,19 +1,11 @@
-export async function request(
-  url: string,
-  options: RequestInit,
-): Promise<Response> {
+/**
+ * Sends a request and fails with the server's message unless it succeeds.
+ */
+export async function request(url: string, options: RequestInit): Promise<Response> {
   const response = await fetch(url, options);
-  if (!response.ok) {
-    throw new Error(
-      (await response.text()) || `Request failed (${response.status})`,
-    );
-  }
+  if (!response.ok) throw new Error((await response.text()) || `Request failed (${response.status})`);
   return response;
 }
 
 export const sendJson = (url: string, body: unknown, method = "POST") =>
-  request(url, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  request(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });

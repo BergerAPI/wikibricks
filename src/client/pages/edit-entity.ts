@@ -17,7 +17,7 @@ export default function initialize(root: HTMLElement) {
     initialValue: element.value,
   }));
   const initialDescription = description.value;
-  const stopWaiting = waitForEditors(page, save);
+  waitForEditors(page, save);
 
   save.addEventListener("click", async () => {
     if (!validateForm(page)) return;
@@ -39,11 +39,9 @@ export default function initialize(root: HTMLElement) {
       await sendJson(editUrl, request);
       window.location.href = historyUrl;
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Edit failed");
+      window.alert((error as Error).message);
     } finally {
       save.disabled = false;
     }
   });
-
-  return stopWaiting;
 }

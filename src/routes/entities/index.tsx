@@ -12,6 +12,9 @@ import { useTranslation, type TranslationFunctions } from "../../translation";
 import { isModerator, parseId, readJson, routeParam, type DefaultContext } from "../../utils";
 import { cmsErrorResponse } from "./errors";
 
+// Change and review messages are one-line summaries
+const MAX_MESSAGE_LENGTH = 2000;
+
 const EntityInfoBox = ({
   entry,
   fields,
@@ -28,10 +31,12 @@ const EntityInfoBox = ({
   t: TranslationFunctions["t"];
 }) => (
   <InfoBox title={entry.title ?? ""}>
-    <InfoBoxImage
-      src={entry.values.image_id ? `/images/serve/${entry.values.image_id}` : "https://placehold.co/800x800"}
-      alt={t("entity.imageOf", { name: entry.title ?? "" })}
-    />
+    {entry.values.image_id && (
+      <InfoBoxImage
+        src={`/images/serve/${entry.values.image_id}`}
+        alt={t("entity.imageOf", { name: entry.title ?? "" })}
+      />
+    )}
 
     {Object.entries(fields).map(([name, field]) => {
       const label = field.meta.label;
@@ -46,6 +51,7 @@ const EntityInfoBox = ({
               field={field}
               value={value}
               options={options[name]}
+              required={field.required}
               class="block w-full"
               aria-label={t(label)}
               data-edit-field={name}
@@ -108,7 +114,7 @@ export const handleEntityPage = async (c: DefaultContext) => {
       >
         <div class="flex flex-wrap justify-between items-center gap-x-4 gap-y-2 pb-2 mb-3 border-b">
           <h1 class="text-3xl font-serif">
-            {versionId ? `${entry.title}: Version ${entry.versionNumber}` : entry.title}
+            {versionId ? `${entry.title}: ${t("entity.history.version")} ${entry.versionNumber}` : entry.title}
           </h1>
           <div class="flex flex-wrap items-center gap-x-4 [&>a]:inline-flex [&>a]:min-h-11 [&>a]:items-center">
             {!isProposal && canEdit && <a href={entityUrl}>{t("entity.cancel")}</a>}
@@ -136,7 +142,7 @@ export const handleEntityPage = async (c: DefaultContext) => {
           <div class="mb-3 pb-2 border-b flex flex-wrap items-end gap-2">
             <label class="min-w-0 w-full sm:w-auto sm:flex-1 space-y-1">
               <span>{t("entity.changeMessage")}</span>
-              <input class="block w-full" id="change_message" />
+              <input class="block w-full" id="change_message" required maxlength={MAX_MESSAGE_LENGTH} />
             </label>
             <button id="save" type="button" disabled>
               {t("entity.save")}
@@ -148,7 +154,7 @@ export const handleEntityPage = async (c: DefaultContext) => {
           <div class="mb-3 pb-2 border-b flex flex-wrap items-end gap-2">
             <label class="min-w-0 w-full sm:w-auto sm:flex-1 space-y-1">
               <span>{t("entity.reviewMessage")}</span>
-              <input class="block w-full" id="review_message" />
+              <input class="block w-full" id="review_message" maxlength={MAX_MESSAGE_LENGTH} />
             </label>
             <button title={t("entity.approveTooltip")} id="approve" type="button">
               {t("entity.approve")}
@@ -204,6 +210,7 @@ export const handleEntityPageSubmit = async (c: DefaultContext) => {
   if (
     typeof changeMessage !== "string" ||
     !changeMessage.trim() ||
+    changeMessage.length > MAX_MESSAGE_LENGTH ||
     (baseVersionId !== undefined && !parseId(baseVersionId)) ||
     (description !== undefined && typeof description !== "string") ||
     typeof fields !== "object" ||
@@ -262,8 +269,7 @@ export const handleEntityVersionPatch = async (c: DefaultContext) => {
 
   if (
     typeof reviewMessage !== "string" ||
-    !reviewMessage.trim() ||
-    reviewMessage.length > 2000 ||
+    reviewMessage.length > MAX_MESSAGE_LENGTH ||
     (type !== "approved" && type !== "rejected")
   )
     return c.body("Bad Request", 400);
@@ -277,9 +283,6 @@ export const handleEntityVersionPatch = async (c: DefaultContext) => {
     if (deleted) await deleteUnusedImage(deleted);
     return c.body("OK", 200);
   } catch (error) {
-    return cmsErrorResponse(c, error, {
-      stale:
-        "This proposal cannot be applied to the current version. Resubmit the edit from the current version.",
-    });
+    return cmsErrorResponse(c, error, { stale: "error.staleProposal" });
   }
 };

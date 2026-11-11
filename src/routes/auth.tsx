@@ -49,12 +49,14 @@ const TextInput = ({
   label,
   type = "text",
   autoComplete,
+  minLength,
   maxLength,
 }: {
   name: string;
   label: string;
   type?: string;
   autoComplete: string;
+  minLength?: number;
   maxLength: number;
 }) => (
   <div class="mb-4">
@@ -65,9 +67,10 @@ const TextInput = ({
       id={name}
       name={name}
       type={type}
-      class="w-full px-3 py-2 border border-gray-300 rounded focus:border-blue-500"
+      class="w-full"
       required
       autocomplete={autoComplete}
+      minlength={minLength}
       maxlength={maxLength}
     />
   </div>
@@ -119,7 +122,7 @@ const renderLogin = (c: DefaultContext, error?: string) => {
       footer={
         <>
           {t("auth.dontHaveAccount")}{" "}
-          <a href="/register" class="text-blue-600 hover:text-blue-800 underline">
+          <a href="/register">
             {t("auth.createOneHere")}
           </a>
         </>
@@ -152,18 +155,19 @@ const renderRegister = (c: DefaultContext, error?: string) => {
       footer={
         <>
           {t("auth.alreadyHaveAccount")}{" "}
-          <a href="/login" class="text-blue-600 hover:text-blue-800 underline">
+          <a href="/login">
             {t("auth.logInHere")}
           </a>
         </>
       }
     >
-      <TextInput name="username" label={t("auth.username")} autoComplete="username" maxLength={32} />
+      <TextInput name="username" label={t("auth.username")} autoComplete="username" minLength={3} maxLength={32} />
       <TextInput
         name="password"
         label={t("auth.password")}
         type="password"
         autoComplete="new-password"
+        minLength={8}
         maxLength={128}
       />
       <TextInput
@@ -171,6 +175,7 @@ const renderRegister = (c: DefaultContext, error?: string) => {
         label={t("auth.confirmPassword")}
         type="password"
         autoComplete="new-password"
+        minLength={8}
         maxLength={128}
       />
       <button type="submit" class="px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded">

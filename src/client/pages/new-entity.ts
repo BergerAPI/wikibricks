@@ -16,7 +16,7 @@ export default function initialize(root: HTMLElement) {
   const typeSelect = page.querySelector<HTMLSelectElement>("#entity_type");
   const errorBox = page.querySelector<HTMLElement>("#error");
   if (!createUrl || !uploadUrl || !fileInput || !submitButton || !typeSelect || !errorBox) return;
-  const stopWaiting = waitForEditors(page, submitButton);
+  waitForEditors(page, submitButton);
 
   // Keeps an uploaded image across retries, until a different file is picked
   let imageId: number | null = null;
@@ -72,11 +72,9 @@ export default function initialize(root: HTMLElement) {
       const { id, entity_id } = await response.json() as CreateEntityResponse;
       window.location.href = `/entities/${entity_id}?version=${id}`;
     } catch (error) {
-      errorBox.textContent = error instanceof Error ? error.message : "Network error. Please try again.";
+      errorBox.textContent = (error as Error).message;
     } finally {
       submitButton.disabled = fileInput.disabled = typeSelect.disabled = false;
     }
   });
-
-  return stopWaiting;
 }

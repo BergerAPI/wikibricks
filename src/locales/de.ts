@@ -3,7 +3,6 @@ import type en from "./en";
 export default {
   "editor.entity": "Element verlinken",
   "editor.searchEntities": "Elemente suchen",
-  "editor.insertReference": "Verweis einfügen",
   "editor.invalidLink": "Geben Sie eine Webadresse, einen E-Mail-Link oder einen Seitenpfad ein.",
   "editor.formatting": "Beschreibung formatieren",
   "editor.paragraph": "Absatz",
@@ -32,7 +31,6 @@ export default {
   "nav.logout": "Abmelden",
   "nav.language": "Sprache",
   "nav.register": "Konto erstellen",
-  "nav.createAccount": "Konto erstellen",
 
   // Common Actions
   "action.search": "Suchen",
@@ -55,8 +53,6 @@ export default {
   "auth.alreadyHaveAccount": "Haben Sie bereits ein Konto?",
   "auth.createOneHere": "Hier erstellen",
   "auth.logInHere": "Hier anmelden",
-  "auth.usernameLength": "Benutzername muss zwischen 3-255 Zeichen lang sein",
-  "auth.passwordLength": "Passwort muss mindestens 6 Zeichen lang sein",
 
   // Error Messages
   "error.pageNotFound": "Seite nicht gefunden",
@@ -65,9 +61,8 @@ export default {
   "error.unexpectedErrorMessage":
     "Es ist ein unerwarteter Fehler aufgetreten. Bitte versuchen Sie es später erneut. Ein Administrator wurde benachrichtigt.",
   "error.allFieldsRequired": "Alle Felder sind erforderlich",
-  "error.usernameLength":
-    "Benutzername muss zwischen 3-255 Zeichen lang sein",
-  "error.passwordLength": "Passwort muss mindestens 6 Zeichen lang sein",
+  "error.usernameLength": "Benutzernamen haben 3 bis 32 Buchstaben, Ziffern, Punkte, Binde- oder Unterstriche",
+  "error.passwordLength": "Passwörter brauchen mindestens 8 Zeichen und höchstens 72 Bytes",
   "error.passwordsDoNotMatch": "Passwörter stimmen nicht überein",
   "error.usernameExists": "Benutzername existiert bereits",
   "error.accountCreationError":
@@ -75,7 +70,15 @@ export default {
   "error.invalidCredentials": "Ungültiger Benutzername oder Passwort",
   "error.usernamePasswordRequired":
     "Benutzername und Passwort sind erforderlich",
-  "error.noMessage": "Keine Nachricht",
+  "error.nameAndDescription": "Name und Beschreibung brauchen mindestens 3 Zeichen.",
+  "error.invalidValue": "Der Wert für „{field}“ ist ungültig.",
+  "error.valueTaken": "Der Wert für „{field}“ wird bereits von einem anderen Element verwendet.",
+  "error.nameTaken": "Ein Element mit diesem Namen existiert bereits.",
+  "error.entityExists": "Dieses Element existiert bereits.",
+  "error.stale": "Die Seite wurde geändert. Laden Sie sie neu, bevor Sie Ihre Änderung absenden.",
+  "error.staleProposal": "Dieser Vorschlag passt nicht mehr zur aktuellen Version. Reichen Sie die Änderung auf Basis der aktuellen Version erneut ein.",
+  "error.unchanged": "Es wurde nichts geändert.",
+  "error.alreadyReviewed": "Diese Version wurde bereits geprüft. Laden Sie die Seite neu, um das Ergebnis zu sehen.",
 
   // Homepage
   "home.welcome": "Willkommen bei Wikibricks!",
@@ -113,8 +116,6 @@ export default {
   "select.empty": "Keine passenden Einträge gefunden.",
   "select.more": "Weitere Treffer vorhanden. Grenzen Sie die Suche ein.",
   "select.error": "Vorschläge konnten nicht geladen werden. Zum Wiederholen erneut tippen.",
-  "entities.advancedSearch": "Erweiterte Suche",
-  "entities.entityType": "Elementtyp:",
   "entities.changeRequests": "Änderungsanfragen",
   "entities.addNew": "Neu hinzufügen",
   "entities.entityTypeLabel": "Elementtyp",
@@ -137,15 +138,18 @@ export default {
   "user.entity": "Element",
   "user.version": "Version",
   "user.userId": "Benutzer-ID",
-  "user.permissionLevel": "Berechtigungsstufe",
+  "user.permissionLevel": "Rolle",
+  "user.role.user": "Mitglied",
+  "user.role.moderator": "Moderator",
+  "user.role.admin": "Administrator",
   "user.memberSince": "Mitglied seit",
   "user.imageOf": "Bild von",
 
   // Changes
   "changes.title": "Änderungsanfragen",
-  "changes.set": "Set",
   "changes.changedBy": "Geändert von",
   "changes.message": "Nachricht",
+  "changes.empty": "Es warten keine Änderungen auf Prüfung.",
 
   // Footer
   "footer.content":
@@ -197,35 +201,9 @@ export default {
     "Die Ablehnung einer Änderung verwirft die Anfrage, die neue HEAD-Version zu werden, und jede Möglichkeit, in HEAD zusammengeführt zu werden.",
 
   // Demo
-  "demo.title": "Übersetzungs-Demo",
 
   // Images
-  "images.uploadTitle": "Bild Hochladen",
-  "images.selectImage": "Bild Auswählen",
-  "images.uploadLimits":
-    "Unterstützte Formate: JPEG, PNG, GIF, WebP, SVG, BMP. Max. Größe: 10MB",
   "images.altText": "Alt-Text (optional)",
-  "images.altTextPlaceholder":
-    "Beschreiben Sie das Bild für die Barrierefreiheit",
-  "images.altTextHelp":
-    "Alternativer Text hilft Nutzern mit Bildschirmlesegeräten das Bild zu verstehen",
-  "images.entityId": "Entity-ID",
-  "images.entityIdHelp": "Dieses Bild mit einer bestimmten Entity verknüpfen",
-  "images.versionId": "Versions-ID",
-  "images.versionIdHelp":
-    "Dieses Bild mit einer bestimmten Version verknüpfen",
-  "images.uploadButton": "Bild Hochladen",
-  "images.uploading": "Wird hochgeladen...",
-  "images.noFileSelected": "Bitte wählen Sie eine Datei zum Hochladen aus",
-  "images.fileTooLarge": "Dateigröße überschreitet das 10MB-Limit",
-  "images.uploadFailed": "Upload fehlgeschlagen",
-  "images.uploadSuccess": "Bild erfolgreich hochgeladen! ID: ",
-  "images.viewImage": "Bild Anzeigen",
-  "images.preview": "Vorschau",
-  "images.myImages": "Meine Bilder",
-  "images.uploadNew": "Neues Bild Hochladen",
-  "images.noImages": "Sie haben noch keine Bilder hochgeladen",
-  "images.uploadFirst": "Ihr Erstes Bild Hochladen",
   "images.details": "Bild-Details",
   "images.filename": "Dateiname",
   "images.originalName": "Ursprünglicher Name",
@@ -241,4 +219,7 @@ export default {
     "Sind Sie sicher, dass Sie dieses Bild löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
   "images.deleteSuccess": "Bild erfolgreich gelöscht",
   "images.deleteFailed": "Löschen des Bildes fehlgeschlagen",
+
+  "changes.set": "Set",
+  "error.noMessage": "Keine Nachricht",
 } satisfies Record<keyof typeof en, string>;

@@ -1,6 +1,5 @@
 import { cms, fieldsOf } from "../../collections";
 import { EntityFieldInput } from "../../components/entity-field";
-import { Select } from "../../components/select";
 import { RichTextEditor } from "../../components/rich-text";
 import { sql } from "../../database";
 import { loadFieldOptions } from "../../fields";
@@ -36,15 +35,11 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
         <div>
           <div class="mb-3">
             <label for="entity_type" class="font-semibold">{t("entities.entityTypeLabel")}</label>
-            <Select t={t}
-              class="mt-1 block w-full"
-              name="entity_type"
-              id="entity_type"
-            >
+            <select class="mt-1 block w-full" name="entity_type" id="entity_type">
               {cms.types.map((type) => (
                 <option value={type}>{t(`entityType.${type}`)}</option>
               ))}
-            </Select>
+            </select>
           </div>
 
           <label class="block mb-3">
@@ -52,8 +47,10 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
             <input
               id="name"
               name="name"
-              value=""
-              class="border p-2 rounded w-full"
+              required
+              minlength={3}
+              maxlength={255}
+              class="w-full"
             />
           </label>
 
@@ -68,7 +65,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
               type="file"
               accept="image/*"
               id="image_file"
-              class="border p-2 rounded w-full"
+              class="w-full"
             />
           </label>
 
@@ -95,6 +92,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
                         options={options[index][key]}
                         id={`${type}-${key}`}
                         name={key}
+                        required={field.required}
                         class="mt-1 block w-full"
                       />
                     </div>
@@ -114,6 +112,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
 
 export const handleNewEntitySubmit = async (c: DefaultContext) => {
   const user = c.get("user");
+  const { t } = useTranslation(c);
   if (!user) return c.body("Unauthorized", 401);
 
   const { entity_type, image_id, fields = {}, ...body } = await readJson<CreateEntityRequest>(c);
@@ -121,7 +120,7 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
   const description = typeof body.description === "string" ? body.description.trim() : "";
 
   if (name.length < 3 || name.length > 255 || description.length < 3 || description.length > 20000)
-    return c.body("Name and description are required and need to be at least 3 characters long.", 400);
+    return c.body(t("error.nameAndDescription"), 400);
 
   if (!cms.isType(entity_type) || typeof fields !== "object" || Array.isArray(fields))
     return c.body("Bad Request", 400);

@@ -82,7 +82,7 @@ test("searches all CMS entity types for editor references with bounded, grouped 
   assert.equal(response.status, 200);
   const body = await response.json() as SelectOptionsResponse;
   assert.deepEqual(body.options, [
-    { value: "2", label: "Cobi", group: "Marke" },
+    { value: "2", label: "Cobi", group: "Brand" },
     { value: "6", label: "City Bus", group: "Set" },
   ]);
   assert.equal(body.more, true);

@@ -1,7 +1,6 @@
 export default {
   "editor.entity": "Link an entity",
   "editor.searchEntities": "Search entities",
-  "editor.insertReference": "Insert reference",
   "editor.invalidLink": "Enter a web address, email link, or page path.",
   "editor.formatting": "Description formatting",
   "editor.paragraph": "Paragraph",
@@ -30,7 +29,6 @@ export default {
   "nav.logout": "Logout",
   "nav.language": "Language",
   "nav.register": "Create Account",
-  "nav.createAccount": "Create Account",
 
   // Common Actions
   "action.search": "Search",
@@ -53,8 +51,6 @@ export default {
   "auth.alreadyHaveAccount": "Already have an account?",
   "auth.createOneHere": "Create one here",
   "auth.logInHere": "Log in here",
-  "auth.usernameLength": "Username must be between 3-255 characters",
-  "auth.passwordLength": "Password must be at least 6 characters",
 
   // Error Messages
   "error.pageNotFound": "Page Not Found",
@@ -63,15 +59,23 @@ export default {
   "error.unexpectedErrorMessage":
     "We encountered an unexpected error. Please try again later. An administrator has been notified.",
   "error.allFieldsRequired": "All fields are required",
-  "error.usernameLength": "Username must be between 3-255 characters",
-  "error.passwordLength": "Password must be at least 6 characters",
+  "error.usernameLength": "Usernames have 3 to 32 letters, digits, dots, hyphens or underscores",
+  "error.passwordLength": "Passwords need at least 8 characters and at most 72 bytes",
   "error.passwordsDoNotMatch": "Passwords do not match",
   "error.usernameExists": "Username already exists",
   "error.accountCreationError":
     "An error occurred while creating your account. Please try again.",
   "error.invalidCredentials": "Invalid username or password",
   "error.usernamePasswordRequired": "Username and password are required",
-  "error.noMessage": "No message",
+  "error.nameAndDescription": "Name and description need at least 3 characters.",
+  "error.invalidValue": "The value for “{field}” is invalid.",
+  "error.valueTaken": "The value for “{field}” is already used by another entity.",
+  "error.nameTaken": "An entity with this name already exists.",
+  "error.entityExists": "This entity already exists.",
+  "error.stale": "The page has changed. Reload before submitting your edit.",
+  "error.staleProposal": "This proposal no longer fits the current version. Resubmit the edit from the current version.",
+  "error.unchanged": "Nothing was changed.",
+  "error.alreadyReviewed": "This version has already been reviewed. Reload to see the result.",
 
   // Homepage
   "home.welcome": "Welcome to Wikibricks!",
@@ -109,8 +113,6 @@ export default {
   "select.empty": "No matching entries found.",
   "select.more": "More matches available. Refine your search.",
   "select.error": "Could not load suggestions. Type again to retry.",
-  "entities.advancedSearch": "Advanced search",
-  "entities.entityType": "Entity Type:",
   "entities.changeRequests": "Change Requests",
   "entities.addNew": "Add New Entity",
   "entities.entityTypeLabel": "Entity Type",
@@ -133,15 +135,18 @@ export default {
   "user.entity": "Entity",
   "user.version": "Version",
   "user.userId": "User ID",
-  "user.permissionLevel": "Permission Level",
+  "user.permissionLevel": "Role",
+  "user.role.user": "Member",
+  "user.role.moderator": "Moderator",
+  "user.role.admin": "Administrator",
   "user.memberSince": "Member Since",
   "user.imageOf": "Image of",
 
   // Changes
   "changes.title": "Change Requests",
-  "changes.set": "Set",
   "changes.changedBy": "Changed By",
   "changes.message": "Message",
+  "changes.empty": "No changes are waiting for review.",
 
   // Footer
   "footer.content":
@@ -193,33 +198,9 @@ export default {
     "Rejecting a change will discard the request to become the new HEAD version and every possibility to be merged into HEAD.",
 
   // Demo
-  "demo.title": "Translation Demo",
 
   // Images
-  "images.uploadTitle": "Upload Image",
-  "images.selectImage": "Select Image",
-  "images.uploadLimits":
-    "Supported formats: JPEG, PNG, GIF, WebP, SVG, BMP. Max size: 10MB",
   "images.altText": "Alt Text (optional)",
-  "images.altTextPlaceholder": "Describe the image for accessibility",
-  "images.altTextHelp":
-    "Alternative text helps users with screen readers understand the image",
-  "images.entityId": "Entity ID",
-  "images.entityIdHelp": "Link this image to a specific entity",
-  "images.versionId": "Version ID",
-  "images.versionIdHelp": "Link this image to a specific version",
-  "images.uploadButton": "Upload Image",
-  "images.uploading": "Uploading...",
-  "images.noFileSelected": "Please select a file to upload",
-  "images.fileTooLarge": "File size exceeds 10MB limit",
-  "images.uploadFailed": "Upload failed",
-  "images.uploadSuccess": "Image uploaded successfully! ID: ",
-  "images.viewImage": "View Image",
-  "images.preview": "Preview",
-  "images.myImages": "My Images",
-  "images.uploadNew": "Upload New Image",
-  "images.noImages": "You haven't uploaded any images yet",
-  "images.uploadFirst": "Upload Your First Image",
   "images.details": "Image Details",
   "images.filename": "Filename",
   "images.originalName": "Original Name",
@@ -235,4 +216,7 @@ export default {
     "Are you sure you want to delete this image? This action cannot be undone.",
   "images.deleteSuccess": "Image deleted successfully",
   "images.deleteFailed": "Failed to delete image",
+
+  "changes.set": "Set",
+  "error.noMessage": "No message",
 };
