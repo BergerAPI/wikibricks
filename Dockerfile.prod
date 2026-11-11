@@ -1,71 +1,40 @@
-# Production Dockerfile with multi-stage build
 FROM node:26-alpine AS builder
-
-# Accept build argument for commit ID
-ARG COMMIT_ID=unknown
-
-# Set working directory
 WORKDIR /app
 
-# Copy package files, including the workspace packages npm ci links
-COPY package.json package-lock.json* ./
+# The workspace packages are needed for npm ci to link them
+COPY package.json package-lock.json ./
 COPY packages ./packages
-
-# Install all dependencies (including dev dependencies for building)
 RUN npm ci
 
-# Copy source code and config files
 COPY . .
-
-# Set commit ID as an environment variable for the build process
-ENV COMMIT_ID=${COMMIT_ID}
-
-# Build the server and client into dist
+# The server serves public/ if it exists
 RUN npm run build && mkdir -p public
 
-# Production stage
 FROM node:26-alpine AS runner
-
 WORKDIR /app
 
-# Install only runtime dependencies
-COPY package.json package-lock.json* ./
+COPY package.json package-lock.json ./
 COPY packages ./packages
 RUN npm ci --omit=dev && npm cache clean --force
 
-# Accept build argument in the runner stage
-ARG COMMIT_ID
-
-# Set environment variables before copying application
-ENV NODE_ENV=production
-ENV COMMIT_ID=${COMMIT_ID}
-
-# Copy compiled application and assets from builder stage
 COPY --from=builder /app/dist dist
 COPY --from=builder /app/public public
 
-# Create non-root user
+# Uploads and the assets shared between releases are written by the unprivileged app user
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S appuser -u 1001 -G nodejs
-
-# Create upload and shared asset directories owned by the application user.
-RUN mkdir -p /app/data /app/shared-assets/files
-
-# Change ownership of app directory
-RUN chown -R appuser:nodejs /app
-
-# Switch to non-root user
+    adduser -S appuser -u 1001 -G nodejs && \
+    mkdir -p /app/data /app/shared-assets/files && \
+    chown -R appuser:nodejs /app
 USER appuser
 
-# Expose port
-EXPOSE 3000
+# Shown in the footer, so pages can be traced back to the commit they were built from
+ARG COMMIT_ID=unknown
+ENV NODE_ENV=production \
+    COMMIT_ID=${COMMIT_ID} \
+    UPLOAD_DIR=/app/data
 
-# Health check
+EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
 
-ENV NODE_ENV=production
-ENV UPLOAD_DIR=/app/data
-
-# The app publishes its assets to ASSET_STORE_DIR on startup.
 CMD ["node", "dist/index.js"]

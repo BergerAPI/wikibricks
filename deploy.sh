@@ -6,9 +6,6 @@ set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_NAME="wikibricks"
-REGISTRY_URL="${REGISTRY_URL:-}"
-IMAGE_NAME="${IMAGE_NAME:-wikibricks-app}"
 COMPOSE_FILE="docker-compose.prod.yml"
 BACKUP_DIR="/opt/wikibricks/backups"
 LOG_FILE="/var/log/wikibricks-deploy.log"
@@ -55,7 +52,7 @@ check_prerequisites() {
         missing_deps+=("docker")
     fi
 
-    if ! command -v docker compose &> /dev/null; then
+    if ! docker compose version &> /dev/null; then
         missing_deps+=("docker compose")
     fi
 
@@ -80,18 +77,17 @@ backup_database() {
 
     local backup_file="$BACKUP_DIR/wikibricks_backup_$(date +%Y%m%d_%H%M%S).sql"
 
-    # Get database connection details from compose file
     local db_container=$(docker compose -f "$COMPOSE_FILE" ps -q postgres)
 
     if [ -n "$db_container" ]; then
-        docker exec "$db_container" pg_dump -U wikibricks_user wikibricks > "$backup_file"
-
-        if [ $? -eq 0 ]; then
+        # The container knows the database and user it was created with
+        if docker exec "$db_container" sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > "$backup_file"; then
             log INFO "Database backup created: $backup_file"
 
             # Keep only last 5 backups
             ls -t "$BACKUP_DIR"/wikibricks_backup_*.sql | tail -n +6 | xargs -r rm
         else
+            rm -f "$backup_file"
             log ERROR "Database backup failed"
             return 1
         fi
@@ -208,18 +204,6 @@ cleanup() {
     log INFO "Cleanup completed"
 }
 
-# Send notification (customize as needed)
-send_notification() {
-    local status=$1
-    local message=$2
-
-    # curl -X POST -H 'Content-type: application/json' \
-    #     --data "{\"text\":\"WikiBricks Deployment $status: $message\"}" \
-    #     "$SLACK_WEBHOOK_URL"
-
-    log INFO "Notification sent: $status - $message"
-}
-
 # Main deployment function
 deploy() {
     local start_time=$(date +%s)
@@ -238,19 +222,16 @@ deploy() {
 
     # Backup database
     if ! backup_database; then
-        send_notification "FAILED" "Database backup failed"
         exit 1
     fi
 
     # Update code
     if ! update_code; then
-        send_notification "FAILED" "Code update failed"
         exit 1
     fi
 
     # Build images
     if ! build_images; then
-        send_notification "FAILED" "Image build failed"
         exit 1
     fi
 
@@ -263,7 +244,6 @@ deploy() {
         else
             log ERROR "No previous image could be restored"
         fi
-        send_notification "FAILED" "Application replacement failed"
         exit 1
     fi
 
@@ -276,7 +256,6 @@ deploy() {
 
     log INFO "Deployment completed successfully in ${duration}s"
     log INFO "Deployed commit: $short_commit_id"
-    send_notification "SUCCESS" "Deployment completed in ${duration}s (commit: $short_commit_id)"
 }
 
 # Show usage
