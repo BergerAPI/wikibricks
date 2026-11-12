@@ -125,10 +125,10 @@ export const orderSql = (sql: postgres.Sql, sort: string | string[] = [], { colu
     const descending = key.startsWith("-");
     const column = columns[descending ? key.slice(1) : key];
     if (!column) throw new CmsError("invalid", key);
-    return descending ? sql`${sql(column)} DESC NULLS LAST` : sql`${sql(column)} ASC NULLS LAST`;
+    return descending ? sql`v.${sql(column)} DESC NULLS LAST` : sql`v.${sql(column)} ASC NULLS LAST`;
   });
 
   // Keeps pages stable when sort values repeat
-  parts.push(sql`created_at DESC`, sql`id DESC`);
+  parts.push(sql`v.created_at DESC`, sql`v.id DESC`);
   return parts.reduce((all, part) => sql`${all}, ${part}`);
 };

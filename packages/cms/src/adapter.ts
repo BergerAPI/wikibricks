@@ -1,6 +1,7 @@
 import type {
   Collections,
   Entry,
+  EntrySummary,
   FindQuery,
   Reference,
   ReviewStatus,
@@ -64,8 +65,10 @@ export interface DatabaseAdapter extends Store {
 
   /** Current versions of entries. Throws CmsError "invalid" for unknown keys. */
   find(query: FindQuery): Promise<{ total: number; items: Entry[] }>;
+  list(query: Omit<FindQuery, "populate">): Promise<EntrySummary[]>;
   history(entityId: number, limit: number): Promise<{ title: string | null; versions: Version[] } | undefined>;
-  pending(limit: number): Promise<TitledVersion[]>;
+  pending(limit: number, options?: { offset?: number; oldestFirst?: boolean }): Promise<TitledVersion[]>;
+  countPending(): Promise<number>;
   activity(authorId: number, limit: number): Promise<TitledVersion[]>;
   /** Entries whose current version points at an entry, through any of their relations */
   referencing(entityId: number, limit: number): Promise<Reference[]>;

@@ -160,6 +160,9 @@ export type Entry<T extends string = string, V = Values> = Version & {
   values: V;
 };
 
+/** The fields shared by listings and entity pickers. */
+export type EntrySummary<T extends string = string> = Pick<Entry<T>, "entityId" | "entityCreatedAt" | "type" | "title">;
+
 /** A version together with the type and title of its entry */
 export type TitledVersion<T extends string = string> = Version & { type: T; title: string | null };
 

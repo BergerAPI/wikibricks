@@ -118,8 +118,8 @@ const columns = (table: string, fields: Fields<unknown>, types: string[], reserv
   });
 };
 
-const VERSION_COLUMNS = `
-  v.id AS version_id,
+const versionColumns = (versionId: string) => `
+  ${versionId} AS version_id,
   e.id,
   e.type,
   e.created_at,
@@ -164,19 +164,23 @@ const collectionSchema = (type: string, collection: Collection<unknown>, types: 
     );
   }
 
-  const viewColumns = [VERSION_COLUMNS, ...columnFields(collection.fields).map(([column]) => `t.${column}`)];
-  statements.push(
-    `
-      CREATE VIEW ${type}_versions_view AS
-      SELECT ${viewColumns.join(", ")}
+  const selectColumns = (versionId: string) =>
+    [versionColumns(versionId), ...columnFields(collection.fields).map(([column]) => `t.${column}`)].join(", ");
+  const versions = `SELECT ${selectColumns("v.id")}
       FROM entity_versions v
       JOIN entities e ON v.entity_id = e.id
       ${table ? `JOIN ${table} t ON t.version_id = v.id` : ""}
-      WHERE e.type = '${type}'`,
-    `
-      CREATE VIEW ${type}_view AS
-      SELECT v.* FROM entities e
-      JOIN ${type}_versions_view v ON v.version_id = e.head_version_id`,
+      WHERE e.type = '${type}'`;
+  // The fields row already references an existing version. A left join lets PostgreSQL
+  // skip the version table when the caller only needs fields from the entry or its head.
+  const heads = table ? `SELECT ${selectColumns("e.head_version_id")}
+      FROM entities e
+      JOIN ${table} t ON t.version_id = e.head_version_id
+      LEFT JOIN entity_versions v ON v.id = t.version_id
+      WHERE e.type = '${type}'` : `${versions} AND e.head_version_id = v.id`;
+  statements.push(
+    `CREATE VIEW ${type}_versions_view AS ${versions}`,
+    `CREATE VIEW ${type}_view AS ${heads}`,
   );
 
   return statements;
@@ -187,19 +191,17 @@ const collectionSchema = (type: string, collection: Collection<unknown>, types: 
  * `title`. Listings that mix collections, like the review queue, are read from these.
  */
 const combinedViews = (collections: Collections<unknown>) => {
-  const selects = Object.entries(collections).map(([type, collection]) => {
+  const combine = (suffix: "versions_view" | "view") => Object.entries(collections).map(([type, collection]) => {
     const title = collection.title ? `${identifier(collection.title)}::text` : "NULL::text";
     return `
       SELECT version_id, id, type, ${title} AS title, created_at, version_number, version_created_at,
         created_by, previous_version, change_message, review_status, reviewed_at, reviewed_by, review_comment
-      FROM ${type}_versions_view`;
-  });
+      FROM ${type}_${suffix}`;
+  }).join(" UNION ALL ");
 
   return [
-    `CREATE VIEW cms_versions_view AS ${selects.join(" UNION ALL ")}`,
-    `CREATE VIEW cms_entries_view AS
-      SELECT v.* FROM entities e
-      JOIN cms_versions_view v ON v.version_id = e.head_version_id`,
+    `CREATE VIEW cms_versions_view AS ${combine("versions_view")}`,
+    `CREATE VIEW cms_entries_view AS ${combine("view")}`,
   ];
 };
 

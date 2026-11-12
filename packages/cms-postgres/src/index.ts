@@ -7,6 +7,7 @@ import {
   type Collections,
   type DatabaseAdapter,
   type Entry,
+  type FindQuery,
   type Fields,
   type Item,
   type ReviewStatus,
@@ -133,12 +134,14 @@ const createStore = (
     },
 
     async isTaken(type, field, value, exceptEntityId) {
+      const table = ownerOf(type, collections[type]);
       const [row] = await db`
-        SELECT 1 FROM ${db(`${type}_versions_view`)} v
-        JOIN entities e ON e.id = v.id
-        WHERE ${db(field)} = ${value}
-          AND v.id <> ${exceptEntityId ?? 0}
-          AND (v.version_id = e.head_version_id OR e.head_version_id IS NULL)
+        SELECT 1 FROM ${db(table)} t
+        JOIN entity_versions v ON v.id = t.version_id
+        JOIN entities e ON e.id = v.entity_id
+        WHERE e.type = ${type} AND t.${db(field)} = ${value}
+          AND e.id <> ${exceptEntityId ?? 0}
+          AND (v.id = e.head_version_id OR e.head_version_id IS NULL)
         LIMIT 1
       `;
       return !!row;
@@ -257,6 +260,18 @@ export const postgresAdapter =
   (collections): DatabaseAdapter => {
     const store = createStore(sql, collections);
 
+    const currentQuery = ({ type, where = {}, sort, limit, offset = 0 }: FindQuery) => {
+      const collection = type === undefined ? undefined : collections[type];
+      if (type !== undefined && !collection) throw new CmsError("invalid", "type");
+
+      const keys = queryKeys(collection);
+      const view = sql(type === undefined ? "cms_entries_view" : `${type}_view`);
+      const from = sql`FROM ${view} v WHERE ${whereSql(sql, where, keys)}`;
+      const page = sql`${from} ORDER BY ${orderSql(sql, sort, keys)}
+        ${limit === undefined ? sql`` : sql`LIMIT ${limit}`} OFFSET ${offset}`;
+      return { collection, from, page };
+    };
+
     return {
       ...store,
 
@@ -264,22 +279,11 @@ export const postgresAdapter =
 
       transaction: (run) => sql.begin((tx) => run(createStore(tx, collections))) as ReturnType<typeof run>,
 
-      async find({ type, where = {}, sort, limit, offset = 0 }) {
-        const collection = type === undefined ? undefined : collections[type];
-        if (type !== undefined && !collection) throw new CmsError("invalid", "type");
-
-        const keys = queryKeys(collection);
-        const view = sql(type === undefined ? "cms_entries_view" : `${type}_view`);
-        const condition = whereSql(sql, where, keys);
-
-        // Conditions on relations refer to the found version as v
+      async find(query) {
+        const { collection, from, page } = currentQuery(query);
         const [[{ count }], rows] = await Promise.all([
-          sql<{ count: string }[]>`SELECT COUNT(*) AS count FROM ${view} v WHERE ${condition}`,
-          sql<VersionRow[]>`
-            SELECT * FROM ${view} v WHERE ${condition}
-            ORDER BY ${orderSql(sql, sort, keys)}
-            ${limit === undefined ? sql`` : sql`LIMIT ${limit}`} OFFSET ${offset}
-          `,
+          sql<{ count: string }[]>`SELECT COUNT(*) AS count ${from}`,
+          sql<VersionRow[]>`SELECT * ${page}`,
         ]);
 
         // Rows of the combined view only have the shared columns, so their entries are loaded one by one
@@ -287,6 +291,16 @@ export const postgresAdapter =
           rows.map((row) => (collection ? store.toEntry(row, collection) : store.getEntry(row.id))),
         );
         return { total: Number(count), items: items.filter((item) => item !== undefined) };
+      },
+
+      async list(query) {
+        const { collection, page } = currentQuery(query);
+        const titleColumn = collection ? collection.title : "title";
+        const title = titleColumn ? sql`v.${sql(titleColumn)}::text` : sql`NULL::text`;
+        const rows = await sql<{ id: number; type: string; title: string | null; created_at: Date }[]>`
+          SELECT v.id, v.type, ${title} AS title, v.created_at ${page}
+        `;
+        return rows.map((row) => ({ entityId: row.id, type: row.type, title: row.title, entityCreatedAt: row.created_at }));
       },
 
       async history(entityId, limit) {
@@ -304,13 +318,21 @@ export const postgresAdapter =
         return { title: (current?.title as string | null) ?? null, versions: rows.map(toVersion) };
       },
 
-      async pending(limit) {
+      async pending(limit, { offset = 0, oldestFirst = false } = {}) {
+        const direction = oldestFirst ? sql`ASC` : sql`DESC`;
         const rows = await sql<VersionRow[]>`
           SELECT * FROM cms_versions_view WHERE review_status = 'pending'
-          ORDER BY version_created_at DESC, version_id DESC
-          LIMIT ${limit}
+          ORDER BY version_created_at ${direction}, version_id ${direction}
+          LIMIT ${limit} OFFSET ${offset}
         `;
         return rows.map(toTitledVersion);
+      },
+
+      async countPending() {
+        const [{ count }] = await sql<{ count: string }[]>`
+          SELECT COUNT(*) AS count FROM entity_versions WHERE review_status = 'pending'
+        `;
+        return Number(count);
       },
 
       async activity(authorId, limit) {
@@ -323,16 +345,17 @@ export const postgresAdapter =
       },
 
       async referencing(entityId, limit) {
-        const { collectionTables, itemTables } = valueTables(collections);
+        const { itemTables } = valueTables(collections);
         const sources: Fragment[] = [];
 
-        for (const [table, fields] of collectionTables) {
-          for (const [column, field] of columnFields(fields)) {
+        for (const [type, collection] of Object.entries(collections)) {
+          const title = collection.title ? sql`v.${sql(collection.title)}::text` : sql`NULL::text`;
+          for (const [column, field] of columnFields(collection.fields)) {
             if (field.type !== "relation") continue;
             sources.push(sql`
-              SELECT v.id, v.type, v.title, ${column}::text AS field
-              FROM cms_entries_view v JOIN ${sql(table)} t ON t.version_id = v.version_id
-              WHERE t.${sql(column)} = ${entityId}
+              SELECT v.id, v.type, ${title} AS title, ${column}::text AS field
+              FROM ${sql(`${type}_view`)} v
+              WHERE v.${sql(column)} = ${entityId}
             `);
           }
         }

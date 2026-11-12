@@ -8,6 +8,7 @@ import type {
   EditValues,
   EntriesOf,
   Entry,
+  EntrySummary,
   FindQuery,
   Reference,
   ReviewStatus,
@@ -192,6 +193,10 @@ export const createCMS = <const C extends Collections<any>>({ db, collections, r
     /** Current versions of entries, filtered and sorted by their values */
     find,
 
+    /** Lists titles and IDs with the same filters as find. */
+    list: <T extends Type = Type>(query: Omit<FindQuery<T>, "populate"> = {}) =>
+      adapter.list(query) as Promise<EntrySummary<T>[]>,
+
     /** The current entry of a singleton collection */
     getSingle: async <T extends Type, P extends boolean = false>(type: T, options: { populate?: P } = {}) =>
       (await find<T, P>({ type, limit: 1, ...options })).items[0] as EntriesOf<C, T, P> | undefined,
@@ -208,7 +213,9 @@ export const createCMS = <const C extends Collections<any>>({ db, collections, r
 
     history: (entityId: number, limit = 100) => adapter.history(entityId, limit),
     /** Versions waiting for review, of all collections */
-    pending: (limit = 100) => adapter.pending(limit) as Promise<TitledVersion<Type>[]>,
+    pending: (limit = 100, options?: { offset?: number; oldestFirst?: boolean }) =>
+      adapter.pending(limit, options) as Promise<TitledVersion<Type>[]>,
+    countPending: () => adapter.countPending(),
     /** The latest versions someone wrote, whatever their review status */
     activity: (authorId: number, limit = 10) => adapter.activity(authorId, limit) as Promise<TitledVersion<Type>[]>,
     /** Entries pointing at an entry, like the sets of a brand */

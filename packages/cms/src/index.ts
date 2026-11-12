@@ -20,6 +20,7 @@ export {
   type EntriesOf,
   type Entry,
   type EntryOf,
+  type EntrySummary,
   type Field,
   type Fields,
   type FieldType,

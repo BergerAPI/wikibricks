@@ -132,6 +132,23 @@ describe("find", () => {
     assert.deepEqual(result.items[0].values, { name: "Ada", active: true });
   });
 
+  test("lists summaries using the same collection filters, ordering, and offset", async () => {
+    const entries = await cms.list({ type: "post", where: { views: { gt: 10 } }, sort: "views", offset: 1, limit: 1 });
+    const [post] = entries;
+    assert.equal(entries.length, 1);
+    const full = await cms.get(post.entityId);
+    assert.deepEqual(post, {
+      entityId: full?.entityId,
+      type: "post",
+      title: "Deep dive",
+      entityCreatedAt: full?.entityCreatedAt,
+    });
+    assert.deepEqual(
+      (await cms.list({ where: { title: { contains: "ace" } } })).map(({ type, title }) => [type, title]),
+      [["author", "Grace"]],
+    );
+  });
+
   test("rejects unknown keys and operators", async () => {
     assert.equal(await errorOf(cms.find({ type: "post", where: { pages: 1 } })), "invalid pages");
     assert.equal(await errorOf(cms.find({ where: { views: 1 } })), "invalid views");
@@ -233,5 +250,23 @@ describe("collections", () => {
         }),
       /title of thing/,
     );
+  });
+
+  test("counts all pending versions and can page from the oldest", async () => {
+    const oldest = await cms.create("draft", { values: { title: "Oldest proposal" } });
+    const next = await cms.create("draft", { values: { title: "Next proposal" } });
+    const newest = await cms.create("draft", { values: { title: "Newest proposal" } });
+    assert.equal(await cms.countPending(), 3);
+    assert.deepEqual((await cms.pending(1)).map(({ versionId }) => versionId), [newest.versionId]);
+    assert.deepEqual(
+      (await cms.pending(2, { oldestFirst: true })).map(({ versionId }) => versionId),
+      [oldest.versionId, next.versionId],
+    );
+    assert.deepEqual(
+      (await cms.pending(2, { oldestFirst: true, offset: 2 })).map(({ versionId }) => versionId),
+      [newest.versionId],
+    );
+    await cms.review(oldest.entityId, oldest.versionId, { status: "approved" });
+    assert.equal(await cms.countPending(), 2);
   });
 });
