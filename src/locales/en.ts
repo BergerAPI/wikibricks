@@ -216,6 +216,7 @@ export default {
     "Are you sure you want to delete this image? This action cannot be undone.",
   "images.deleteSuccess": "Image deleted successfully",
   "images.deleteFailed": "Failed to delete image",
+  "images.inUse": "This image is attached to an entry. A moderator can remove it.",
 
   // Reviews
   "status.pending": "Waiting for review",

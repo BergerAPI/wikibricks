@@ -26,6 +26,7 @@ import { handleNewEntityPage, handleNewEntitySubmit } from "./routes/entities/ne
 import { handleSearchPage } from "./routes/entities/search";
 import { handleEntityOptions, handleRelationOptions } from "./routes/entities/options";
 import {
+  guardImageUpload,
   handleImageDelete,
   handleImageInfo,
   handleImagePage,
@@ -36,6 +37,7 @@ import {
 import { handleImprintPage, handlePrivacyPage, handleTermsPage } from "./routes/legal";
 import { handleRootPage } from "./routes/root";
 import { handleUserPage, handleUserRoleSubmit } from "./routes/users";
+import { pruneAbandonedImages } from "./services/image-storage";
 import { attemptAuthentication, type Variables } from "./utils";
 
 const app = new Hono<{ Variables: Variables }>();
@@ -84,7 +86,7 @@ app.get("/changes", handleChangesPage);
 app.get("/users/:id", handleUserPage);
 app.post("/users/:id/role", handleUserRoleSubmit);
 
-app.post("/images/upload", limitImageUpload, handleImageUpload);
+app.post("/images/upload", guardImageUpload, limitImageUpload, handleImageUpload);
 app.get("/images/serve/:id", handleImageServe);
 app.get("/images/:id", handleImagePage);
 app.get("/images/:id/info", handleImageInfo);
@@ -92,6 +94,10 @@ app.delete("/images/:id", handleImageDelete);
 
 app.onError(handleError);
 app.notFound(handleNotFound);
+
+setInterval(() => {
+  void pruneAbandonedImages().catch((error) => console.error("Image cleanup failed:", error));
+}, 10 * 60 * 1000).unref();
 
 const port = Number(process.env.PORT ?? 3000);
 serve({ fetch: app.fetch, port });

@@ -3,10 +3,10 @@ import { cms, fieldsOf, type FieldUi, type WikiEntry } from "../../collections";
 import { EntityFieldInput } from "../../components/entity-field";
 import { InfoBox, InfoBoxImage, InfoBoxRow } from "../../components/info-box";
 import { RichText, RichTextEditor } from "../../components/rich-text";
-import { sql, type Image } from "../../database";
 import { displayField, loadFieldOptions, loadRelationNames, type FieldOptions } from "../../fields";
 import { Layout } from "../../layout";
-import { removeImageFile } from "../../services/image-storage";
+import { getImageUrl, imageWidths } from "../../services/image-files";
+import { deleteUnusedImage, ownsImage, preparePublishedImage } from "../../services/image-storage";
 import type { EditEntityRequest, ReviewVersionRequest } from "../../shared/contracts";
 import { useTranslation, type TranslationFunctions } from "../../translation";
 import { getUsernames } from "../../users";
@@ -35,66 +35,72 @@ const EntityInfoBox = ({
   previous?: WikiEntry;
   previousRelationNames: Record<string, string>;
   t: TranslationFunctions["t"];
-}) => (
-  <InfoBox title={entry.title ?? ""}>
-    {previous && previous.values.image_id !== entry.values.image_id ? (
-      <tr>
-        <td colspan={2}>
-          <div class="grid grid-cols-2 items-center gap-2 [&>del]:p-1 [&>ins]:p-1">
-            <ChangedValue
-              before={previous.values.image_id ? <img src={`/images/serve/${previous.values.image_id}`} alt={t("review.before")} loading="lazy" /> : null}
-              after={entry.values.image_id ? <img src={`/images/serve/${entry.values.image_id}`} alt={t("review.after")} loading="lazy" /> : null}
-              t={t}
-            />
-          </div>
-        </td>
-      </tr>
-    ) : entry.values.image_id && (
-      <InfoBoxImage
-        src={`/images/serve/${entry.values.image_id}`}
-        alt={t("entity.imageOf", { name: entry.title ?? "" })}
-      />
-    )}
+}) => {
+  const imageId = parseId(entry.values.image_id);
+  const previousImageId = parseId(previous?.values.image_id);
+  const imageSize = entry.status === "approved" ? imageWidths.small : undefined;
+  return (
+    <InfoBox title={entry.title ?? ""}>
+      {previous && previousImageId !== imageId ? (
+        <tr>
+          <td colspan={2}>
+            <div class="grid grid-cols-2 items-center gap-2 [&>del]:p-1 [&>ins]:p-1">
+              <ChangedValue
+                before={previousImageId ? <img src={getImageUrl(previousImageId, imageWidths.small)} alt={t("review.before")} loading="lazy" /> : null}
+                after={imageId ? <img src={getImageUrl(imageId, imageSize)} alt={t("review.after")} loading="lazy" /> : null}
+                t={t}
+              />
+            </div>
+          </td>
+        </tr>
+      ) : imageId && (
+        <InfoBoxImage
+          src={getImageUrl(imageId, imageSize)}
+          srcset={imageSize ? `${getImageUrl(imageId, imageWidths.large)} 2x` : undefined}
+          alt={t("entity.imageOf", { name: entry.title ?? "" })}
+        />
+      )}
 
-    {Object.entries(fields).map(([name, field]) => {
-      const label = field.meta.label;
-      const value = entry.values[name] == null ? "" : String(entry.values[name]);
-      const previousValue = String(previous?.values[name] ?? "");
-      const changed = !!previous && previousValue !== value;
-      if (!label || (!value && !editable && !changed)) return null;
+      {Object.entries(fields).map(([name, field]) => {
+        const label = field.meta.label;
+        const value = entry.values[name] == null ? "" : String(entry.values[name]);
+        const previousValue = String(previous?.values[name] ?? "");
+        const changed = !!previous && previousValue !== value;
+        if (!label || (!value && !editable && !changed)) return null;
 
-      if (editable)
+        if (editable)
+          return (
+            <InfoBoxRow label={t(label)}>
+              <EntityFieldInput
+                t={t}
+                field={field}
+                value={value}
+                options={options[name]}
+                required={field.required}
+                class="block w-full"
+                aria-label={t(label)}
+                data-edit-field={name}
+              />
+            </InfoBoxRow>
+          );
+
+        const show = (value: string, relationName?: string) => {
+          if (!value) return null;
+          const { text, href } = displayField(field, value, relationName);
+          return href ? <a href={href}>{text}</a> : text;
+        };
+        const current = show(value, relationNames[name]);
         return (
           <InfoBoxRow label={t(label)}>
-            <EntityFieldInput
-              t={t}
-              field={field}
-              value={value}
-              options={options[name]}
-              required={field.required}
-              class="block w-full"
-              aria-label={t(label)}
-              data-edit-field={name}
-            />
+            {changed
+              ? <ChangedValue before={show(previousValue, previousRelationNames[name])} after={current} t={t} />
+              : current}
           </InfoBoxRow>
         );
-
-      const show = (value: string, relationName?: string) => {
-        if (!value) return null;
-        const { text, href } = displayField(field, value, relationName);
-        return href ? <a href={href}>{text}</a> : text;
-      };
-      const current = show(value, relationNames[name]);
-      return (
-        <InfoBoxRow label={t(label)}>
-          {changed
-            ? <ChangedValue before={show(previousValue, previousRelationNames[name])} after={current} t={t} />
-            : current}
-        </InfoBoxRow>
-      );
-    })}
-  </InfoBox>
-);
+      })}
+    </InfoBox>
+  );
+};
 
 export const handleEntityPage = async (c: DefaultContext) => {
   const user = c.get("user");
@@ -218,7 +224,7 @@ export const handleEntityPage = async (c: DefaultContext) => {
         {versionId && isProposal && !entry.previousVersionId && (
           <p class="mb-3">{t("review.newEntity")}</p>
         )}
-        {(imageChanged || Object.values(fields).some((field) => field.meta.label)) && (
+        {(entry.values.image_id || imageChanged || Object.values(fields).some((field) => field.meta.label)) && (
           <EntityInfoBox
             t={t}
             editable={canEdit}
@@ -268,10 +274,14 @@ export const handleEntityPageSubmit = async (c: DefaultContext) => {
     changeMessage.length > MAX_MESSAGE_LENGTH ||
     (baseVersionId !== undefined && !parseId(baseVersionId)) ||
     (description !== undefined && typeof description !== "string") ||
+    fields === null ||
     typeof fields !== "object" ||
     Array.isArray(fields)
   )
     return c.body("Bad Request", 400);
+
+  const imageId = fields.image_id ? parseId(fields.image_id) : undefined;
+  if (fields.image_id && (!imageId || !await ownsImage(imageId, user.id))) return c.body("Image is unavailable", 400);
 
   try {
     await cms.propose(entityId, {
@@ -282,19 +292,16 @@ export const handleEntityPageSubmit = async (c: DefaultContext) => {
     });
     return c.body("OK", 200);
   } catch (error) {
+    if ((error as { code?: string }).code === "23503" && imageId && !await ownsImage(imageId, user.id))
+      return c.body("Image is unavailable", 400);
     return cmsErrorResponse(c, error);
   }
 };
 
 // The image of a deleted or rejected entry goes too, unless another entry uses it
-const deleteUnusedImage = async (entry: WikiEntry) => {
+const deleteEntryImage = async (entry: WikiEntry) => {
   const imageId = parseId(entry.values.image_id);
-  if (!imageId || !entry.authorId || (await cms.isReferenced("images", imageId))) return;
-
-  const [image] = await sql<Image[]>`
-    DELETE FROM images WHERE id = ${imageId} AND uploaded_by = ${entry.authorId} RETURNING *
-  `;
-  if (image) await removeImageFile(image);
+  if (imageId && entry.authorId) await deleteUnusedImage(imageId, entry.authorId);
 };
 
 export const handleEntityDelete = async (c: DefaultContext) => {
@@ -305,7 +312,7 @@ export const handleEntityDelete = async (c: DefaultContext) => {
   if (!entityId) return c.notFound();
 
   try {
-    await deleteUnusedImage(await cms.delete(entityId));
+    await deleteEntryImage(await cms.delete(entityId));
     return c.body("OK", 200);
   } catch (error) {
     return cmsErrorResponse(c, error);
@@ -339,9 +346,19 @@ export const handleEntityVersionPatch = async (c: DefaultContext) => {
       comment: reviewMessage,
       reviewerId: user.id,
     });
-    if (deleted) await deleteUnusedImage(deleted);
-    return c.body("OK", 200);
+    if (deleted) await deleteEntryImage(deleted);
   } catch (error) {
     return cmsErrorResponse(c, error, { stale: "error.staleProposal" });
   }
+
+  if (type === "approved") {
+    try {
+      const entry = await cms.get(entityId, { versionId });
+      const imageId = parseId(entry?.values.image_id);
+      if (imageId) await preparePublishedImage(imageId);
+    } catch (error) {
+      console.error("Could not prepare sizes for approved image:", error);
+    }
+  }
+  return c.body("OK", 200);
 };

@@ -19,12 +19,13 @@ export const InfoBox = ({ title, children }: PropsWithChildren<{ title: string }
   </div>
 );
 
-export const InfoBoxImage = ({ src, alt, class: className = "" }: { src: string; alt: string; class?: string }) => (
+export const InfoBoxImage = ({ src, srcset, alt, class: className = "" }: { src: string; srcset?: string; alt: string; class?: string }) => (
   <tr>
     <td colspan={2}>
       <img
         class={`mx-auto w-full h-auto px-1 ${className}`}
         src={src}
+        srcset={srcset}
         width="800"
         height="800"
         loading="lazy"

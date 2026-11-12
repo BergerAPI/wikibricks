@@ -219,6 +219,7 @@ export default {
     "Sind Sie sicher, dass Sie dieses Bild löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
   "images.deleteSuccess": "Bild erfolgreich gelöscht",
   "images.deleteFailed": "Löschen des Bildes fehlgeschlagen",
+  "images.inUse": "Dieses Bild gehört zu einem Eintrag. Ein Moderator kann es entfernen.",
 
   // Reviews
   "status.pending": "Wartet auf Prüfung",

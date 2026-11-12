@@ -112,7 +112,7 @@ const columns = (table: string, fields: Fields<unknown>, types: string[], reserv
     const statements = [
       `ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${identifier(column)} ${columnType(field)}`,
     ];
-    if (field.type === "relation")
+    if (field.type === "relation" || field.type === "external")
       statements.push(`CREATE INDEX IF NOT EXISTS ${identifier(`${table}_${column}_idx`)} ON ${table}(${column})`);
     return statements;
   });

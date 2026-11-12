@@ -1,19 +1,21 @@
+import { Readable } from "node:stream";
+import type { Next } from "hono";
 import { bodyLimit } from "hono/body-limit";
+import { cms } from "../../collections";
 import { sql } from "../../database";
 import { Layout } from "../../layout";
+import { getImageUrl, imageWidths, openImageFile } from "../../services/image-files";
 import {
   deleteImage,
-  getImageById,
-  getImageUrl,
+  deleteUnusedImage,
+  getVisibleImage,
   ImageUploadError,
   MAX_IMAGE_FILE_BYTES,
-  normalizeMimeType,
-  readImageFile,
   uploadImage,
 } from "../../services/image-storage";
 import type { UploadImageResponse } from "../../shared/contracts";
 import { useTranslation } from "../../translation";
-import { isModerator, parseId, routeParam, type DefaultContext } from "../../utils";
+import { isModerator, isRateLimited, parseId, routeParam, type DefaultContext } from "../../utils";
 
 // Leaves some room for the rest of the multipart form
 export const limitImageUpload = bodyLimit({
@@ -22,6 +24,26 @@ export const limitImageUpload = bodyLimit({
 });
 
 const SERVABLE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+const PRIVATE_CACHE = "private, no-store";
+const activeUploads = new Set<number>();
+
+export const guardImageUpload = async (c: DefaultContext, next: Next) => {
+  const user = c.get("user");
+  if (!user) return c.text("Unauthorized", 401);
+  if (activeUploads.has(user.id) || activeUploads.size >= 4) {
+    c.header("Retry-After", "5");
+    return c.text("Uploads are busy. Try again in a moment.", 429);
+  }
+  if (isRateLimited(`image-upload:${user.id}`, 30, 60 * 60 * 1000))
+    return c.text("Too many upload attempts. Try again later.", 429);
+
+  activeUploads.add(user.id);
+  try {
+    await next();
+  } finally {
+    activeUploads.delete(user.id);
+  }
+};
 
 export const handleImageUpload = async (c: DefaultContext) => {
   const user = c.get("user");
@@ -48,7 +70,7 @@ export const handleImageUpload = async (c: DefaultContext) => {
       altText: typeof body.alt_text === "string" ? body.alt_text : undefined,
       uploader: user,
     });
-    return c.json(image satisfies UploadImageResponse);
+    return c.json({ id: image.id } satisfies UploadImageResponse);
   } catch (error) {
     if (error instanceof ImageUploadError) return c.text(error.message, error.status);
     console.error("Image upload error:", error);
@@ -57,30 +79,47 @@ export const handleImageUpload = async (c: DefaultContext) => {
 };
 
 export const handleImageServe = async (c: DefaultContext) => {
+  c.header("Cache-Control", PRIVATE_CACHE);
   const id = parseId(routeParam(c, "id"));
-  const image = id && (await getImageById(id));
+  const image = id && (await getVisibleImage(id, c.get("user")));
   if (!image) return c.text("Image not found", 404);
 
-  let buffer: Buffer;
+  const requested = Number(c.req.query("width"));
+  const width = requested === imageWidths.small || requested === imageWidths.large ? requested : undefined;
+  const source = await openImageFile(image, image.published ? width : undefined);
+  if (!source) return c.text("Image file not found", 404);
+
+  const { file, mime, fallback } = source;
+  let streaming = false;
   try {
-    buffer = await readImageFile(image);
-  } catch {
-    return c.text("Image file not found", 404);
+    const stat = await file.stat();
+    const etag = `W/"${stat.size}-${stat.mtimeMs}"`;
+    if (image.published) {
+      c.header("Cache-Control", fallback ? "public, max-age=0, must-revalidate" : "public, max-age=3600");
+      c.header("ETag", etag);
+      const validators = c.req.header("If-None-Match")?.split(",").map((value) => value.trim());
+      if (validators?.some((value) => value === "*" || value === etag)) return c.body(null, 304);
+    }
+
+    const filename = mime === "image/webp" ? image.filename.replace(/\.[^.]+$/, ".webp") : image.filename;
+    c.header("Content-Type", SERVABLE_TYPES.has(mime) ? mime : "application/octet-stream");
+    c.header("Content-Length", String(stat.size));
+    c.header("X-Content-Type-Options", "nosniff");
+    c.header("Content-Disposition", `inline; filename="${filename.replace(/["\r\n]/g, "")}"`);
+    if (c.req.method === "HEAD") return c.body(null);
+
+    const response = c.body(Readable.toWeb(file.createReadStream()) as ReadableStream<Uint8Array>);
+    streaming = true;
+    return response;
+  } finally {
+    if (!streaming) await file.close();
   }
-
-  const mime = normalizeMimeType(image.mime_type);
-
-  return c.body(new Uint8Array(buffer), 200, {
-    "Content-Type": SERVABLE_TYPES.has(mime) ? mime : "application/octet-stream",
-    "Cache-Control": "public, max-age=31536000",
-    "X-Content-Type-Options": "nosniff",
-    "Content-Disposition": `inline; filename="${image.filename.replace(/"/g, "")}"`,
-  });
 };
 
 export const handleImageInfo = async (c: DefaultContext) => {
+  c.header("Cache-Control", PRIVATE_CACHE);
   const id = parseId(routeParam(c, "id"));
-  const image = id && (await getImageById(id));
+  const image = id && (await getVisibleImage(id, c.get("user")));
   if (!image) return c.json({ error: "Image not found" }, 404);
 
   return c.json({
@@ -93,7 +132,7 @@ export const handleImageInfo = async (c: DefaultContext) => {
     height: image.height,
     alt_text: image.alt_text,
     created_at: image.created_at,
-    url: getImageUrl(image),
+    url: getImageUrl(image.id),
   });
 };
 
@@ -105,17 +144,18 @@ const Detail = ({ label, children }: { label: string; children: unknown }) => (
 );
 
 export const handleImagePage = async (c: DefaultContext) => {
+  c.header("Cache-Control", PRIVATE_CACHE);
   const user = c.get("user");
   const { t, formatDateTime } = useTranslation(c);
 
   const id = parseId(routeParam(c, "id"));
-  const image = id && (await getImageById(id));
+  const image = id && (await getVisibleImage(id, user));
   if (!image) return c.notFound();
 
   const [uploader] = await sql<{ username: string }[]>`
     SELECT username FROM users WHERE id = ${image.uploaded_by}
   `;
-  const canDelete = !!user && (user.id === image.uploaded_by || isModerator(user));
+  const canDelete = isModerator(user) || (!!user && user.id === image.uploaded_by && !await cms.isReferenced("images", image.id));
 
   return c.render(
     <Layout context={c} user={user} script={canDelete ? "delete" : undefined}>
@@ -123,7 +163,7 @@ export const handleImagePage = async (c: DefaultContext) => {
         <div class="flex flex-wrap justify-between items-center gap-x-4 gap-y-2 pb-2 mb-3 border-b">
           <h1 class="text-3xl font-serif">{image.original_filename}</h1>
           <div class="flex flex-wrap items-center gap-x-4">
-            <a href={getImageUrl(image)} target="_blank" class="inline-flex min-h-11 items-center">
+            <a href={getImageUrl(image.id)} target="_blank" class="inline-flex min-h-11 items-center">
               {t("images.viewFull")}
             </a>
             {canDelete && (
@@ -143,7 +183,7 @@ export const handleImagePage = async (c: DefaultContext) => {
 
         <div class="grid md:grid-cols-2 gap-6">
           <img
-            src={getImageUrl(image)}
+            src={getImageUrl(image.id, image.published ? imageWidths.large : undefined)}
             alt={image.alt_text || image.original_filename}
             class="w-full rounded shadow-lg"
             loading="lazy"
@@ -188,12 +228,13 @@ export const handleImageDelete = async (c: DefaultContext) => {
   if (!user) return c.text("Unauthorized", 401);
 
   const id = parseId(routeParam(c, "id"));
-  const image = id && (await getImageById(id));
+  const image = id && (await getVisibleImage(id, user));
   if (!image) return c.text("Image not found", 404);
 
-  if (image.uploaded_by !== user.id && !isModerator(user))
-    return c.text("Permission denied", 403);
-
-  await deleteImage(image.id);
+  if (isModerator(user)) await deleteImage(image.id);
+  else {
+    if (image.uploaded_by !== user.id) return c.text("Permission denied", 403);
+    if (!await deleteUnusedImage(image.id, user.id)) return c.text(useTranslation(c).t("images.inUse"), 409);
+  }
   return c.text("Image deleted successfully");
 };

@@ -1,9 +1,9 @@
 import { cms, fieldsOf } from "../../collections";
 import { EntityFieldInput } from "../../components/entity-field";
 import { RichTextEditor } from "../../components/rich-text";
-import { sql } from "../../database";
 import { loadFieldOptions } from "../../fields";
 import { Layout } from "../../layout";
+import { ownsImage } from "../../services/image-storage";
 import type { CreateEntityRequest, CreateEntityResponse } from "../../shared/contracts";
 import { useTranslation } from "../../translation";
 import { parseId, readJson, type DefaultContext } from "../../utils";
@@ -63,7 +63,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
             <span class="font-semibold">{t("entities.imageLabel")}</span>
             <input
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp"
               id="image_file"
               class="w-full"
             />
@@ -129,10 +129,7 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
   if (imageId === undefined) return c.body("Invalid image ID", 400);
 
   // Only images the user uploaded can be used
-  if (imageId !== null) {
-    const [image] = await sql`SELECT id FROM images WHERE id = ${imageId} AND uploaded_by = ${user.id}`;
-    if (!image) return c.body("Image is unavailable", 400);
-  }
+  if (imageId !== null && !await ownsImage(imageId, user.id)) return c.body("Image is unavailable", 400);
 
   // New entities start out as a pending version that a moderator has to approve
   try {
@@ -142,6 +139,8 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
     });
     return c.json({ id: versionId, entity_id: entityId } satisfies CreateEntityResponse);
   } catch (error) {
+    if ((error as { code?: string }).code === "23503" && imageId !== null && !await ownsImage(imageId, user.id))
+      return c.body("Image is unavailable", 400);
     return cmsErrorResponse(c, error);
   }
 };
