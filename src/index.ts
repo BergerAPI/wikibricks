@@ -100,5 +100,5 @@ setInterval(() => {
 }, 10 * 60 * 1000).unref();
 
 const port = Number(process.env.PORT ?? 3000);
-serve({ fetch: app.fetch, port });
+serve({ fetch: app.fetch, port, hostname: process.env.BIND_HOST || undefined });
 console.log(`Server is running on http://localhost:${port}`);
