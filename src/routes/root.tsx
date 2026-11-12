@@ -12,7 +12,7 @@ export const handleRootPage = async (c: DefaultContext) => {
     ([["set", "home.latestSets"], ["brand", "home.brands"]] as const).map(async ([type, heading]) => ({
       type,
       heading,
-      entries: (await cms.find({ type, sort: "-updatedAt", limit: 3 })).items,
+      entries: await cms.list({ type, sort: "-updatedAt", limit: 3 }),
     })),
   );
 

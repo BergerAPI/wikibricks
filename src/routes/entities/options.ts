@@ -4,24 +4,26 @@ import type { SelectOptionsResponse } from "../../shared/contracts";
 import type { DefaultContext } from "../../utils";
 import { useTranslation } from "../../translation";
 
+const OPTIONS_LIMIT = 20;
+
 async function listOptions(c: DefaultContext, targets?: string[]) {
   const { t } = useTranslation(c);
   const query = (c.req.query("q") ?? "").trim().slice(0, 255);
-  const { items, total } = await cms.find({
+  const items = await cms.list({
     where: {
       ...(targets ? { type: { in: targets } } : {}),
       title: { contains: query },
     },
     sort: "title",
-    limit: 20,
+    limit: OPTIONS_LIMIT + 1,
   });
   return c.json({
-    options: items.map((entry) => ({
+    options: items.slice(0, OPTIONS_LIMIT).map((entry) => ({
       value: String(entry.entityId),
       label: entry.title ?? String(entry.entityId),
       ...(!targets ? { group: t(`entityType.${entry.type}`) } : {}),
     })),
-    more: total > items.length,
+    more: items.length > OPTIONS_LIMIT,
   } satisfies SelectOptionsResponse);
 }
 

@@ -27,15 +27,16 @@ export const handleSearchPage = async (c: DefaultContext) => {
   }
   // Looked-up relations only list the entry that is currently selected.
   const selected = Object.fromEntries(Object.keys(fields).map((key) => [key, filters.params.get(`filter.${key}`)]));
-  const options = entityType === "all" ? {} : await loadFieldOptions(entityType, selected);
-
-  const { total, items: results } = await cms.find({
+  const query = {
     type: entityType === "all" ? undefined : entityType,
     where: { and: [name ? { title: { contains: name } } : {}, filters.where] },
     sort: "-createdAt",
-    offset: page * PAGE_SIZE,
-    limit: PAGE_SIZE,
-  });
+  };
+  const [items, options] = await Promise.all([
+    cms.list({ ...query, offset: page * PAGE_SIZE, limit: PAGE_SIZE + 1 }),
+    entityType === "all" ? undefined : loadFieldOptions(entityType, selected),
+  ]);
+  const results = items.slice(0, PAGE_SIZE);
 
   // Links within the search leave out whatever is empty.
   const searchUrl = (query: Record<string, string>) =>
@@ -46,7 +47,8 @@ export const handleSearchPage = async (c: DefaultContext) => {
     searchUrl({ ...Object.fromEntries(filters.params), entity_type: entityType, name, page: page ? String(page) : "" });
 
   // A bookmark can point past the last page after the result count changes.
-  if (page > 0 && total > 0 && page * PAGE_SIZE >= total) return c.redirect(pageUrl(0));
+  if (page > 0 && results.length === 0 && (await cms.list({ ...query, limit: 1 })).length > 0)
+    return c.redirect(pageUrl(0));
 
   return c.render(
     <Layout context={c} user={user}>
@@ -111,7 +113,7 @@ export const handleSearchPage = async (c: DefaultContext) => {
                     <EntityFieldInput
                       field={field}
                       t={t}
-                      options={options[key]}
+                      options={options?.[key]}
                       emptyLabel={t("entities.anyValue")}
                       id={`filter-${key}`}
                       name={`filter.${key}`}
@@ -162,7 +164,7 @@ export const handleSearchPage = async (c: DefaultContext) => {
 
         <div class="mt-4 flex flex-wrap justify-center gap-3 [&>a]:inline-flex [&>a]:min-h-11 [&>a]:items-center [&>a]:border [&>a]:px-3">
           {page > 0 && <a rel="prev" href={pageUrl(page - 1)}>{t("action.previous")}</a>}
-          {(page + 1) * PAGE_SIZE < total && (
+          {items.length > PAGE_SIZE && (
             <a rel="next" href={pageUrl(page + 1)}>{t("action.next")}</a>
           )}
         </div>

@@ -6,10 +6,9 @@ import { cms } from "../collections";
 import { handleSearchPage } from "../routes/entities/search";
 
 test("returns a filtered set search to the first page when its offset exceeds the matches", async (context) => {
-  const find = context.mock.method(cms, "find", async (query: FindQuery) => ({
-    total: query.type === "set" ? 4 : 0,
-    items: [],
-  }));
+  const list = context.mock.method(cms, "list", async (query: FindQuery) =>
+    query.type === "set" && !query.offset ? [{ entityId: 1, title: "City Bus" }] : [],
+  );
   const app = new Hono().get("/entities/search", handleSearchPage);
   const response = await app.request("/entities/search?entity_type=set&filter.pieces.min=100&page=1");
 
@@ -18,6 +17,6 @@ test("returns a filtered set search to the first page when its offset exceeds th
   assert.equal(location.searchParams.get("entity_type"), "set");
   assert.equal(location.searchParams.get("filter.pieces.min"), "100");
   assert.ok(!location.searchParams.has("page"));
-  const query = find.mock.calls.find(({ arguments: [query] }) => query?.type === "set")?.arguments[0];
+  const query = list.mock.calls.find(({ arguments: [query] }) => query?.type === "set")?.arguments[0];
   assert.deepEqual(query?.where, { and: [{}, { pieces: { gte: 100 } }] });
 });

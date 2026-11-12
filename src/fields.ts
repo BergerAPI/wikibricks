@@ -33,12 +33,11 @@ export const loadFieldOptions = async (type: EntityType, values: Record<string, 
 
     if (field.type === "relation") {
       const where = { type: { in: [...targetsOf(field)] } };
-      const result = await cms.find({ where, sort: "title", limit: RELATION_SELECT_LIMIT });
-      const remote = result.total > RELATION_SELECT_LIMIT;
-      let items = result.items;
+      let items = await cms.list({ where, sort: "title", limit: RELATION_SELECT_LIMIT + 1 });
+      const remote = items.length > RELATION_SELECT_LIMIT;
       if (remote) {
         items = values[name]
-          ? (await cms.find({ where: { ...where, id: Number(values[name]) }, limit: 1 })).items
+          ? await cms.list({ where: { ...where, id: Number(values[name]) }, limit: 1 })
           : [];
       }
       options[name] = {
@@ -58,17 +57,19 @@ export const loadFieldOptions = async (type: EntityType, values: Record<string, 
  * Resolves the names of the entities an entry relates to, keyed by field name.
  */
 export const loadRelationNames = async (entry: WikiEntry, fields: Record<string, Field<FieldUi>>) => {
-  const names: Record<string, string> = {};
-
-  for (const [name, field] of Object.entries(fields)) {
+  const relations = Object.entries(fields).flatMap(([name, field]) => {
     const id = entry.values[name];
-    if (field.type !== "relation" || id == null) continue;
+    return field.type === "relation" && typeof id === "number" ? [{ name, id, targets: targetsOf(field) }] : [];
+  });
+  if (relations.length === 0) return {};
 
-    const { items } = await cms.find({ type: field.to as EntityType, where: { id: Number(id) } });
-    names[name] = items[0]?.title ?? String(id);
-  }
-
-  return names;
+  const ids = [...new Set(relations.map(({ id }) => id))];
+  const items = await cms.list({ where: { id: { in: ids } } });
+  const byId = new Map(items.map((item) => [item.entityId, item]));
+  return Object.fromEntries(relations.map(({ name, id, targets }) => {
+    const item = byId.get(id);
+    return [name, (item && targets.includes(item.type) ? item.title : null) ?? String(id)];
+  }));
 };
 
 /**
