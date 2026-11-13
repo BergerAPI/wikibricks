@@ -1,4 +1,4 @@
-export type { AdapterFactory, DatabaseAdapter, NewVersion, Store } from "./adapter";
+export type { ActivityOptions, AdapterFactory, DatabaseAdapter, HistoryOptions, NewVersion, Store } from "./adapter";
 export { createCMS, type Cms, type CmsOptions } from "./cms";
 export { CmsError, type CmsErrorCode } from "./errors";
 export {

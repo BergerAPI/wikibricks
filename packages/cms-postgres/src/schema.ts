@@ -211,7 +211,7 @@ const combinedViews = (collections: Collections<unknown>) => {
  * failing migration leaves the database untouched.
  */
 export const setUp = async (
-  sql: postgres.Sql,
+  sql: postgres.Sql | postgres.TransactionSql,
   collections: Collections<unknown>,
   { migrations = {}, actorTable }: { migrations?: Record<string, Migration>; actorTable?: string },
 ) => {

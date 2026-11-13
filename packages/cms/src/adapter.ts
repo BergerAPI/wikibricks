@@ -58,6 +58,16 @@ export interface Store {
   deleteEntity(entityId: number): Promise<void>;
 }
 
+export type HistoryOptions = {
+  offset?: number;
+  /** Which versions that weren't approved are listed: all of them (the default), none, or those of one author */
+  unapproved?: "all" | "none" | { authorId: number };
+};
+
+export type ActivityOptions = { offset?: number; approvedOnly?: boolean };
+
+export type EntryHistory = { title: string | null; headVersionId: number | null; versions: Version[] };
+
 export interface DatabaseAdapter extends Store {
   /** Brings the database up to date with the collections */
   init(): Promise<void>;
@@ -66,12 +76,12 @@ export interface DatabaseAdapter extends Store {
   /** Current versions of entries. Throws CmsError "invalid" for unknown keys. */
   find(query: FindQuery): Promise<{ total: number; items: Entry[] }>;
   list(query: Omit<FindQuery, "populate">): Promise<EntrySummary[]>;
-  history(entityId: number, limit: number): Promise<{ title: string | null; versions: Version[] } | undefined>;
+  history(entityId: number, limit: number, options?: HistoryOptions): Promise<EntryHistory | undefined>;
   pending(limit: number, options?: { offset?: number; oldestFirst?: boolean }): Promise<TitledVersion[]>;
   countPending(): Promise<number>;
-  activity(authorId: number, limit: number): Promise<TitledVersion[]>;
+  activity(authorId: number, limit: number, options?: ActivityOptions): Promise<TitledVersion[]>;
   /** Entries whose current version points at an entry, through any of their relations */
-  referencing(entityId: number, limit: number): Promise<Reference[]>;
+  referencing(entityId: number, limit: number, options?: { offset?: number }): Promise<Reference[]>;
   /** Whether any version still points at a row of a table outside the CMS */
   isReferenced(table: string, id: number): Promise<boolean>;
 }

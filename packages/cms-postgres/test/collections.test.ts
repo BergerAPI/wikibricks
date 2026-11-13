@@ -274,4 +274,24 @@ describe("collections", () => {
     await cms.review(oldest.entityId, oldest.versionId, { status: "approved" });
     assert.equal(await cms.countPending(), 2);
   });
+
+  test("pages history and activity and leaves out versions that weren't approved", async () => {
+    const { entityId, versionId: first } = await cms.create("draft", { values: { title: "Paged" }, authorId: 1 });
+    await cms.review(entityId, first, { status: "approved" });
+    const second = await cms.propose(entityId, { values: { title: "Paged twice" }, authorId: 1 });
+    await cms.review(entityId, second, { status: "approved" });
+    const proposal = await cms.propose(entityId, { values: { title: "Proposed" }, authorId: 2 });
+    const ids = (history?: { versions: { versionId: number }[] }) => history?.versions.map(({ versionId }) => versionId);
+
+    assert.deepEqual(ids(await cms.history(entityId)), [proposal, second, first]);
+    assert.deepEqual(ids(await cms.history(entityId, 1, { offset: 1 })), [second]);
+    assert.deepEqual(ids(await cms.history(entityId, 10, { unapproved: "none" })), [second, first]);
+    assert.deepEqual(ids(await cms.history(entityId, 10, { unapproved: { authorId: 1 } })), [second, first]);
+    assert.deepEqual(ids(await cms.history(entityId, 10, { unapproved: { authorId: 2 } })), [proposal, second, first]);
+    // The title stays the current one while a proposal waits
+    assert.equal((await cms.history(entityId, 1, { offset: 2 }))?.title, "Paged twice");
+
+    assert.deepEqual((await cms.activity(1, 1, { offset: 1 })).map(({ versionId }) => versionId), [first]);
+    assert.deepEqual((await cms.activity(2, 10, { approvedOnly: true })), []);
+  });
 });

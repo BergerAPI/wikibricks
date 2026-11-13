@@ -1,4 +1,4 @@
-import type { AdapterFactory, NewVersion, Store } from "./adapter";
+import type { ActivityOptions, AdapterFactory, HistoryOptions, NewVersion, Store } from "./adapter";
 import { CmsError } from "./errors";
 import { relationIds, withRelated } from "./populate";
 import type {
@@ -211,16 +211,17 @@ export const createCMS = <const C extends Collections<any>>({ db, collections, r
       return { entityId, versionId: await propose<T>(entityId, { ...options, type }) };
     },
 
-    history: (entityId: number, limit = 100) => adapter.history(entityId, limit),
+    history: (entityId: number, limit = 100, options?: HistoryOptions) => adapter.history(entityId, limit, options),
     /** Versions waiting for review, of all collections */
     pending: (limit = 100, options?: { offset?: number; oldestFirst?: boolean }) =>
       adapter.pending(limit, options) as Promise<TitledVersion<Type>[]>,
     countPending: () => adapter.countPending(),
     /** The latest versions someone wrote, whatever their review status */
-    activity: (authorId: number, limit = 10) => adapter.activity(authorId, limit) as Promise<TitledVersion<Type>[]>,
+    activity: (authorId: number, limit = 10, options?: ActivityOptions) =>
+      adapter.activity(authorId, limit, options) as Promise<TitledVersion<Type>[]>,
     /** Entries pointing at an entry, like the sets of a brand */
-    referencing: (entityId: number, limit = 100) =>
-      adapter.referencing(entityId, limit) as Promise<Reference<Type>[]>,
+    referencing: (entityId: number, limit = 100, options?: { offset?: number }) =>
+      adapter.referencing(entityId, limit, options) as Promise<Reference<Type>[]>,
     isReferenced: (table: string, id: number) => adapter.isReferenced(table, id),
 
     /**
@@ -235,8 +236,8 @@ export const createCMS = <const C extends Collections<any>>({ db, collections, r
     propose,
 
     /**
-     * Approves or rejects a pending version. Rejecting the first version of an entry
-     * deletes the entry, which is returned as `deleted`.
+     * Approves or rejects a pending version and returns the proposal that was reviewed.
+     * Rejecting the first version of an entry deletes it and sets `deleted`.
      */
     review: (
       entityId: number,
@@ -247,11 +248,11 @@ export const createCMS = <const C extends Collections<any>>({ db, collections, r
         reviewerId = null,
       }: { status: Exclude<ReviewStatus, "pending">; comment?: string; reviewerId?: number | null },
     ) =>
-      adapter.transaction(async (store): Promise<{ deleted?: EntriesOf<C, Type> }> => {
+      adapter.transaction(async (store): Promise<{ entry: EntriesOf<C, Type>; deleted?: EntriesOf<C, Type> }> => {
         const lock = await store.lockEntity(entityId);
         if (!lock) throw new CmsError("not_found");
 
-        const entry = (await store.getEntry(entityId, versionId)) as Entry<Type> | undefined;
+        const entry = (await store.getEntry(entityId, versionId)) as EntriesOf<C, Type> | undefined;
         if (!entry) throw new CmsError("not_found");
         if (entry.status !== "pending") throw new CmsError("already_reviewed");
 
@@ -269,11 +270,11 @@ export const createCMS = <const C extends Collections<any>>({ db, collections, r
 
         if (status === "rejected" && lock.headVersionId === null) {
           await store.deleteEntity(entityId);
-          return { deleted: entry as EntriesOf<C, Type> };
+          return { entry, deleted: entry };
         }
         if (status === "rejected" && collections[entry.type].versions === false)
           await store.pruneVersions(entityId);
-        return {};
+        return { entry };
       }),
 
     /**

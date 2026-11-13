@@ -1,6 +1,7 @@
 import { CmsError, isManyRelation, type Collection, type Condition, type ScalarValue, type Where } from "@wikibricks/cms";
 import type postgres from "postgres";
 import { columnFields } from "./lists";
+import type { Queryable } from "./schema";
 
 type Fragment = postgres.PendingQuery<postgres.Row[]>;
 
@@ -30,10 +31,10 @@ export const queryKeys = (collection?: Collection<unknown>) => {
 
 export type QueryKeys = ReturnType<typeof queryKeys>;
 
-const join = (sql: postgres.Sql, parts: Fragment[], operator: "AND" | "OR") =>
+const join = (sql: Queryable, parts: Fragment[], operator: "AND" | "OR") =>
   parts.reduce((all, part) => (operator === "AND" ? sql`${all} AND ${part}` : sql`${all} OR ${part}`));
 
-const conditionSql = (sql: postgres.Sql, column: string, condition: Condition, key: string): Fragment => {
+const conditionSql = (sql: Queryable, column: string, condition: Condition, key: string): Fragment => {
   const col = sql(column);
 
   if (condition === null || typeof condition !== "object") return conditionSql(sql, column, { eq: condition }, key);
@@ -76,7 +77,7 @@ const conditionSql = (sql: postgres.Sql, column: string, condition: Condition, k
  * A condition on a relation to many entries of the found version, which the query names `v`.
  * Only asks which entries it relates to.
  */
-const relationSql = (sql: postgres.Sql, path: string, condition: Condition, key: string): Fragment => {
+const relationSql = (sql: Queryable, path: string, condition: Condition, key: string): Fragment => {
   const relates = (ids?: ScalarValue[]) => sql`EXISTS (
     SELECT 1 FROM entity_relations r
     WHERE r.version_id = v.version_id AND r.path = ${path}
@@ -97,7 +98,7 @@ const relationSql = (sql: postgres.Sql, path: string, condition: Condition, key:
 };
 
 /** A WHERE condition, only allowing the given keys */
-export const whereSql = (sql: postgres.Sql, where: Where, keys: QueryKeys): Fragment => {
+export const whereSql = (sql: Queryable, where: Where, keys: QueryKeys): Fragment => {
   const parts = Object.entries(where).flatMap(([key, condition]): Fragment[] => {
     if (condition === undefined) return [];
 
@@ -118,7 +119,7 @@ export const whereSql = (sql: postgres.Sql, where: Where, keys: QueryKeys): Frag
 };
 
 /** An ORDER BY list, like "title" or "-updatedAt", with the newest entries first otherwise */
-export const orderSql = (sql: postgres.Sql, sort: string | string[] = [], { columns }: QueryKeys) => {
+export const orderSql = (sql: Queryable, sort: string | string[] = [], { columns }: QueryKeys) => {
   const keys = (Array.isArray(sort) ? sort : [sort]).filter(Boolean);
 
   const parts = keys.map((key) => {

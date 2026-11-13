@@ -25,7 +25,7 @@ export type { Migration, Queryable } from "./schema";
 type Fragment = postgres.PendingQuery<postgres.Row[]>;
 
 export type PostgresAdapterOptions = {
-  sql: postgres.Sql;
+  sql: postgres.Sql | postgres.TransactionSql;
   /** Migrations of the app's own tables, applied once each and in order before the CMS tables are set up */
   migrations?: Record<string, Migration>;
   /** Table that author and reviewer IDs refer to, like "users". Without it, IDs are stored as they are. */
@@ -303,19 +303,35 @@ export const postgresAdapter =
         return rows.map((row) => ({ entityId: row.id, type: row.type, title: row.title, entityCreatedAt: row.created_at }));
       },
 
-      async history(entityId, limit) {
-        const [[entity], rows] = await Promise.all([
-          sql<{ head_version_id: number | null }[]>`SELECT head_version_id FROM entities WHERE id = ${entityId}`,
-          sql<VersionRow[]>`
-            SELECT * FROM cms_versions_view WHERE id = ${entityId}
-            ORDER BY version_number DESC, version_id DESC
-            LIMIT ${limit}
-          `,
-        ]);
-        if (!entity) return;
-
-        const current = rows.find((row) => row.version_id === entity.head_version_id) ?? rows[0];
-        return { title: (current?.title as string | null) ?? null, versions: rows.map(toVersion) };
+      async history(entityId, limit, { offset = 0, unapproved = "all" } = {}) {
+        const visible = unapproved === "all"
+          ? sql``
+          : unapproved === "none"
+            ? sql`AND review_status = 'approved'`
+            : sql`AND (review_status = 'approved' OR created_by = ${unapproved.authorId})`;
+        const rows = await sql<(VersionRow & { history_title: string | null; head_version_id: number | null })[]>`
+          WITH visible_versions AS NOT MATERIALIZED (
+            SELECT * FROM cms_versions_view WHERE id = ${entityId} ${visible}
+          ), subject AS (
+            SELECT v.title AS history_title, e.head_version_id
+            FROM visible_versions v JOIN entities e ON e.id = v.id
+            ORDER BY v.version_id = e.head_version_id DESC, v.version_number DESC, v.version_id DESC
+            LIMIT 1
+          )
+          SELECT subject.*, page.* FROM subject
+          LEFT JOIN (
+            SELECT * FROM visible_versions ORDER BY version_number DESC, version_id DESC
+            LIMIT ${limit} OFFSET ${offset}
+          ) page ON true
+          ORDER BY page.version_number DESC, page.version_id DESC
+        `;
+        const first = rows[0];
+        if (!first) return;
+        return {
+          title: first.history_title,
+          headVersionId: first.head_version_id,
+          versions: first.version_id === null ? [] : rows.map(toVersion),
+        };
       },
 
       async pending(limit, { offset = 0, oldestFirst = false } = {}) {
@@ -335,16 +351,17 @@ export const postgresAdapter =
         return Number(count);
       },
 
-      async activity(authorId, limit) {
+      async activity(authorId, limit, { offset = 0, approvedOnly = false } = {}) {
         const rows = await sql<VersionRow[]>`
-          SELECT * FROM cms_versions_view WHERE created_by = ${authorId}
-          ORDER BY version_created_at DESC
-          LIMIT ${limit}
+          SELECT * FROM cms_versions_view
+          WHERE created_by = ${authorId} ${approvedOnly ? sql`AND review_status = 'approved'` : sql``}
+          ORDER BY version_created_at DESC, version_id DESC
+          LIMIT ${limit} OFFSET ${offset}
         `;
         return rows.map(toTitledVersion);
       },
 
-      async referencing(entityId, limit) {
+      async referencing(entityId, limit, { offset = 0 } = {}) {
         const { itemTables } = valueTables(collections);
         const sources: Fragment[] = [];
 
@@ -380,7 +397,7 @@ export const postgresAdapter =
 
         const references = sources.reduce((all, source) => sql`${all} UNION ${source}`);
         const rows = await sql<{ id: number; type: string; title: string | null; field: string }[]>`
-          SELECT * FROM (${references}) refs ORDER BY type, title, id LIMIT ${limit}
+          SELECT * FROM (${references}) refs ORDER BY type, title, id LIMIT ${limit} OFFSET ${offset}
         `;
         return rows.map((row) => ({ entityId: row.id, type: row.type, title: row.title, field: row.field }));
       },
