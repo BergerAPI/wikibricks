@@ -37,4 +37,4 @@ export {
   type Version,
   type Where,
 } from "./types";
-export { parseId } from "./values";
+export { parseId, parseInteger } from "./values";

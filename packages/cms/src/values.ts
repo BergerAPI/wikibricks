@@ -13,9 +13,18 @@ import {
   type Values,
 } from "./types";
 
+/** An integer within the range used by the storage adapter. */
+export const parseInteger = (value: unknown) => {
+  if (typeof value !== "number" && (typeof value !== "string" || !value.trim())) return;
+  const number = Number(value);
+  return Number.isInteger(number) && number >= -2_147_483_648 && number <= 2_147_483_647 ? number : undefined;
+};
+
+/** IDs are positive integers. Text IDs use decimal digits. */
 export const parseId = (value: unknown) => {
-  const id = Number(value);
-  return Number.isInteger(id) && id > 0 ? id : undefined;
+  if (typeof value === "string" && !/^\d+$/.test(value)) return;
+  const id = parseInteger(value);
+  return id !== undefined && id > 0 ? id : undefined;
 };
 
 // Days stay as written, moments are stored in UTC
@@ -70,7 +79,7 @@ const parseScalar = async (field: Field<unknown>, value: unknown, store: Store) 
       return value;
 
     case "number":
-      return Number.isInteger(Number(value)) && String(value).trim() !== "" ? Number(value) : undefined;
+      return parseInteger(value);
 
     case "select":
       return field.options.includes(String(value)) ? String(value) : undefined;

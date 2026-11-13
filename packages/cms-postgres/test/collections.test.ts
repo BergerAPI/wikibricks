@@ -184,6 +184,11 @@ describe("values", () => {
     assert.equal(await create({ published: "29.02.2024" }), "invalid published");
     assert.equal(await create({ updated: "soon" }), "invalid updated");
   });
+
+  test("rejects numbers outside the storage range as invalid field values", async () => {
+    const result = cms.create("post", { values: { headline: "Too many views", views: 2_147_483_648 } });
+    assert.equal(await errorOf(result), "invalid views");
+  });
 });
 
 describe("collections", () => {
