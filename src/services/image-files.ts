@@ -16,7 +16,7 @@ sharp.unblock({
 
 export const normalizeMimeType = (mime: string) => (mime === "image/jpg" ? "image/jpeg" : mime);
 export const getImageUrl = (id: number, width?: ImageWidth) =>
-  `/images/serve/${id}${width === undefined ? "" : `?width=${width}`}`;
+  `/images/${id}/file${width === undefined ? "" : `?width=${width}`}`;
 
 const webp = (buffer: Buffer, quality = 82) =>
   sharp(buffer, { failOn: "warning", limitInputPixels: MAX_PIXELS }).webp({ quality, effort: 3 });
@@ -46,6 +46,13 @@ const exists = async (path: string) => {
     if (!missing(error)) throw error;
     return false;
   }
+};
+
+export const needsImageSizes = async (image: Image) => {
+  for (const width of Object.values(imageWidths)) {
+    if (width < image.width && !await exists(variantPath(image.file_path, width))) return true;
+  }
+  return false;
 };
 
 export const writeImageSizes = async (image: Image) => {

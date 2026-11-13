@@ -1,3 +1,6 @@
+import { html } from "hono/html";
+import type { Child } from "hono/jsx";
+import { dateFormats, type DateFormat } from "./shared/contracts";
 import type { DefaultContext } from "./utils";
 import en from "./locales/en";
 import de from "./locales/de";
@@ -10,6 +13,14 @@ export const getAvailableLanguages = () => Object.keys(translations) as Language
 
 export const isLanguageSupported = (language: string): language is Language =>
   Object.hasOwn(translations, language);
+
+// Every page lives under its language, like /en/entities/search
+export const localPath = (language: Language, path: string) => `/${language}${path === "/" ? "" : path}`;
+
+const languagePrefix = new RegExp(`^/(?:${getAvailableLanguages().join("|")})(?=/|$)`);
+
+export const hasLanguage = (pathname: string) => languagePrefix.test(pathname);
+export const stripLanguage = (pathname: string) => pathname.replace(languagePrefix, "") || "/";
 
 const locales: Record<Language, string> = { en: "en-US", de: "de-DE" };
 const warnedMissingKeys = new Set<string>();
@@ -36,6 +47,18 @@ export const t = (
   return text;
 };
 
+/**
+ * Puts elements like links into the {placeholders} of a translated text.
+ */
+export const fill = (text: string, values: Record<string, Child>) =>
+  text.split(/\{(\w+)\}/).map((part, index) => (index % 2 ? values[part] ?? `{${part}}` : part));
+
+const formatTime = (date: Date, format: DateFormat, locale: string) => {
+  const value = new Date(date);
+  const text = value.toLocaleString(locale, { ...dateFormats[format], timeZone: "UTC" });
+  return html`<time datetime="${value.toISOString()}" data-format="${format}">${text}</time>`;
+};
+
 export const useTranslation = (c: DefaultContext) => {
   const language = c.get("language") ?? "en";
   const locale = locales[language];
@@ -44,8 +67,9 @@ export const useTranslation = (c: DefaultContext) => {
     language,
     t: (key: keyof Translations, variables?: Record<string, string>) =>
       t(key, language, variables),
-    formatDate: (date: Date) => new Date(date).toLocaleDateString(locale),
-    formatDateTime: (date: Date) => new Date(date).toLocaleString(locale),
+    url: (path: string) => localPath(language, path),
+    formatDate: (date: Date) => formatTime(date, "date", locale),
+    formatDateTime: (date: Date) => formatTime(date, "datetime", locale),
   };
 };
 

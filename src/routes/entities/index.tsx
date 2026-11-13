@@ -1,21 +1,21 @@
 import type { Field } from "@wikibricks/cms";
 import { cms, fieldsOf, type FieldUi, type WikiEntry } from "../../collections";
+import { TypeBrick } from "../../components/bricks";
 import { EntityFieldInput } from "../../components/entity-field";
-import { InfoBox, InfoBoxImage, InfoBoxRow } from "../../components/info-box";
-import { RichText, RichTextEditor } from "../../components/rich-text";
+import { ChangedValue, RichText, RichTextEditor } from "../../components/rich-text";
+import { InfoBox, InfoBoxImage, InfoBoxRow, Notice, PageTitle } from "../../components/ui";
+import { getUsernames } from "../../database";
 import { displayField, loadFieldOptions, loadRelationNames, type FieldOptions } from "../../fields";
 import { Layout } from "../../layout";
+import { summarize } from "../../markdown";
 import { getImageUrl, imageWidths } from "../../services/image-files";
-import { deleteUnusedImage, ownsImage, preparePublishedImage } from "../../services/image-storage";
-import type { EditEntityRequest, ReviewVersionRequest } from "../../shared/contracts";
-import { useTranslation, type TranslationFunctions } from "../../translation";
-import { getUsernames } from "../../users";
-import { isModerator, parseId, readJson, routeParam, type DefaultContext } from "../../utils";
-import { cmsErrorResponse } from "./errors";
-import { ChangedValue, ReviewNotice } from "./review";
+import { MAX_MESSAGE_LENGTH } from "../../shared/contracts";
+import { fill, useTranslation, type TranslationFunctions } from "../../translation";
+import { entityPath, parseEntityId } from "../../urls";
+import { isModerator, parseId, routeParam, type DefaultContext } from "../../utils";
 
-// Change and review messages are one-line summaries
-const MAX_MESSAGE_LENGTH = 2000;
+// Entries linking here beyond these are on a page of their own
+const REFERENCES_SHOWN = 20;
 
 const EntityInfoBox = ({
   entry,
@@ -26,6 +26,7 @@ const EntityInfoBox = ({
   previous,
   previousRelationNames,
   t,
+  url,
 }: {
   entry: WikiEntry;
   fields: Record<string, Field<FieldUi>>;
@@ -35,6 +36,7 @@ const EntityInfoBox = ({
   previous?: WikiEntry;
   previousRelationNames: Record<string, string>;
   t: TranslationFunctions["t"];
+  url: TranslationFunctions["url"];
 }) => {
   const imageId = parseId(entry.values.image_id);
   const previousImageId = parseId(previous?.values.image_id);
@@ -48,7 +50,8 @@ const EntityInfoBox = ({
               <ChangedValue
                 before={previousImageId ? <img src={getImageUrl(previousImageId, imageWidths.small)} alt={t("review.before")} loading="lazy" /> : null}
                 after={imageId ? <img src={getImageUrl(imageId, imageSize)} alt={t("review.after")} loading="lazy" /> : null}
-                t={t}
+                beforeLabel={t("review.before")}
+                afterLabel={t("review.after")}
               />
             </div>
           </td>
@@ -87,13 +90,13 @@ const EntityInfoBox = ({
         const show = (value: string, relationName?: string) => {
           if (!value) return null;
           const { text, href } = displayField(field, value, relationName);
-          return href ? <a href={href}>{text}</a> : text;
+          return href ? <a href={href.startsWith("/") ? url(href) : href}>{text}</a> : text;
         };
         const current = show(value, relationNames[name]);
         return (
           <InfoBoxRow label={t(label)}>
             {changed
-              ? <ChangedValue before={show(previousValue, previousRelationNames[name])} after={current} t={t} />
+              ? <ChangedValue before={show(previousValue, previousRelationNames[name])} after={current} beforeLabel={t("review.before")} afterLabel={t("review.after")} />
               : current}
           </InfoBoxRow>
         );
@@ -102,12 +105,19 @@ const EntityInfoBox = ({
   );
 };
 
+// The names of the entities a description links to, for the addresses of those links
+const loadLinkedNames = async (description: string) => {
+  const ids = [...new Set(Array.from(description.matchAll(/\]\(\/entities\/(\d+)\)/g), (match) => Number(match[1])))];
+  const items = ids.length > 0 ? await cms.list({ where: { id: { in: ids } } }) : [];
+  return new Map(items.map((item) => [item.entityId, item.title]));
+};
+
 export const handleEntityPage = async (c: DefaultContext) => {
   const user = c.get("user");
   const translation = useTranslation(c);
-  const { t } = translation;
+  const { t, url } = translation;
 
-  const entityId = parseId(routeParam(c, "id"));
+  const entityId = parseEntityId(routeParam(c, "id"));
   const versionParam = c.req.query("version");
   const versionId = versionParam === undefined ? undefined : parseId(versionParam);
   if (!entityId || (versionParam !== undefined && !versionId)) return c.notFound();
@@ -119,19 +129,34 @@ export const handleEntityPage = async (c: DefaultContext) => {
   if (entry.status !== "approved" && !isModerator(user) && entry.authorId !== user?.id)
     return c.notFound();
 
+  // The name in the address follows the current name, old addresses lead to the new one
+  const entityUrl = url(entityPath(entry));
+  if (!versionId && c.req.path !== entityUrl) return c.redirect(entityUrl + new URL(c.req.url).search, 301);
+
+  const editUrl = `${entityUrl}?edit`;
+  const loginUrl = `${url("/login")}?redirect=${encodeURIComponent(editUrl)}`;
+  if (!user && c.req.query("edit") !== undefined) return c.redirect(loginUrl);
+
   const isProposal = entry.status === "pending";
   // Edits always start from the current version, otherwise saving fails with a conflict
   const canEdit = !!user && c.req.query("edit") !== undefined && !versionId;
   const canReview = isProposal && isModerator(user);
   const canDelete = isModerator(user) && !canEdit && !versionId;
-  const entityUrl = `/entities/${entry.entityId}`;
+  // Requests of the page scripts go by the ID alone
+  const requestUrl = `/entities/${entry.entityId}`;
 
   const fields = fieldsOf(entry.type);
-  const [options, relationNames, references] = await Promise.all([
+  const [options, relationNames, references, linkedNames] = await Promise.all([
     canEdit ? loadFieldOptions(entry.type, entry.values) : {},
     loadRelationNames(entry, fields),
-    cms.referencing(entry.entityId),
+    cms.referencing(entry.entityId, REFERENCES_SHOWN + 1),
+    loadLinkedNames(entry.values.description),
   ]);
+  // Links to entities are stored by ID and shown with the language and current name
+  const link = (href: string) => {
+    const id = parseEntityId(href.match(/^\/entities\/(\d+)$/)?.[1] ?? "");
+    return url(id ? entityPath({ entityId: id, title: linkedNames.get(id) }) : href);
+  };
 
   // A specific version is shown with its review and what it changed
   const previous = versionId && entry.previousVersionId
@@ -148,35 +173,37 @@ export const handleEntityPage = async (c: DefaultContext) => {
   return c.render(
     <Layout
       context={c}
-      user={user}
-      script={canEdit ? "edit-entity" : canReview ? "review-entity" : canDelete ? "delete" : undefined}
+      title={`${entry.title}`}
+      description={summarize(entry.values.description)}
+      noindex={entry.status !== "approved" || !!versionId || canEdit}
+      page={canEdit ? "edit-entity" : canReview ? "review-entity" : canDelete ? "delete" : undefined}
     >
       <main
         class="flow-root"
-        data-edit-url={canEdit ? entityUrl : undefined}
+        data-edit-url={canEdit ? requestUrl : undefined}
         data-base-version-id={canEdit ? entry.versionId : undefined}
-        data-review-url={canReview ? `${entityUrl}/${entry.versionId}` : undefined}
+        data-review-url={canReview ? `${requestUrl}/versions/${entry.versionId}` : undefined}
         data-reject-reason={canReview ? t("review.rejectReason") : undefined}
-        data-history-url={canEdit ? `${entityUrl}/history` : undefined}
+        data-history-url={canEdit ? `${entityPath(entry)}/history` : undefined}
       >
-        <div class="flex flex-wrap justify-between items-center gap-x-4 gap-y-2 pb-2 mb-3 border-b">
-          <h1 class="text-3xl font-serif">
-            {previous && previous.title !== entry.title
-              ? <ChangedValue before={previous.title} after={entry.title} t={t} />
-              : entry.title}
-            {versionId && `: ${t("entity.history.version")} ${entry.versionNumber}`}
-          </h1>
-          <div class="flex flex-wrap items-center gap-x-4 [&>a]:inline-flex [&>a]:min-h-11 [&>a]:items-center">
+        <a
+          href={url(`/entities/search?entity_type=${entry.type}`)}
+          class="inline-flex min-h-11 items-center gap-1.5 text-sm"
+        >
+          <TypeBrick type={entry.type} class="h-3" />
+          {t(`entityType.${entry.type}`)}
+        </a>
+        <PageTitle
+          actions={<>
             {!isProposal && canEdit && <a href={entityUrl}>{t("entity.cancel")}</a>}
-            {!isProposal && !canEdit && user && (
-              <a href={`${entityUrl}?edit`}>{t("entity.editPage")}</a>
-            )}
+            {versionId && entry.status === "approved" && <a href={entityUrl}>{t("entity.currentVersion")}</a>}
+            {!isProposal && !canEdit && <a href={user ? editUrl : loginUrl}>{t("entity.editPage")}</a>}
             <a href={`${entityUrl}/history`}>{t("entity.versionHistory")}</a>
             {canDelete && (
               <button
                 type="button"
-                class="border-0 px-0 text-red-600 hover:underline"
-                data-delete-url={entityUrl}
+                class="button-link text-red-700"
+                data-delete-url={requestUrl}
                 data-delete-confirm={t("entity.confirmDelete")}
                 data-delete-success={t("entity.deleteSuccess")}
                 data-delete-failed={t("entity.deleteFailed")}
@@ -185,8 +212,15 @@ export const handleEntityPage = async (c: DefaultContext) => {
                 {t("entity.delete")}
               </button>
             )}
-          </div>
-        </div>
+          </>}
+        >
+            {previous && previous.title
+              ? <ChangedValue before={previous.title} after={entry.title} beforeLabel={t("review.before")} afterLabel={t("review.after")} />
+              : entry.title}
+            {versionId && `: ${t("entity.history.version")} ${entry.versionNumber}`}
+        </PageTitle>
+
+        {(canEdit || canReview) && <Notice tone="error" id="error" role="alert" />}
 
         {canEdit && (
           <div class="mb-3 pb-2 border-b flex flex-wrap items-end gap-2">
@@ -194,17 +228,26 @@ export const handleEntityPage = async (c: DefaultContext) => {
               <span>{t("entity.changeMessage")}</span>
               <input class="block w-full" id="change_message" required maxlength={MAX_MESSAGE_LENGTH} />
             </label>
-            <button id="save" type="button" disabled>
+            <button id="save" type="button" class="button-primary" disabled>
               {t("entity.save")}
             </button>
           </div>
         )}
 
-        {versionId && <ReviewNotice entry={entry} reviewer={reviewer} translation={translation} />}
-
-        {canReview && isStale && (
-          <p class="mb-3 border border-red-400 bg-red-50 p-3">{t("review.stale")}</p>
+        {/* Where the version stands in review: still waiting, or who decided on it and why */}
+        {versionId && (isProposal || reviewer) && (
+          <Notice tone={({ pending: "warning", approved: "success", rejected: "error" } as const)[entry.status]}>
+            <p class="font-semibold">
+              {fill(t(`review.${entry.status}`), {
+                reviewer: reviewer ?? "",
+                date: entry.reviewedAt ? translation.formatDate(entry.reviewedAt) : "",
+              })}
+            </p>
+            {entry.reviewComment && <p class="mt-1 whitespace-pre-wrap">{entry.reviewComment}</p>}
+          </Notice>
         )}
+
+        {canReview && isStale && <Notice tone="error">{t("review.stale")}</Notice>}
 
         {canReview && (
           <div class="mb-3 pb-2 border-b flex flex-wrap items-end gap-2">
@@ -212,10 +255,10 @@ export const handleEntityPage = async (c: DefaultContext) => {
               <span>{t("entity.reviewMessage")}</span>
               <input class="block w-full" id="review_message" maxlength={MAX_MESSAGE_LENGTH} />
             </label>
-            <button title={t("entity.approveTooltip")} id="approve" type="button" disabled={isStale}>
+            <button title={t("entity.approveTooltip")} id="approve" type="button" class="button-primary" disabled={isStale} data-locked={isStale || undefined}>
               {t("entity.approve")}
             </button>
-            <button title={t("entity.rejectTooltip")} id="reject" type="button">
+            <button title={t("entity.rejectTooltip")} id="reject" type="button" class="button-secondary">
               {t("entity.reject")}
             </button>
           </div>
@@ -227,6 +270,7 @@ export const handleEntityPage = async (c: DefaultContext) => {
         {(entry.values.image_id || imageChanged || Object.values(fields).some((field) => field.meta.label)) && (
           <EntityInfoBox
             t={t}
+            url={url}
             editable={canEdit}
             entry={entry}
             fields={fields}
@@ -239,126 +283,25 @@ export const handleEntityPage = async (c: DefaultContext) => {
 
         {canEdit
           ? <RichTextEditor id="description" name="description" value={entry.values.description} t={t} referenceUrl="/entities/options" />
-          : <RichText value={entry.values.description} previous={previous ? { value: previous.values.description, t } : undefined} />}
+          : <RichText value={entry.values.description} link={link} previous={previous ? { value: previous.values.description, t } : undefined} />}
 
         {references.length > 0 && (
           <section class="clear-both pt-4">
             <h2 class="text-xl font-serif pb-1 mb-2 border-b">{t("entity.referencedBy")}</h2>
             <ul>
-              {references.map((reference) => (
+              {references.slice(0, REFERENCES_SHOWN).map((reference) => (
                 <li>
                   {t(`entityType.${reference.type}`)}:{" "}
-                  <a href={`/entities/${reference.entityId}`}>{reference.title}</a>
+                  <a href={url(entityPath(reference))}>{reference.title}</a>
                 </li>
               ))}
             </ul>
+            {references.length > REFERENCES_SHOWN && (
+              <a href={`${url(entityPath(entry))}/references`} class="inline-flex min-h-11 items-center">{t("action.seeAll")}</a>
+            )}
           </section>
         )}
       </main>
     </Layout>,
   );
-};
-
-export const handleEntityPageSubmit = async (c: DefaultContext) => {
-  const user = c.get("user");
-  if (!user) return c.body("Unauthorized", 401);
-
-  const entityId = parseId(routeParam(c, "id"));
-  if (!entityId) return c.notFound();
-
-  const { changeMessage, description, baseVersionId, fields = {} } = await readJson<EditEntityRequest>(c);
-
-  if (
-    typeof changeMessage !== "string" ||
-    !changeMessage.trim() ||
-    changeMessage.length > MAX_MESSAGE_LENGTH ||
-    (baseVersionId !== undefined && !parseId(baseVersionId)) ||
-    (description !== undefined && typeof description !== "string") ||
-    fields === null ||
-    typeof fields !== "object" ||
-    Array.isArray(fields)
-  )
-    return c.body("Bad Request", 400);
-
-  const imageId = fields.image_id ? parseId(fields.image_id) : undefined;
-  if (fields.image_id && (!imageId || !await ownsImage(imageId, user.id))) return c.body("Image is unavailable", 400);
-
-  try {
-    await cms.propose(entityId, {
-      values: description === undefined ? fields : { ...fields, description },
-      changeMessage,
-      authorId: user.id,
-      baseVersionId: baseVersionId === undefined ? undefined : parseId(baseVersionId),
-    });
-    return c.body("OK", 200);
-  } catch (error) {
-    if ((error as { code?: string }).code === "23503" && imageId && !await ownsImage(imageId, user.id))
-      return c.body("Image is unavailable", 400);
-    return cmsErrorResponse(c, error);
-  }
-};
-
-// The image of a deleted or rejected entry goes too, unless another entry uses it
-const deleteEntryImage = async (entry: WikiEntry) => {
-  const imageId = parseId(entry.values.image_id);
-  if (imageId && entry.authorId) await deleteUnusedImage(imageId, entry.authorId);
-};
-
-export const handleEntityDelete = async (c: DefaultContext) => {
-  const user = c.get("user");
-  if (!user || !isModerator(user)) return c.body("Unauthorized", 401);
-
-  const entityId = parseId(routeParam(c, "id"));
-  if (!entityId) return c.notFound();
-
-  try {
-    await deleteEntryImage(await cms.delete(entityId));
-    return c.body("OK", 200);
-  } catch (error) {
-    return cmsErrorResponse(c, error);
-  }
-};
-
-export const handleEntityVersionPatch = async (c: DefaultContext) => {
-  const user = c.get("user");
-  if (!user || !isModerator(user)) return c.body("Unauthorized", 401);
-
-  const entityId = parseId(routeParam(c, "id"));
-  const versionId = parseId(routeParam(c, "version"));
-  if (!entityId || !versionId) return c.body("Bad Request", 400);
-
-  const { reviewMessage, type } = await readJson<ReviewVersionRequest>(c);
-
-  if (
-    typeof reviewMessage !== "string" ||
-    reviewMessage.length > MAX_MESSAGE_LENGTH ||
-    (type !== "approved" && type !== "rejected")
-  )
-    return c.body("Bad Request", 400);
-
-  // The author of a rejected change should learn what to do differently
-  if (type === "rejected" && !reviewMessage.trim())
-    return c.body(useTranslation(c).t("review.rejectReason"), 400);
-
-  try {
-    const { deleted } = await cms.review(entityId, versionId, {
-      status: type,
-      comment: reviewMessage,
-      reviewerId: user.id,
-    });
-    if (deleted) await deleteEntryImage(deleted);
-  } catch (error) {
-    return cmsErrorResponse(c, error, { stale: "error.staleProposal" });
-  }
-
-  if (type === "approved") {
-    try {
-      const entry = await cms.get(entityId, { versionId });
-      const imageId = parseId(entry?.values.image_id);
-      if (imageId) await preparePublishedImage(imageId);
-    } catch (error) {
-      console.error("Could not prepare sizes for approved image:", error);
-    }
-  }
-  return c.body("OK", 200);
 };

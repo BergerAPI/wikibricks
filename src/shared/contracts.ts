@@ -26,6 +26,8 @@ export type CreateEntityResponse = {
 
 export type UploadImageResponse = { id: number };
 
+export const MAX_MESSAGE_LENGTH = 2000;
+
 export type EditEntityRequest = {
   description?: string;
   fields?: EntityFieldValues;
@@ -37,3 +39,14 @@ export type ReviewVersionRequest = {
   type: "approved" | "rejected";
   reviewMessage: string;
 };
+
+/**
+ * How dates are shown. The server writes them in UTC, the browser rewrites them
+ * in the device's own time zone and format.
+ */
+export const dateFormats = {
+  date: { dateStyle: "medium" },
+  datetime: { dateStyle: "medium", timeStyle: "short" },
+} satisfies Record<string, Intl.DateTimeFormatOptions>;
+
+export type DateFormat = keyof typeof dateFormats;

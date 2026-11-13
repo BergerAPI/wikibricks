@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, rm, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, test } from "node:test";
@@ -59,11 +59,13 @@ before(async () => {
   const { cms } = await import("../collections");
   const images = await import("../routes/images");
   const { handleNewEntitySubmit } = await import("../routes/entities/new-entity");
-  const { handleEntityPageSubmit, handleEntityVersionPatch } = await import("../routes/entities");
+  const { handleEntityDelete, handleEntityPageSubmit, handleEntityVersionPatch } = await import("../routes/entities/write");
+  const { handleEntityHistoryPage } = await import("../routes/entities/history");
+  const { handleUserRoleSubmit } = await import("../routes/users");
   await cms.init();
   const people = await sql<User[]>`
     INSERT INTO users (username, permission_level)
-    VALUES ('author', 0), ('visitor', 0), ('moderator', 5), ('limited', 0), ('spam', 0), ('concurrent', 0)
+    VALUES ('author', 0), ('visitor', 0), ('moderator', 5), ('limited', 0), ('spam', 0), ('concurrent', 0), ('admin', 9)
     RETURNING *
   `;
   for (const person of people) users.set(person.id, person);
@@ -73,13 +75,16 @@ before(async () => {
     await next();
   });
   app.post("/images/upload", images.guardImageUpload, images.limitImageUpload, images.handleImageUpload);
-  app.get("/images/serve/:id", images.handleImageServe);
+  app.get("/images/:id/file", images.handleImageServe);
   app.get("/images/:id/info", images.handleImageInfo);
   app.get("/images/:id", images.handleImagePage);
   app.delete("/images/:id", images.handleImageDelete);
   app.post("/entities/new", handleNewEntitySubmit);
   app.post("/entities/:id", handleEntityPageSubmit);
-  app.patch("/entities/:id/:version", handleEntityVersionPatch);
+  app.delete("/entities/:id", handleEntityDelete);
+  app.get("/en/entities/:id/history", handleEntityHistoryPage);
+  app.patch("/entities/:id/versions/:version", handleEntityVersionPatch);
+  app.post("/users/:id/role", handleUserRoleSubmit);
 
   photo = await sharp({ create: { width: 1200, height: 2400, channels: 3, background: "#5577aa" } })
     .jpeg().withMetadata({ orientation: 6 }).toBuffer();
@@ -100,6 +105,24 @@ test("rejects anonymous, oversized, corrupt, and mismatched uploads without writ
   assert.deepEqual(await readdir(directory), []);
 });
 
+test("rejects malformed entity writes before they reach storage", async () => {
+  const newEntry = { entity_type: "wiki", name: "Test entity", description: "A valid description." };
+  const edit = { changeMessage: "Update details" };
+  const requests = [
+    ["/entities/new", 1, json("POST", { ...newEntry, fields: null })],
+    ["/entities/new", 1, json("POST", { ...newEntry, image_id: true })],
+    ["/entities/new", 1, json("POST", { ...newEntry, fields: [] })],
+    ["/entities/1", 1, json("POST", { ...edit, baseVersionId: [1] })],
+    ["/entities/1", 1, json("POST", { ...edit, changeMessage: "   " })],
+    ["/entities/1/versions/1", 3, json("PATCH", { type: "pending", reviewMessage: "" })],
+    ["/entities/1/versions/1", 3, json("PATCH", { type: "rejected", reviewMessage: "   " })],
+    ["/entities/new", 1, { ...json("POST", newEntry), body: "{" }],
+  ] as const;
+  for (const [path, user, init] of requests) assert.equal((await request(path, user, init)).status, 400, path);
+  const [{ count }] = await sql<{ count: number }[]>`SELECT COUNT(*)::int AS count FROM entity_versions`;
+  assert.equal(count, 0);
+});
+
 test("accepts PNG and WebP and preserves transparency without enlarging the master", async () => {
   const png = await sharp({ create: { width: 20, height: 30, channels: 4, background: "#5588aa55" } }).png().toBuffer();
   const webp = await sharp(png).webp().toBuffer();
@@ -107,7 +130,7 @@ test("accepts PNG and WebP and preserves transparency without enlarging the mast
     const response = await upload(1, data, `image/${format}`);
     assert.equal(response.status, 200);
     const { id } = await response.json() as { id: number };
-    const { width, height, hasAlpha } = await fileInfo(await request(`/images/serve/${id}`, 1));
+    const { width, height, hasAlpha } = await fileInfo(await request(`/images/${id}/file`, 1));
     assert.deepEqual({ width, height, hasAlpha }, { width: 20, height: 30, hasAlpha: true });
     assert.equal((await request(`/images/${id}`, 1, { method: "DELETE" })).status, 200);
   }
@@ -119,7 +142,7 @@ test("keeps the master private until approval and serves both sizes after approv
   const payload = await response.json() as { id: number };
   assert.deepEqual(Object.keys(payload), ["id"]);
   const { id } = payload;
-  const url = `/images/serve/${id}`;
+  const url = `/images/${id}/file`;
   const info = `/images/${id}/info`;
 
   assert.equal((await readdir(directory)).length, 1);
@@ -145,10 +168,16 @@ test("keeps the master private until approval and serves both sizes after approv
   assert.equal((await readdir(directory)).length, 1);
   assert.equal((await request(`/images/${id}`, 1, { method: "DELETE" })).status, 409);
 
-  const approved = await request(`/entities/${entry.entity_id}/${entry.id}`, 3, json("PATCH", {
+  const approved = await request(`/entities/${entry.entity_id}/versions/${entry.id}`, 3, json("PATCH", {
     type: "approved", reviewMessage: "Image approved",
   }));
   assert.equal(approved.status, 200);
+  const [audit] = await sql`SELECT * FROM audit_log WHERE action = 'version_approved' ORDER BY id DESC LIMIT 1`;
+  assert.equal(audit.actor_id, 3);
+  // The author hears about the review
+  assert.equal(audit.user_id, 1);
+  assert.equal(audit.subject, "Image under review");
+  assert.equal(audit.details, "Image approved");
   assert.equal((await readdir(directory)).length, 3);
   assert.equal((await request(info)).status, 200);
   for (const width of [480, 960]) {
@@ -166,6 +195,13 @@ test("keeps the master private until approval and serves both sizes after approv
     assert.equal(await head.text(), "");
   }
 
+  const smallVariant = (await readdir(directory)).find((file) => file.endsWith(".480.webp"));
+  assert.ok(smallVariant);
+  await unlink(join(directory, smallVariant));
+  const { repairPublishedImageSizes } = await import("../services/image-storage");
+  await repairPublishedImageSizes(0);
+  assert.equal((await fileInfo(await request(url + "?width=480"))).width, 480);
+
   // A later approved edit keeps the first version and its image visible in history.
   assert.equal((await request(`/entities/${entry.entity_id}`, 2, json("POST", {
     fields: { image_id: String(id) }, changeMessage: "Try to attach someone else's image",
@@ -177,7 +213,7 @@ test("keeps the master private until approval and serves both sizes after approv
   const [{ version }] = await sql<{ version: number }[]>`
     SELECT MAX(id) AS version FROM entity_versions WHERE entity_id = ${entry.entity_id}
   `;
-  assert.equal((await request(`/entities/${entry.entity_id}/${version}`, 3, json("PATCH", {
+  assert.equal((await request(`/entities/${entry.entity_id}/versions/${version}`, 3, json("PATCH", {
     type: "approved", reviewMessage: "",
   }))).status, 200);
   const historical = await request(url);
@@ -190,10 +226,49 @@ test("keeps the master private until approval and serves both sizes after approv
   assert.deepEqual(await readdir(directory), []);
 });
 
+test("hides unpublished history and rolls back approval, deletion and role changes when their audit insert fails", async () => {
+  const body = { entity_type: "wiki", name: "Private audit draft", description: "Synthetic test entry." };
+  const response = await request("/entities/new", 1, json("POST", body));
+  assert.equal(response.status, 200);
+  const { entity_id: entityId, id: versionId } = await response.json() as { entity_id: number; id: number };
+  const history = `/en/entities/${entityId}/history`;
+  const canonical = `/en/entities/${entityId}-private-audit-draft/history`;
+  for (const path of [history, canonical]) {
+    assert.equal((await request(path)).status, 404);
+    assert.equal((await request(path, 2)).status, 404);
+  }
+  for (const user of [1, 3]) {
+    const redirect = await request(history, user);
+    assert.equal(redirect.status, 302);
+    assert.equal(redirect.headers.get("location"), canonical);
+    assert.equal(redirect.headers.get("cache-control"), "private, no-store");
+    assert.match(await (await request(canonical, user)).text(), /Private audit draft/);
+  }
+
+  const reviewPath = `/entities/${entityId}/versions/${versionId}`;
+  const approve = json("PATCH", { type: "approved", reviewMessage: "OK" });
+  const roleChange = { method: "POST", body: new URLSearchParams({ role: "moderator" }) };
+  await sql`ALTER TABLE audit_log ADD CONSTRAINT reject_test_writes CHECK (false) NOT VALID`;
+  try {
+    assert.equal((await request(reviewPath, 3, approve)).status, 500);
+    assert.equal((await request(`/entities/${entityId}`, 3, { method: "DELETE" })).status, 500);
+    assert.equal((await request("/users/2/role", 7, roleChange)).status, 500);
+    const [version] = await sql`SELECT review_status FROM entity_versions WHERE id = ${versionId}`;
+    const [user] = await sql`SELECT permission_level FROM users WHERE id = 2`;
+    assert.equal(version.review_status, "pending");
+    assert.equal(user.permission_level, 0);
+  } finally {
+    await sql`ALTER TABLE audit_log DROP CONSTRAINT reject_test_writes`;
+  }
+  assert.equal((await request(reviewPath, 3, approve)).status, 200);
+  assert.equal((await request(canonical)).status, 200);
+  assert.equal((await request("/users/2/role", 7, roleChange)).status, 303);
+});
+
 test("rejects a proposal without generating sizes and cleans up only expired unattached files", async () => {
   const { id } = await (await upload(1)).json() as { id: number };
   const entry = await (await createEntry(1, id, "Rejected image")).json() as { entity_id: number; id: number };
-  assert.equal((await request(`/entities/${entry.entity_id}/${entry.id}`, 3, json("PATCH", {
+  assert.equal((await request(`/entities/${entry.entity_id}/versions/${entry.id}`, 3, json("PATCH", {
     type: "rejected", reviewMessage: "Please replace the image.",
   }))).status, 200);
   assert.deepEqual(await readdir(directory), []);
@@ -262,7 +337,7 @@ test("serves an existing approved JPEG when it has no generated sizes", async ()
   await cms.review(entry.entity_id, entry.id, { status: "approved", reviewerId: 3 });
 
   const files = await readdir(directory);
-  const response = await request(`/images/serve/${id}?width=480`);
+  const response = await request(`/images/${id}/file?width=480`);
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("Content-Type"), "image/jpeg");
   assert.deepEqual(Buffer.from(await response.arrayBuffer()), photo);

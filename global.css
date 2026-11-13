@@ -3,6 +3,16 @@
 
 @theme {
     --color-background: #f9f9f9;
+
+    /* A brick falling into place on the start page */
+    --animate-brick-drop: brick-drop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+
+    @keyframes brick-drop {
+        from {
+            opacity: 0;
+            transform: translateY(-2.5rem) rotate(-20deg);
+        }
+    }
 }
 
 @layer base {
@@ -43,7 +53,7 @@
     }
 
     button {
-        @apply cursor-pointer border px-3 py-2 disabled:cursor-default;
+        @apply cursor-pointer rounded border px-3 py-2 disabled:cursor-default disabled:opacity-50;
     }
 
     select {
@@ -65,4 +75,26 @@
         @apply pl-5 space-y-2 list-disc marker:text-gray-950;
     }
 
+}
+
+/* The editor shows what to write while it is empty */
+[data-editor-content][data-empty] .ProseMirror > p:first-child::before {
+    content: var(--placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+    @apply text-gray-400;
+}
+
+/* The three kinds of buttons: the main action of a form, the others, and ones that read like links */
+@utility button-primary {
+    @apply border-blue-700 bg-blue-700 font-medium text-white hover:enabled:bg-blue-800;
+}
+
+@utility button-secondary {
+    @apply border-gray-300 bg-gray-100 hover:enabled:bg-gray-200;
+}
+
+@utility button-link {
+    @apply border-0 bg-transparent px-0 text-blue-800 hover:underline;
 }

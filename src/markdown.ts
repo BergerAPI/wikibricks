@@ -9,7 +9,29 @@ const markdown = new MarkdownIt("commonmark", {
   .enable("strikethrough")
   .disable("image");
 
-export const renderMarkdown = (source: string) => markdown.render(source);
+type Env = { link?: (href: string) => string };
+
+// Links within the site are stored without a language, the page that shows them fills it in.
+markdown.renderer.rules.link_open = (tokens, index, options, env, self) => {
+  const { link } = (env ?? {}) as Env;
+  const href = tokens[index].attrGet("href");
+  if (link && typeof href === "string" && href.startsWith("/")) tokens[index].attrSet("href", link(href));
+  return self.renderToken(tokens, index, options);
+};
+
+export const renderMarkdown = (source: string, link?: Env["link"]) => markdown.render(source, { link });
+
+/**
+ * The start of a description as plain text, for search results and link previews.
+ */
+export const summarize = (source: string, length = 160) => {
+  const text = source
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/[#*_>`~]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text.length > length ? `${text.slice(0, length - 1).trimEnd()}…` : text;
+};
 
 export function renderMarkdownBlocks(source: string) {
   const env = {};

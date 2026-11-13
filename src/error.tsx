@@ -1,20 +1,21 @@
+import { BrickSpill } from "./components/bricks";
+import { PageTitle } from "./components/ui";
 import { Layout } from "./layout";
 import { useTranslation } from "./translation";
 import type { DefaultContext } from "./utils";
 
 const ErrorPage = ({ c, notFound }: { c: DefaultContext; notFound: boolean }) => {
-  const { t } = useTranslation(c);
+  const { t, url } = useTranslation(c);
 
   return (
-    <Layout context={c} user={c.get("user")}>
+    <Layout context={c} noindex>
       <main>
-        <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
-          {t(notFound ? "error.pageNotFound" : "error.somethingWentWrong")}
-        </h1>
+        <BrickSpill class="mb-4 w-44" />
+        <PageTitle>{t(notFound ? "error.pageNotFound" : "error.somethingWentWrong")}</PageTitle>
         <p class="pb-2">
           {t(notFound ? "error.pageNotFoundMessage" : "error.unexpectedErrorMessage")}
         </p>
-        <a href="/">{t("action.returnHome")}</a>
+        <a href={url("/")}>{t("action.returnHome")}</a>
       </main>
     </Layout>
   );

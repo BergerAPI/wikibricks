@@ -1,6 +1,7 @@
 import TomSelect from "tom-select/base";
 import dropdownInput from "tom-select/plugins/dropdown_input/plugin.js";
 import type { TomLoadCallback } from "tom-select/dist/esm/types/index.js";
+import { localUrl } from "../../client/http";
 import type { SelectOptionsResponse } from "../../shared/contracts";
 import "./style.css";
 
@@ -58,7 +59,7 @@ export default function mount(element: HTMLElement) {
       delete this.loadedSearches[query];
       request?.abort();
       const current = request = new AbortController();
-      const endpoint = new URL(url, location.origin);
+      const endpoint = new URL(localUrl(url), location.origin);
       endpoint.searchParams.set("q", query);
       status.textContent = "";
       try {

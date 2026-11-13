@@ -2,6 +2,7 @@ import { targetsOf, type Field } from "@wikibricks/cms";
 import type { Category } from "./categories";
 import { cms, fieldsOf, type EntityType, type FieldUi, type WikiEntry } from "./collections";
 import type { SelectOption } from "./shared/contracts";
+import { entityPath } from "./urls";
 
 export type FieldOption = SelectOption;
 
@@ -85,7 +86,7 @@ export const displayField = (
     return { text: category?.label ?? value };
   }
 
-  if (field.type === "relation") return { text: relationName ?? value, href: `/entities/${value}` };
+  if (field.type === "relation") return { text: relationName ?? value, href: entityPath({ entityId: Number(value), title: relationName }) };
 
   return { text: value, href: field.meta.link?.(value) };
 };

@@ -6,6 +6,21 @@ import { renderMarkdownBlocks } from "../../markdown";
 const removedClass = "bg-red-100 text-red-950 line-through";
 const addedClass = "bg-green-100 text-green-950 no-underline";
 
+/**
+ * A changed value as before and after, like a field of a reviewed version.
+ */
+export const ChangedValue = ({ before, after, beforeLabel, afterLabel }: {
+  before: Child;
+  after: Child;
+  beforeLabel: string;
+  afterLabel: string;
+}) => (
+  <>
+    <del class={`rounded px-1 ${removedClass}`}><span class="sr-only">{beforeLabel}{" "}</span>{before ?? "–"}</del>{" "}
+    <ins class={`rounded px-1 ${addedClass}`}><span class="sr-only">{afterLabel}{" "}</span>{after ?? "–"}</ins>
+  </>
+);
+
 type Block = ReturnType<typeof renderMarkdownBlocks>[number];
 const renderBlocks = (blocks: Block[]) => raw(blocks.map((block) => block.html).join(""));
 

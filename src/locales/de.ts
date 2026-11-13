@@ -21,6 +21,16 @@ export default {
   "editor.removeLink": "Link entfernen",
   "editor.loading": "Editor wird geladen…",
   "editor.error": "Der Editor konnte nicht geladen werden. Laden Sie die Seite erneut.",
+  "editor.strike": "Durchgestrichen",
+  "editor.code": "Code im Text",
+  "editor.codeBlock": "Codeblock",
+  "editor.horizontalRule": "Trennlinie",
+  "editor.blockType": "Textart",
+  "editor.linkText": "Text",
+  "editor.editLink": "Bearbeiten",
+  "editor.placeholder": "Schreiben Sie etwas darüber…",
+  "editor.characters": "{count} / {max} Zeichen",
+  "editor.entityHint": "Mit [[ einen Eintrag verlinken",
   // Layout and Navigation
   "site.title": "Wikibricks - Dein Ort für alle Stein-Bedürfnisse",
   "site.tagline": "Wikibricks",
@@ -39,6 +49,7 @@ export default {
   "action.seeAll": "Alle anzeigen",
   "action.returnHome": "Zur Startseite",
   "action.addEntity": "Element hinzufügen",
+  "action.addType": "{type} hinzufügen",
   "action.submit": "Absenden",
 
   // Authentication
@@ -84,13 +95,13 @@ export default {
   "home.welcome": "Willkommen bei Wikibricks!",
   "home.description":
     "Entdecken Sie eine Welt der Kreativität und des Ingenieurswesens mit Brick Wiki, der ultimativen Ressource für Spielstein-Enthusiasten. Ob Sie ein erfahrener Baumeister oder ein neugieriger Neuling sind, wir haben alles, was Sie brauchen, um das faszinierende Universum der Spielsteine zu erkunden.",
-  "home.browseSets": "Sets durchsuchen: ",
+  "home.browseSets": "Sets durchsuchen",
   "home.browseSetsBrief":
     "Erkunden Sie detaillierte Informationen zu ikonischen Sets Ihrer Lieblingsmarken.",
-  "home.learnBrands": "Über Marken lernen: ",
+  "home.learnBrands": "Über Marken lernen",
   "home.learnBrandsBrief":
     "Tauchen Sie ein in die Geschichte und das Erbe großer Marken wie LEGO, BlueBrixx und mehr.",
-  "home.exploreBricks": "Steine erkunden: ",
+  "home.exploreBricks": "Steine erkunden",
   "home.exploreBricksBrief":
     "Entdecken Sie einzigartige Steintypen, ihre Verwendung und wie sie Ihre Kreationen zum Leben erwecken.",
   "home.latestSets": "Neueste Sets",
@@ -98,12 +109,11 @@ export default {
 
   // Entity Management
   "entities.title": "Elemente",
-  "entities.type": "Typ",
   "entities.name": "Name",
-  "entities.date": "Datum",
   "entities.searchByName": "Nach Name suchen",
   "entities.noResults": "Keine passenden Einträge gefunden.",
   "entities.clearSearch": "Suche und Filter zurücksetzen",
+  "entities.filters": "Filter",
   "entities.min": "Minimum",
   "entities.max": "Maximum",
   "entities.anyValue": "Alle",
@@ -135,9 +145,7 @@ export default {
   "user.title": "Benutzer:",
   "user.recentActivity": "Letzte Aktivitäten",
   "user.noRecentActivity": "Keine aktuellen Aktivitäten",
-  "user.entity": "Element",
   "user.version": "Version",
-  "user.userId": "Benutzer-ID",
   "user.permissionLevel": "Rolle",
   "user.role.user": "Mitglied",
   "user.role.moderator": "Moderator",
@@ -147,8 +155,6 @@ export default {
 
   // Changes
   "changes.title": "Änderungsanfragen",
-  "changes.changedBy": "Geändert von",
-  "changes.message": "Nachricht",
   "changes.empty": "Es warten keine Änderungen auf Prüfung.",
 
   // Footer
@@ -162,14 +168,8 @@ export default {
 
   // Entity History
   "entity.history.title": "Versionshistorie:",
-  "entity.history.requestedChanges":
-    "Angeforderte Änderungen für {name}. Klicken Sie auf eine vorgeschlagene Version, um Details zu sehen. In absteigender Reihenfolge aufgelistet.",
-  "entity.history.versionHistory":
-    "Versionshistorie für {name}. Klicken Sie auf eine Version, um Details zu sehen. In absteigender Reihenfolge aufgelistet.",
   "entity.history.version": "Version",
-  "entity.history.created": "Erstellt",
   "entity.history.author": "Autor",
-  "entity.history.changeMessage": "Änderungsnachricht",
 
   // Entity Page
   "entity.pieces": "Teile",
@@ -189,6 +189,7 @@ export default {
   "entity.deleteFailed": "Löschen des Eintrags fehlgeschlagen",
   "entity.cancel": "Abbrechen",
   "entity.editPage": "Seite bearbeiten",
+  "entity.currentVersion": "Aktuelle Version",
   "entity.versionHistory": "Versionshistorie",
   "entity.changeMessage": "Änderungsnachricht",
   "entity.save": "Speichern",
@@ -234,11 +235,47 @@ export default {
   "review.before": "Vorher",
   "review.after": "Nachher",
   "entity.history.reviewer": "Geprüft von",
-  "entity.history.reviewComment": "Prüfkommentar",
-  "entity.history.rejected": "Abgelehnte Änderungen an {name}. Nur Moderatoren und die jeweiligen Autoren sehen diese.",
-  "changes.kind": "Änderung",
   "changes.new": "Neues Element",
   "changes.edit": "Bearbeitung",
-  "user.status": "Status",
   "user.changeRole": "Rolle ändern",
+
+  // Administration
+  "nav.admin": "Verwaltung",
+  "user.roleChanged": "Die Rolle wurde geändert.",
+  "admin.title": "Verwaltung",
+  "admin.overview": "Übersicht",
+  "admin.users": "Benutzer",
+  "admin.audit": "Protokoll",
+  "admin.accounts": "Konten",
+  "admin.images": "Bilder",
+  "admin.searchUsers": "Benutzer nach Namen suchen",
+  "admin.noAudit": "Bisher wurde nichts protokolliert.",
+  "admin.allRoles": "Alle Rollen",
+  "admin.noUsers": "Keine Benutzer gefunden.",
+  "admin.action": "Aktion",
+  "admin.allActions": "Alle Aktionen",
+  "audit.account_created": "{subject} hat ein Konto erstellt",
+  "audit.role_changed": "{actor} hat die Rolle von {subject} geändert",
+  "audit.entity_deleted": "{actor} hat {subject} gelöscht",
+  "audit.image_deleted": "{actor} hat das Bild {subject} gelöscht",
+  "audit.version_approved": "{actor} hat eine Änderung an {subject} freigegeben",
+  "audit.version_rejected": "{actor} hat eine Änderung an {subject} abgelehnt",
+  "audit.label.account_created": "Konto erstellt",
+  "audit.label.role_changed": "Rolle geändert",
+  "audit.label.entity_deleted": "Element gelöscht",
+  "audit.label.image_deleted": "Bild gelöscht",
+  "audit.label.version_approved": "Änderung freigegeben",
+  "audit.label.version_rejected": "Änderung abgelehnt",
+
+  // Notifications and paging
+  "nav.notificationsNew": "Benachrichtigungen, {count} neu",
+  "notify.title": "Benachrichtigungen",
+  "notify.empty": "Noch nichts da. Wenn Änderungen geprüft wurden, steht es hier.",
+  "notify.new": "Neu",
+  "notify.pending": "Änderungen warten auf Prüfung: {count}",
+  "notify.approved": "Ihre Änderung an {name} wurde freigegeben",
+  "notify.rejected": "Ihre Änderung an {name} wurde abgelehnt",
+  "notify.roleChanged": "Ihre Rolle wurde zu {role} geändert",
+  "action.page": "Seite {page}",
+  "action.pages": "Seiten",
 } satisfies Record<keyof typeof en, string>;

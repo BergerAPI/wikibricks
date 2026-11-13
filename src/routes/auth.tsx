@@ -3,10 +3,11 @@ import bcrypt from "bcryptjs";
 import { deleteCookie, setCookie } from "hono/cookie";
 import type { Child } from "hono/jsx";
 import { isIP } from "node:net";
-import { sql, type User } from "../database";
+import { Notice, PageTitle } from "../components/ui";
+import { recordAudit, sql, type User } from "../database";
 import { Layout } from "../layout";
-import { parseLocalUrl } from "../local-url";
 import { useTranslation, type Translations } from "../translation";
+import { parseLocalUrl } from "../urls";
 import { isAdmin, isRateLimited, PermissionLevel, signUser, type DefaultContext } from "../utils";
 
 const SALT_ROUNDS = 12;
@@ -94,13 +95,11 @@ const AuthPage = ({
   const { t } = useTranslation(c);
 
   return (
-    <Layout context={c}>
+    <Layout context={c} title={t(title)} noindex>
       <main>
-        <h1 class="text-3xl font-serif pb-2 mb-3 border-b">{t(title)}</h1>
+        <PageTitle>{t(title)}</PageTitle>
         <form method="post" action={action} class="py-3 max-w-lg">
-          {error && (
-            <div class="mb-4 p-3 border border-red-400 bg-red-50 text-red-700">{error}</div>
-          )}
+          {error && <Notice tone="error" role="alert">{error}</Notice>}
           {children}
         </form>
         <p class="py-3 max-w-lg text-gray-600">{footer}</p>
@@ -110,19 +109,19 @@ const AuthPage = ({
 };
 
 const renderLogin = (c: DefaultContext, error?: string) => {
-  const { t } = useTranslation(c);
+  const { t, url } = useTranslation(c);
   const redirect = getLoginRedirect(c);
 
   return c.render(
     <AuthPage
       c={c}
       title="auth.login"
-      action={redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : "/login"}
+      action={url("/login") + (redirect ? `?redirect=${encodeURIComponent(redirect)}` : "")}
       error={error}
       footer={
         <>
           {t("auth.dontHaveAccount")}{" "}
-          <a href="/register">
+          <a href={url("/register")}>
             {t("auth.createOneHere")}
           </a>
         </>
@@ -136,7 +135,7 @@ const renderLogin = (c: DefaultContext, error?: string) => {
         autoComplete="current-password"
         maxLength={128}
       />
-      <button type="submit" class="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded">
+      <button type="submit" class="button-primary">
         {t("auth.loginButton")}
       </button>
     </AuthPage>,
@@ -144,18 +143,18 @@ const renderLogin = (c: DefaultContext, error?: string) => {
 };
 
 const renderRegister = (c: DefaultContext, error?: string) => {
-  const { t } = useTranslation(c);
+  const { t, url } = useTranslation(c);
 
   return c.render(
     <AuthPage
       c={c}
       title="auth.register"
-      action="/register"
+      action={url("/register")}
       error={error}
       footer={
         <>
           {t("auth.alreadyHaveAccount")}{" "}
-          <a href="/login">
+          <a href={url("/login")}>
             {t("auth.logInHere")}
           </a>
         </>
@@ -178,7 +177,7 @@ const renderRegister = (c: DefaultContext, error?: string) => {
         minLength={8}
         maxLength={128}
       />
-      <button type="submit" class="px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded">
+      <button type="submit" class="button-primary">
         {t("auth.createAccount")}
       </button>
     </AuthPage>,
@@ -186,16 +185,16 @@ const renderRegister = (c: DefaultContext, error?: string) => {
 };
 
 export const handleLoginPage = (c: DefaultContext) =>
-  c.get("user") ? c.redirect("/") : renderLogin(c);
+  c.get("user") ? c.redirect(useTranslation(c).url("/")) : renderLogin(c);
 
 export const handleRegisterPage = (c: DefaultContext) =>
-  c.get("user") ? c.redirect("/") : renderRegister(c);
+  c.get("user") ? c.redirect(useTranslation(c).url("/")) : renderRegister(c);
 
 export const handleRegisterSubmit = async (c: DefaultContext) => {
   if (!isAdmin(c.get("user")) && isRateLimited(`register:${getClientAddress(c)}`, 10, 60 * 60 * 1000))
     return c.text("Too many requests", 429);
 
-  const { t } = useTranslation(c);
+  const { t, url } = useTranslation(c);
   const body = await c.req.parseBody();
   const username = formValue(body.username).trim();
   const password = formValue(body.password);
@@ -209,14 +208,18 @@ export const handleRegisterSubmit = async (c: DefaultContext) => {
   if (password !== body.confirmPassword) return renderRegister(c, t("error.passwordsDoNotMatch"));
 
   try {
-    const [newUser] = await sql<User[]>`
-      INSERT INTO users (username, password, permission_level)
-      VALUES (${username}, ${await bcrypt.hash(password, SALT_ROUNDS)}, ${PermissionLevel.USER})
-      RETURNING *
-    `;
-
+    const hash = await bcrypt.hash(password, SALT_ROUNDS);
+    const newUser = await sql.begin(async (tx) => {
+      const [created] = await tx<User[]>`
+        INSERT INTO users (username, password, permission_level)
+        VALUES (${username}, ${hash}, ${PermissionLevel.USER})
+        RETURNING *
+      `;
+      await recordAudit(tx, { actorId: created.id, action: "account_created", subject: created.username, path: `/users/${created.id}` });
+      return created;
+    });
     setCookie(c, "auth", await signUser(newUser), cookieOptions);
-    return c.redirect("/");
+    return c.redirect(url("/"));
   } catch (error) {
     // 23505 is the unique violation on the username
     if ((error as { code?: string }).code === "23505")
@@ -231,7 +234,7 @@ export const handleLoginSubmit = async (c: DefaultContext) => {
   if (!isAdmin(c.get("user")) && isRateLimited(`login:${getClientAddress(c)}`, 20, 10 * 60 * 1000))
     return c.text("Too many requests", 429);
 
-  const { t } = useTranslation(c);
+  const { t, url } = useTranslation(c);
   const body = await c.req.parseBody();
   const username = formValue(body.username).trim();
   const password = formValue(body.password);
@@ -243,10 +246,10 @@ export const handleLoginSubmit = async (c: DefaultContext) => {
   if (!user || !valid) return renderLogin(c, t("error.invalidCredentials"));
 
   setCookie(c, "auth", await signUser(user), cookieOptions);
-  return c.redirect(getLoginRedirect(c) ?? "/");
+  return c.redirect(getLoginRedirect(c) ?? url("/"));
 };
 
 export const handleLogoutSubmit = (c: DefaultContext) => {
   deleteCookie(c, "auth", { path: "/" });
-  return c.redirect("/", 303);
+  return c.redirect(useTranslation(c).url("/"), 303);
 };

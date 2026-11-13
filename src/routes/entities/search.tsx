@@ -1,20 +1,21 @@
 import { cms, fieldsOf } from "../../collections";
+import { BrickSpill, TypeBrick } from "../../components/bricks";
 import { EntityFieldInput } from "../../components/entity-field";
-import { Table, TableHead } from "../../components/table";
+import { Notice, PageTitle, Pager, Row, RowList, Tabs } from "../../components/ui";
 import { loadFieldOptions } from "../../fields";
 import { Layout } from "../../layout";
 import { readSearchFilters, searchableFields } from "../../search-filters";
 import { useTranslation } from "../../translation";
+import { entityPath, pageLink, readPage } from "../../urls";
 import type { DefaultContext } from "../../utils";
 
 const PAGE_SIZE = 10;
 
 export const handleSearchPage = async (c: DefaultContext) => {
   const user = c.get("user");
-  const { t, formatDate } = useTranslation(c);
+  const { t, url, formatDate } = useTranslation(c);
 
-  const requestedPage = Math.floor(Number(c.req.query("page")));
-  const page = requestedPage > 0 && Number.isSafeInteger(requestedPage * PAGE_SIZE) ? requestedPage : 0;
+  const page = readPage(c, PAGE_SIZE);
   const rawType = c.req.query("entity_type") ?? "all";
   const entityType = cms.isType(rawType) ? rawType : "all";
   const name = (c.req.query("name") ?? "").slice(0, 64);
@@ -39,40 +40,37 @@ export const handleSearchPage = async (c: DefaultContext) => {
   const results = items.slice(0, PAGE_SIZE);
 
   // Links within the search leave out whatever is empty.
-  const searchUrl = (query: Record<string, string>) =>
-    `/entities/search?${new URLSearchParams(Object.entries(query).filter(([, value]) => value))}`;
+  const searchUrl = (query: Record<string, string>, page = 0) => url(pageLink("/entities/search", query, page));
   const typeUrl = (type: string, name = "") =>
     searchUrl({ entity_type: type === "all" ? "" : type, name });
   const pageUrl = (page: number) =>
-    searchUrl({ ...Object.fromEntries(filters.params), entity_type: entityType, name, page: page ? String(page) : "" });
+    searchUrl({ ...Object.fromEntries(filters.params), entity_type: entityType === "all" ? "" : entityType, name }, page);
 
   // A bookmark can point past the last page after the result count changes.
   if (page > 0 && results.length === 0 && (await cms.list({ ...query, limit: 1 })).length > 0)
     return c.redirect(pageUrl(0));
 
   return c.render(
-    <Layout context={c} user={user}>
+    <Layout context={c} title={`${t("entities.title")}`} noindex>
       <main class="min-w-0">
-        <div class="flex flex-wrap justify-between items-center gap-x-4 gap-y-2 pb-2 mb-3 border-b">
-          <h1 class="text-3xl font-serif">{t("entities.title")}</h1>
-          <div class="flex flex-wrap items-center gap-x-4 [&>a]:inline-flex [&>a]:min-h-11 [&>a]:items-center">
-            {user && <a href="/entities/new">{t("action.addEntity")}</a>}
-          </div>
-        </div>
+        <PageTitle
+          actions={entityType === "all"
+            ? <a href={url("/entities/new")}>{t("action.addEntity")}</a>
+            : <a href={url(`/entities/new?type=${entityType}`)}>{t("action.addType", { type: t(`entityType.${entityType}`) })}</a>}
+        >
+          {t("entities.title")}
+        </PageTitle>
 
-        <nav aria-label={t("entities.entityTypeLabel")} class="mb-3 flex flex-wrap gap-x-1">
-          {(["all", ...cms.types] as const).map((option) => (
-            <a
-              href={typeUrl(option, name)}
-              aria-current={entityType === option ? "page" : undefined}
-              class="inline-flex min-h-11 items-center border-b-2 border-transparent px-3 aria-[current]:border-blue-800 aria-[current]:font-semibold aria-[current]:text-black"
-            >
-              {t(`entityType.${option}`)}
-            </a>
-          ))}
-        </nav>
+        <Tabs
+          label={t("entities.entityTypeLabel")}
+          tabs={(["all", ...cms.types] as const).map((option) => ({
+            href: typeUrl(option, name),
+            current: entityType === option,
+            children: <>{option !== "all" && <TypeBrick type={option} class="h-3.5" />}{t(`entityType.${option}`)}</>,
+          }))}
+        />
 
-        <form method="get" action="/entities/search" class="mb-4 flex flex-wrap items-center gap-x-4 gap-y-3">
+        <form method="get" action={url("/entities/search")} class="mb-4 flex flex-wrap items-center gap-x-4 gap-y-3">
           {entityType !== "all" && <input type="hidden" name="entity_type" value={entityType} />}
           <label class="sr-only" for="name">
             {t("entities.name")}
@@ -87,46 +85,50 @@ export const handleSearchPage = async (c: DefaultContext) => {
           />
 
           {Object.keys(fields).length > 0 && (
-            <div class="grid w-full gap-3 border bg-background p-3 sm:grid-cols-2 lg:grid-cols-3">
-              {Object.entries(fields).map(([key, field]) => (
-                <div>
-                  <label for={`filter-${key}`} class="block font-medium">{t(field.meta.label!)}</label>
-                  {field.type === "number" ? (
-                    <div class="mt-1 flex items-center gap-2">
-                      {(["min", "max"] as const).map((bound) => (
-                        <>
-                          {bound === "max" && <span class="text-gray-500">–</span>}
-                          <input
-                            type="number"
-                            step="1"
-                            id={bound === "min" ? `filter-${key}` : undefined}
-                            name={`filter.${key}.${bound}`}
-                            value={filters.params.get(`filter.${key}.${bound}`) ?? ""}
-                            placeholder={t(`entities.${bound}`)}
-                            aria-label={`${t(field.meta.label!)}: ${t(`entities.${bound}`)}`}
-                            class="w-full"
-                          />
-                        </>
-                      ))}
-                    </div>
-                  ) : (
-                    <EntityFieldInput
-                      field={field}
-                      t={t}
-                      options={options?.[key]}
-                      emptyLabel={t("entities.anyValue")}
-                      id={`filter-${key}`}
-                      name={`filter.${key}`}
-                      value={filters.params.get(`filter.${key}`) ?? ""}
-                      class="mt-1 block w-full"
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
+            // Closed until used, so the results stay in view on a phone
+            <details class="w-full border bg-background" open={filters.params.size > 0}>
+              <summary class="cursor-pointer px-3 py-2.5 font-medium">{t("entities.filters")}</summary>
+              <div class="grid gap-3 p-3 pt-0 sm:grid-cols-2 lg:grid-cols-3">
+                {Object.entries(fields).map(([key, field]) => (
+                  <div>
+                    <label for={`filter-${key}`} class="block font-medium">{t(field.meta.label!)}</label>
+                    {field.type === "number" ? (
+                      <div class="mt-1 flex items-center gap-2">
+                        {(["min", "max"] as const).map((bound) => (
+                          <>
+                            {bound === "max" && <span class="text-gray-500">–</span>}
+                            <input
+                              type="number"
+                              step="1"
+                              id={bound === "min" ? `filter-${key}` : undefined}
+                              name={`filter.${key}.${bound}`}
+                              value={filters.params.get(`filter.${key}.${bound}`) ?? ""}
+                              placeholder={t(`entities.${bound}`)}
+                              aria-label={`${t(field.meta.label!)}: ${t(`entities.${bound}`)}`}
+                              class="w-full"
+                            />
+                          </>
+                        ))}
+                      </div>
+                    ) : (
+                      <EntityFieldInput
+                        field={field}
+                        t={t}
+                        options={options?.[key]}
+                        emptyLabel={t("entities.anyValue")}
+                        id={`filter-${key}`}
+                        name={`filter.${key}`}
+                        value={filters.params.get(`filter.${key}`) ?? ""}
+                        class="mt-1 block w-full"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </details>
           )}
 
-          <button type="submit" class="border-gray-300 bg-gray-100 hover:bg-gray-200">
+          <button type="submit" class="button-secondary">
             {t("action.search")}
           </button>
           {(name || filters.params.size > 0) && (
@@ -135,39 +137,26 @@ export const handleSearchPage = async (c: DefaultContext) => {
         </form>
 
         {results.length === 0 ? (
-          <p class="border bg-background p-4">
+          <Notice>
+            <BrickSpill class="mb-3 w-36" />
             {t("entities.noResults")}{" "}
             <a href={typeUrl(entityType)}>{t("entities.clearSearch")}</a>
-          </p>
+          </Notice>
         ) : (
-          <Table>
-            <TableHead>
-              <th>{t("entities.type")}</th>
-              <th>{t("entities.name")}</th>
-              <th>{t("entities.date")}</th>
-            </TableHead>
-            <tbody>
-              {results.map((result) => (
-                <tr>
-                  <td>
-                    <a href={`/entities/${result.entityId}`}>{t(`entityType.${result.type}`)}</a>
-                  </td>
-                  <td>
-                    <a href={`/entities/${result.entityId}`}>{result.title}</a>
-                  </td>
-                  <td class="whitespace-nowrap">{formatDate(result.entityCreatedAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
+          <RowList>
+            {results.map((result) => (
+              // The type only tells something while all types are listed
+              <Row details={<>
+                {entityType === "all" && <span>{t(`entityType.${result.type}`)}</span>}
+                {formatDate(result.entityCreatedAt)}
+              </>}>
+                <a href={url(entityPath(result))}>{result.title}</a>
+              </Row>
+            ))}
+          </RowList>
         )}
 
-        <div class="mt-4 flex flex-wrap justify-center gap-3 [&>a]:inline-flex [&>a]:min-h-11 [&>a]:items-center [&>a]:border [&>a]:px-3">
-          {page > 0 && <a rel="prev" href={pageUrl(page - 1)}>{t("action.previous")}</a>}
-          {items.length > PAGE_SIZE && (
-            <a rel="next" href={pageUrl(page + 1)}>{t("action.next")}</a>
-          )}
-        </div>
+        <Pager page={page} more={items.length > PAGE_SIZE} pageUrl={pageUrl} t={t} />
       </main>
     </Layout>,
   );

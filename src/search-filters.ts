@@ -1,4 +1,4 @@
-import { isSingleValue, type Field, type Where } from "@wikibricks/cms";
+import { isSingleValue, parseId, parseInteger, type Field, type Where } from "@wikibricks/cms";
 import type { FieldUi } from "./collections";
 
 export const searchableFields = (fields: Record<string, Field<FieldUi>>) =>
@@ -16,12 +16,9 @@ export function readSearchFilters(fields: Record<string, Field<FieldUi>>, query:
     if (value) params.set(key, value);
     return value;
   };
-  const integer = (value: string) => {
-    const number = Number(value);
-    // Numeric fields and relation IDs are stored as Postgres integers.
-    if (!Number.isInteger(number) || number < -2147483648 || number > 2147483647)
-      throw new Error("Invalid search filter");
-    return number;
+  const requireValue = (value: number | undefined) => {
+    if (value === undefined) throw new Error("Invalid search filter");
+    return value;
   };
 
   for (const [name, field] of Object.entries(fields)) {
@@ -30,8 +27,8 @@ export function readSearchFilters(fields: Record<string, Field<FieldUi>>, query:
       const min = read(`${key}.min`);
       const max = read(`${key}.max`);
       if (min || max) where[name] = {
-        ...(min ? { gte: integer(min) } : {}),
-        ...(max ? { lte: integer(max) } : {}),
+        ...(min ? { gte: requireValue(parseInteger(min)) } : {}),
+        ...(max ? { lte: requireValue(parseInteger(max)) } : {}),
       };
       continue;
     }
@@ -44,7 +41,7 @@ export function readSearchFilters(fields: Record<string, Field<FieldUi>>, query:
         if (!field.options.includes(value)) throw new Error("Invalid search filter");
         where[name] = value;
         break;
-      case "relation": where[name] = integer(value); break;
+      case "relation": where[name] = requireValue(parseId(value)); break;
       case "boolean":
         if (value !== "true" && value !== "false") throw new Error("Invalid search filter");
         where[name] = value === "true";

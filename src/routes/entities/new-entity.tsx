@@ -1,45 +1,45 @@
 import { cms, fieldsOf } from "../../collections";
 import { EntityFieldInput } from "../../components/entity-field";
+import { Notice, PageTitle } from "../../components/ui";
 import { RichTextEditor } from "../../components/rich-text";
+import { Select } from "../../components/select";
 import { loadFieldOptions } from "../../fields";
 import { Layout } from "../../layout";
 import { ownsImage } from "../../services/image-storage";
-import type { CreateEntityRequest, CreateEntityResponse } from "../../shared/contracts";
+import type { CreateEntityResponse } from "../../shared/contracts";
 import { useTranslation } from "../../translation";
-import { parseId, readJson, type DefaultContext } from "../../utils";
+import { is, readJson, type DefaultContext } from "../../utils";
 import { cmsErrorResponse } from "./errors";
 
 export const handleNewEntityPage = async (c: DefaultContext) => {
   const user = c.get("user");
-  const { t } = useTranslation(c);
+  const { t, url } = useTranslation(c);
 
-  if (!user) return c.redirect("/login?redirect=/entities/new");
+  const { pathname, search } = new URL(c.req.url);
+  if (!user) return c.redirect(`${url("/login")}?redirect=${encodeURIComponent(pathname + search)}`);
+
+  // Listings of one type link here with that type
+  const requested = c.req.query("type") ?? "";
+  const selected = cms.isType(requested) ? requested : cms.types[0];
 
   const options = await Promise.all(
     cms.types.map((type) => loadFieldOptions(type)),
   );
 
   return c.render(
-    <Layout context={c} user={user} script="new-entity">
+    <Layout context={c} title={t("entities.addNew")} page="new-entity" noindex>
       <main data-create-url="/entities/new" data-upload-url="/images/upload">
-        <h1 class="text-3xl font-serif pb-2 mb-3 border-b">
-          {t("entities.addNew")}
-        </h1>
-
-        <div
-          id="error"
-          role="alert"
-          class="empty:hidden mb-3 p-3 border border-red-500 bg-red-100 text-red-700"
-        ></div>
+        <PageTitle>{t("entities.addNew")}</PageTitle>
+        <Notice tone="error" id="error" role="alert" />
 
         <div>
           <div class="mb-3">
             <label for="entity_type" class="font-semibold">{t("entities.entityTypeLabel")}</label>
-            <select class="mt-1 block w-full" name="entity_type" id="entity_type">
+            <Select t={t} class="mt-1 block w-full" name="entity_type" id="entity_type">
               {cms.types.map((type) => (
-                <option value={type}>{t(`entityType.${type}`)}</option>
+                <option value={type} selected={type === selected}>{t(`entityType.${type}`)}</option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <label class="block mb-3">
@@ -74,7 +74,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
             <div
               key={type}
               id={`tab-${type}`}
-              class={`tab-content ${index === 0 ? "" : "hidden"}`}
+              class={`tab-content ${type === selected ? "" : "hidden"}`}
             >
               {/* Fields without a label, like the description, have their own inputs above */}
               {Object.entries(fieldsOf(type)).map(
@@ -101,7 +101,7 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
             </div>
           ))}
 
-          <button id="submit_button" type="button" disabled>
+          <button id="submit_button" type="button" class="button-primary" disabled>
             {t("action.submit")}
           </button>
         </div>
@@ -110,23 +110,21 @@ export const handleNewEntityPage = async (c: DefaultContext) => {
   );
 };
 
+const createRequest = {
+  entity_type: is.oneOf(...cms.types),
+  name: is.text(),
+  description: is.text(),
+  image_id: is.nullable(is.id),
+  fields: is.optional(is.fields),
+};
+
 export const handleNewEntitySubmit = async (c: DefaultContext) => {
   const user = c.get("user");
-  const { t } = useTranslation(c);
   if (!user) return c.body("Unauthorized", 401);
 
-  const { entity_type, image_id, fields = {}, ...body } = await readJson<CreateEntityRequest>(c);
-  const name = typeof body.name === "string" ? body.name.trim() : "";
-  const description = typeof body.description === "string" ? body.description.trim() : "";
-
-  if (name.length < 3 || name.length > 255 || description.length < 3 || description.length > 20000)
-    return c.body(t("error.nameAndDescription"), 400);
-
-  if (!cms.isType(entity_type) || typeof fields !== "object" || Array.isArray(fields))
-    return c.body("Bad Request", 400);
-
-  const imageId = image_id == null ? null : parseId(image_id);
-  if (imageId === undefined) return c.body("Invalid image ID", 400);
+  const request = await readJson(c, createRequest);
+  if (!request) return c.text("Bad Request", 400);
+  const { entity_type, image_id: imageId, fields, name, description } = request;
 
   // Only images the user uploaded can be used
   if (imageId !== null && !await ownsImage(imageId, user.id)) return c.body("Image is unavailable", 400);
@@ -134,13 +132,15 @@ export const handleNewEntitySubmit = async (c: DefaultContext) => {
   // New entities start out as a pending version that a moderator has to approve
   try {
     const { entityId, versionId } = await cms.create(entity_type, {
-      values: { ...fields, name, description, image_id: imageId },
+      values: { ...fields, name: name.trim(), description: description.trim(), image_id: imageId },
       authorId: user.id,
     });
     return c.json({ id: versionId, entity_id: entityId } satisfies CreateEntityResponse);
   } catch (error) {
     if ((error as { code?: string }).code === "23503" && imageId !== null && !await ownsImage(imageId, user.id))
       return c.body("Image is unavailable", 400);
-    return cmsErrorResponse(c, error);
+    return cmsErrorResponse(c, error, {
+      invalidFields: { name: "error.nameAndDescription", description: "error.nameAndDescription" },
+    });
   }
 };

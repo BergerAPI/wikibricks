@@ -3,9 +3,9 @@ import { mkdir, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type postgres from "postgres";
 import { cms } from "../collections";
-import { sql, type Image, type User } from "../database";
+import { recordAudit, sql, type Image, type User } from "../database";
 import { isAdmin, isModerator } from "../utils";
-import { normalizeMimeType, optimizeImage, removeImageFile, writeImageSizes } from "./image-files";
+import { imageWidths, needsImageSizes, normalizeMimeType, optimizeImage, removeImageFile, writeImageSizes } from "./image-files";
 
 export const MAX_IMAGE_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_UPLOADS_PER_HOUR = 20;
@@ -116,8 +116,32 @@ export const preparePublishedImage = (id: number) => sql.begin(async (tx) => {
   if (image) await writeImageSizes(image);
 });
 
-export const deleteImage = async (id: number) => {
-  const [image] = await sql<Image[]>`DELETE FROM images WHERE id = ${id} RETURNING *`;
+// Revisit stored masters in small batches so approval remains recoverable after a restart.
+export const repairPublishedImageSizes = async (afterId: number) => {
+  const images = await sql<Image[]>`
+    SELECT i.* FROM images i
+    WHERE i.id > ${afterId} AND i.storage_type = 'local' AND i.mime_type = 'image/webp'
+      AND i.width > ${imageWidths.small} AND ${publicImage(sql)}
+    ORDER BY i.id LIMIT 50
+  `;
+  for (const image of images) {
+    try {
+      if (await needsImageSizes(image)) await preparePublishedImage(image.id);
+    } catch (error) {
+      console.error(`Could not repair sizes for image ${image.id}:`, error);
+    }
+  }
+  return images.at(-1)?.id ?? 0;
+};
+
+export const deleteImage = async (id: number, actorId: number) => {
+  const image = await sql.begin(async (tx) => {
+    const [deleted] = await tx<Image[]>`DELETE FROM images WHERE id = ${id} RETURNING *`;
+    if (deleted) await recordAudit(tx, {
+      actorId, userId: deleted.uploaded_by, action: "image_deleted", subject: deleted.original_filename,
+    });
+    return deleted;
+  });
   if (image) await removeImageFile(image);
 };
 

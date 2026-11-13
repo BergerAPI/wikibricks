@@ -1,6 +1,9 @@
 import type { Child, PropsWithChildren } from "hono/jsx";
 import { LANGUAGE_COOKIE, LANGUAGE_COOKIE_DAYS } from "../language";
+import { SEEN_COOKIE, SEEN_COOKIE_DAYS } from "./notifications";
+import { PageTitle } from "../components/ui";
 import { Layout } from "../layout";
+import { useTranslation } from "../translation";
 import type { DefaultContext } from "../utils";
 
 const operator = {
@@ -28,31 +31,30 @@ const Section = ({ heading, children }: PropsWithChildren<{ heading: string }>) 
   </section>
 );
 
-function renderLegalPage(c: DefaultContext, title: string, content: Child) {
-  c.header("X-Robots-Tag", "noindex");
+function renderLegalPage(c: DefaultContext, title: string, content: (url: (path: string) => string) => Child) {
   return c.render(
-    <Layout context={c} user={c.get("user")} title={`${title} | WikiBricks`}>
+    <Layout context={c} title={`${title}`} noindex>
       <main lang="de" class="mx-auto w-full max-w-3xl space-y-6">
-        <h1 class="border-b pb-2 font-serif text-3xl">{title}</h1>
-        {content}
+        <PageTitle>{title}</PageTitle>
+        {content(useTranslation(c).url)}
       </main>
     </Layout>,
   );
 }
 
 export const handleImprintPage = (c: DefaultContext) =>
-  renderLegalPage(c, "Impressum", <>
+  renderLegalPage(c, "Impressum", (url) => <>
     <Section heading="Anbieter und Kontakt">
       <OperatorAddress />
       <p>
         Hinweise zum Umgang mit personenbezogenen Daten stehen unter{" "}
-        <a href="/datenschutz">Datenschutz</a>.
+        <a href={url("/privacy")}>Datenschutz</a>.
       </p>
     </Section>
   </>);
 
 export const handlePrivacyPage = (c: DefaultContext) =>
-  renderLegalPage(c, "Datenschutz", <>
+  renderLegalPage(c, "Datenschutz", () => <>
     <Section heading="Verantwortlicher">
       <OperatorAddress />
     </Section>
@@ -73,9 +75,8 @@ export const handlePrivacyPage = (c: DefaultContext) =>
         Cloudflare-Einstellungen können Verarbeitungen außerhalb des EWR
         stattfinden.
       </p>
-      <p>
+      <p class="flex flex-wrap gap-x-4">
         <a href="https://www.hetzner.com/legal/privacy-policy/">Datenschutzhinweise von Hetzner</a>
-        {" · "}
         <a href="https://www.cloudflare.com/privacypolicy/">Datenschutzhinweise von Cloudflare</a>
       </p>
       <p>
@@ -111,6 +112,12 @@ export const handlePrivacyPage = (c: DefaultContext) =>
           Sprache der Oberfläche für {LANGUAGE_COOKIE_DAYS} Tage. Die
           Sprachauswahl in der Fußzeile ändert den gespeicherten Wert. Das
           Cookie lässt sich in den Browsereinstellungen löschen.
+        </li>
+        <li>
+          <code>{SEEN_COOKIE}</code> merkt sich bei angemeldeten Personen, wann
+          die Benachrichtigungen auf diesem Gerät zuletzt geöffnet wurden, damit
+          neue hervorgehoben werden. Es wird beim Öffnen der Benachrichtigungen
+          gesetzt und läuft nach {SEEN_COOKIE_DAYS} Tagen ab.
         </li>
       </ul>
       <p>
@@ -150,7 +157,7 @@ export const handlePrivacyPage = (c: DefaultContext) =>
   </>);
 
 export const handleTermsPage = (c: DefaultContext) =>
-  renderLegalPage(c, "Nutzungsbedingungen", <>
+  renderLegalPage(c, "Nutzungsbedingungen", (url) => <>
     <Section heading="Nutzung von WikiBricks">
       <p>
         WikiBricks ist ein gemeinschaftliches Nachschlagewerk über Klemmbausteine.
@@ -189,7 +196,7 @@ export const handleTermsPage = (c: DefaultContext) =>
         oder ablehnen. Wenn Sie einen möglicherweise rechtswidrigen
         Beitrag melden möchten, geben Sie die genaue Seitenadresse und
         den Grund Ihrer Meldung an. Die Kontaktdaten finden Sie im{" "}
-        <a href="/impressum">Impressum</a>.
+        <a href={url("/imprint")}>Impressum</a>.
       </p>
     </Section>
   </>);

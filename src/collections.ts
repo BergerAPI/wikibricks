@@ -1,5 +1,6 @@
 import { createCMS, define, type Entry, type Field, type Fields } from "@wikibricks/cms";
 import { postgresAdapter } from "@wikibricks/cms-postgres";
+import type postgres from "postgres";
 import { categories, type Category } from "./categories";
 import { sql } from "./database";
 import { migrations } from "./migrations";
@@ -115,10 +116,12 @@ const collections = {
   wiki: defineCollection({ dbName: "wikis", title: "name", fields: { ...common } }),
 };
 
-export const cms = createCMS({
-  db: postgresAdapter({ sql, migrations, actorTable: "users" }),
+export const createWikiCMS = (connection: postgres.Sql | postgres.TransactionSql) => createCMS({
+  db: postgresAdapter({ sql: connection, migrations, actorTable: "users" }),
   collections,
 });
+
+export const cms = createWikiCMS(sql);
 
 export type EntityType = keyof typeof collections;
 export type WikiEntry = Entry<EntityType>;

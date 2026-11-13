@@ -8,7 +8,7 @@ import { Select } from "./select";
 // Shorter lists are quicker to scan than to search.
 const SEARCHABLE_FROM = 10;
 
-const optionGroups =(options: FieldOption[]) => {
+const optionGroups = (options: FieldOption[]) => {
   const groups: { label: string; items: FieldOption[] }[] = [];
   for (const option of options) {
     const label = option.group ?? "";
@@ -34,21 +34,16 @@ export const EntityFieldInput = ({
   t,
   ...attributes
 }: FieldInputProps) => {
-  if (field.type === "boolean") {
-    return (
-      <select {...attributes}>
-        <option value="">{emptyLabel ?? t("select.placeholder")}</option>
-        <option value="true" selected={value === "true"}>{t("field.yes")}</option>
-        <option value="false" selected={value === "false"}>{t("field.no")}</option>
-      </select>
-    );
-  }
+  if (field.type === "boolean" || field.type === "select" || field.type === "relation") {
+    const items = field.type === "boolean" ? [
+      { value: "true", label: t("field.yes") },
+      { value: "false", label: t("field.no") },
+    ] : options.items;
 
-  if (field.type === "select" || field.type === "relation") {
     return (
-      <Select {...attributes} t={t} lookupUrl={options.lookupUrl} search={options.items.length > SEARCHABLE_FROM}>
+      <Select {...attributes} t={t} lookupUrl={options.lookupUrl} search={items.length > SEARCHABLE_FROM}>
         <option value="">{emptyLabel ?? t(field.meta.placeholder ?? "select.placeholder")}</option>
-        {optionGroups(options.items).map((group) => {
+        {optionGroups(items).map((group) => {
           const choices = group.items.map((option) => <option value={option.value} selected={option.value === value}>{option.label}</option>);
           return group.label ? <optgroup label={group.label}>{choices}</optgroup> : choices;
         })}

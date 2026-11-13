@@ -1,18 +1,50 @@
 import { accepts } from "hono/accepts";
 import { getCookie, setCookie } from "hono/cookie";
-import { parseLocalUrl } from "./local-url";
-import { getAvailableLanguages, isLanguageSupported } from "./translation";
-import type { DefaultContext } from "./utils";
+import {
+  getAvailableLanguages,
+  hasLanguage,
+  isLanguageSupported,
+  localPath,
+  stripLanguage,
+  type Language,
+} from "./translation";
+import { parseLocalUrl } from "./urls";
+import { routeParam, type DefaultContext } from "./utils";
 
 export const LANGUAGE_COOKIE = "wikibricks_lang";
 export const LANGUAGE_COOKIE_DAYS = 365;
 
-export async function detectLanguage(c: DefaultContext, next: () => Promise<void>) {
-  const candidates = [c.req.query("lang"), getCookie(c, LANGUAGE_COOKIE)];
-  const preferred = candidates.find(language =>
-    language !== undefined && isLanguageSupported(language)
-  );
+// Paths from before the pages had English names
+const renamedPaths: Record<string, string> = {
+  "/datenschutz": "/privacy",
+  "/impressum": "/imprint",
+  "/nutzungsbedingungen": "/terms",
+};
 
+// The language of a page is the first part of its path
+export async function detectLanguage(c: DefaultContext, next: () => Promise<void>) {
+  c.set("language", routeParam(c, "lang") as Language);
+
+  await next();
+  if (c.res.headers.get("Content-Type")?.startsWith("text/html")) {
+    c.header("Vary", "Cookie", { append: true });
+  }
+}
+
+/**
+ * Sends requests for a path without a language to the same page in the visitor's language.
+ */
+export function redirectToLanguage(c: DefaultContext) {
+  const url = new URL(c.req.url);
+  if (hasLanguage(url.pathname)) {
+    // /en/ is /en, anything else under a language that got here doesn't exist
+    return url.pathname.endsWith("/")
+      ? c.redirect(url.pathname.replace(/\/+$/, "") + url.search, 301)
+      : c.notFound();
+  }
+
+  const candidates = [url.searchParams.get("lang"), getCookie(c, LANGUAGE_COOKIE)];
+  const preferred = candidates.find((language) => language != null && isLanguageSupported(language));
   const language = preferred ?? accepts(c, {
     header: "Accept-Language",
     supports: getAvailableLanguages(),
@@ -22,12 +54,16 @@ export async function detectLanguage(c: DefaultContext, next: () => Promise<void
       .map(({ type }) => type.split("-")[0].toLowerCase())
       .find(isLanguageSupported) ?? "en",
   });
-  c.set("language", isLanguageSupported(language) ? language : "en");
 
-  await next();
-  if (c.res.headers.get("Content-Type")?.startsWith("text/html")) {
-    c.header("Vary", "Cookie, Accept-Language", { append: true });
-  }
+  url.searchParams.delete("lang");
+  const path = url.pathname.replace(/\/+$/, "") || "/";
+  c.header("Vary", "Cookie, Accept-Language");
+  c.header("Cache-Control", "no-store");
+  return c.redirect(
+    localPath(isLanguageSupported(language) ? language : "en", renamedPaths[path] ?? path) + url.search,
+    // Old links keep working for good, only the start page depends on who asks
+    path === "/" ? 302 : 301,
+  );
 }
 
 export async function handleLanguagePreference(c: DefaultContext) {
@@ -45,7 +81,6 @@ export async function handleLanguagePreference(c: DefaultContext) {
   }
 
   const target = parseLocalUrl(typeof returnTo === "string" ? returnTo : undefined);
-  target?.searchParams.delete("lang");
 
   setCookie(c, LANGUAGE_COOKIE, lang, {
     httpOnly: true,
@@ -55,5 +90,8 @@ export async function handleLanguagePreference(c: DefaultContext) {
     maxAge: LANGUAGE_COOKIE_DAYS * 24 * 60 * 60,
   });
   c.header("Cache-Control", "no-store");
-  return c.redirect(target ? target.pathname + target.search + target.hash : "/", 303);
+  return c.redirect(
+    target ? localPath(lang, stripLanguage(target.pathname)) + target.search + target.hash : localPath(lang, "/"),
+    303,
+  );
 }

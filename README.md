@@ -20,8 +20,9 @@ npm run build  # typecheck and production build
 npm start      # run the production build
 ```
 
-For production, set `NODE_ENV=production`, `DB_CONN`, and a unique `JWT_SECRET`
-of at least 32 characters.
+For production, set `NODE_ENV=production`, `DB_CONN`, a unique `JWT_SECRET`
+of at least 32 characters, and `SITE_URL` with the public address of the site,
+which canonical links and the sitemap are built from.
 
 Collections live in `src/collections.ts`. Migrations live in `src/migrations/`.
 

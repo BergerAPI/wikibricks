@@ -2,6 +2,7 @@ import type { Migration } from "@wikibricks/cms-postgres";
 import initial from "./0001-initial";
 import descriptionAndImageAsFields from "./0002-description-and-image-as-fields";
 import nameAsField from "./0003-name-as-field";
+import auditLog from "./0004-audit-log";
 
 /**
  * Schema changes, applied once each and in this order when the server starts,
@@ -20,4 +21,5 @@ export const migrations: Record<string, Migration> = {
   "0001-initial": initial,
   "0002-description-and-image-as-fields": descriptionAndImageAsFields,
   "0003-name-as-field": nameAsField,
+  "0004-audit-log": auditLog,
 };

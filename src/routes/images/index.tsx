@@ -3,6 +3,7 @@ import type { Next } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { cms } from "../../collections";
 import { sql } from "../../database";
+import { PageTitle } from "../../components/ui";
 import { Layout } from "../../layout";
 import { getImageUrl, imageWidths, openImageFile } from "../../services/image-files";
 import {
@@ -146,7 +147,7 @@ const Detail = ({ label, children }: { label: string; children: unknown }) => (
 export const handleImagePage = async (c: DefaultContext) => {
   c.header("Cache-Control", PRIVATE_CACHE);
   const user = c.get("user");
-  const { t, formatDateTime } = useTranslation(c);
+  const { t, url, formatDateTime } = useTranslation(c);
 
   const id = parseId(routeParam(c, "id"));
   const image = id && (await getVisibleImage(id, user));
@@ -158,18 +159,15 @@ export const handleImagePage = async (c: DefaultContext) => {
   const canDelete = isModerator(user) || (!!user && user.id === image.uploaded_by && !await cms.isReferenced("images", image.id));
 
   return c.render(
-    <Layout context={c} user={user} script={canDelete ? "delete" : undefined}>
+    <Layout context={c} title={image.original_filename} page={canDelete ? "delete" : undefined} noindex>
       <main>
-        <div class="flex flex-wrap justify-between items-center gap-x-4 gap-y-2 pb-2 mb-3 border-b">
-          <h1 class="text-3xl font-serif">{image.original_filename}</h1>
-          <div class="flex flex-wrap items-center gap-x-4">
-            <a href={getImageUrl(image.id)} target="_blank" class="inline-flex min-h-11 items-center">
-              {t("images.viewFull")}
-            </a>
+        <PageTitle
+          actions={<>
+            <a href={getImageUrl(image.id)} target="_blank">{t("images.viewFull")}</a>
             {canDelete && (
               <button
                 type="button"
-                class="border-0 px-0 text-red-600 hover:underline"
+                class="button-link text-red-700"
                 data-delete-url={`/images/${image.id}`}
                 data-delete-confirm={t("images.confirmDelete")}
                 data-delete-success={t("images.deleteSuccess")}
@@ -178,8 +176,10 @@ export const handleImagePage = async (c: DefaultContext) => {
                 {t("images.delete")}
               </button>
             )}
-          </div>
-        </div>
+          </>}
+        >
+          {image.original_filename}
+        </PageTitle>
 
         <div class="grid md:grid-cols-2 gap-6">
           <img
@@ -204,7 +204,7 @@ export const handleImagePage = async (c: DefaultContext) => {
               </Detail>
               <Detail label={t("images.uploadedBy")}>
                 {uploader ? (
-                  <a href={`/users/${image.uploaded_by}`}>
+                  <a href={url(`/users/${image.uploaded_by}`)}>
                     {uploader.username}
                   </a>
                 ) : (
@@ -231,8 +231,9 @@ export const handleImageDelete = async (c: DefaultContext) => {
   const image = id && (await getVisibleImage(id, user));
   if (!image) return c.text("Image not found", 404);
 
-  if (isModerator(user)) await deleteImage(image.id);
-  else {
+  if (isModerator(user)) {
+    await deleteImage(image.id, user.id);
+  } else {
     if (image.uploaded_by !== user.id) return c.text("Permission denied", 403);
     if (!await deleteUnusedImage(image.id, user.id)) return c.text(useTranslation(c).t("images.inUse"), 409);
   }

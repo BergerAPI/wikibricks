@@ -43,5 +43,8 @@ test("keeps Markdown in a hidden form value and renders the editor content on th
   assert.match(html, /<input[^>]*type="hidden"[^>]*name="description"/);
   assert.match(html, /<strong>Bricks<\/strong>/);
   assert.doesNotMatch(html, /<textarea|<script|contenteditable/);
-  assert.match(html, /role="group"/);
+  assert.match(html, /role="toolbar"/);
+  // Without a lookup there is nothing to link entries with
+  assert.doesNotMatch(html, /data-command="entity"|data-reference-form/);
+  assert.match(String(RichTextEditor({ id: "d", name: "d", value: "", t, referenceUrl: "/entities/options" })), /data-command="entity"/);
 });

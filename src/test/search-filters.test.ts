@@ -60,6 +60,8 @@ test("rejects invalid numeric, relation and select values before querying Postgr
     { "filter.weight.min": "1.5" },
     { "filter.weight.max": "999999999999999999999" },
     { "filter.owner": "not-an-id" },
+    { "filter.owner": "0" },
+    { "filter.owner": "-1" },
     { "filter.category": "unknown" },
   ];
   for (const params of cases)

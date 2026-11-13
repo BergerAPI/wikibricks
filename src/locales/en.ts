@@ -19,6 +19,16 @@ export default {
   "editor.removeLink": "Remove link",
   "editor.loading": "Loading editor…",
   "editor.error": "The editor could not be loaded. Reload the page to try again.",
+  "editor.strike": "Strikethrough",
+  "editor.code": "Inline code",
+  "editor.codeBlock": "Code block",
+  "editor.horizontalRule": "Divider",
+  "editor.blockType": "Text style",
+  "editor.linkText": "Text",
+  "editor.editLink": "Edit",
+  "editor.placeholder": "Write something about it…",
+  "editor.characters": "{count} / {max} characters",
+  "editor.entityHint": "Type [[ to link an entry",
   // Layout and Navigation
   "site.title": "Wikibricks - Your place to meet all your brick needs",
   "site.tagline": "Wikibricks",
@@ -37,6 +47,7 @@ export default {
   "action.seeAll": "See all",
   "action.returnHome": "Return to Home",
   "action.addEntity": "Add Entity",
+  "action.addType": "Add {type}",
   "action.submit": "Submit",
 
   // Authentication
@@ -81,13 +92,13 @@ export default {
   "home.welcome": "Welcome to Wikibricks!",
   "home.description":
     "Discover a world of creativity and engineering with Brick Wiki, the ultimate resource for toy brick enthusiasts. Whether you're a seasoned builder or a curious newcomer, we've got everything you need to explore the fascinating universe of toy bricks.",
-  "home.browseSets": "Browse Sets: ",
+  "home.browseSets": "Browse Sets",
   "home.browseSetsBrief":
     "Explore detailed information on iconic sets from your favorite brands.",
-  "home.learnBrands": "Learn About Brands: ",
+  "home.learnBrands": "Learn About Brands",
   "home.learnBrandsBrief":
     "Dive into the history and legacy of major brands like LEGO, BlueBrixx, and more.",
-  "home.exploreBricks": "Explore Bricks: ",
+  "home.exploreBricks": "Explore Bricks",
   "home.exploreBricksBrief":
     "Discover unique brick types, their uses, and how they bring your creations to life.",
   "home.latestSets": "Latest Sets",
@@ -95,12 +106,11 @@ export default {
 
   // Entity Management
   "entities.title": "Entities",
-  "entities.type": "Type",
   "entities.name": "Name",
-  "entities.date": "Date",
   "entities.searchByName": "Search by name",
   "entities.noResults": "No matching entries found.",
   "entities.clearSearch": "Clear search and filters",
+  "entities.filters": "Filters",
   "entities.min": "Minimum",
   "entities.max": "Maximum",
   "entities.anyValue": "Any",
@@ -132,9 +142,7 @@ export default {
   "user.title": "User:",
   "user.recentActivity": "Recent Activity",
   "user.noRecentActivity": "No recent activity",
-  "user.entity": "Entity",
   "user.version": "Version",
-  "user.userId": "User ID",
   "user.permissionLevel": "Role",
   "user.role.user": "Member",
   "user.role.moderator": "Moderator",
@@ -144,8 +152,6 @@ export default {
 
   // Changes
   "changes.title": "Change Requests",
-  "changes.changedBy": "Changed By",
-  "changes.message": "Message",
   "changes.empty": "No changes are waiting for review.",
 
   // Footer
@@ -159,14 +165,8 @@ export default {
 
   // Entity History
   "entity.history.title": "Version History:",
-  "entity.history.requestedChanges":
-    "Requested Changes for {name}. Click on a proposed version to view details. Listed in descending order.",
-  "entity.history.versionHistory":
-    "Version history for {name}. Click on a version to view details. Listed in descending order.",
   "entity.history.version": "Version",
-  "entity.history.created": "Created",
   "entity.history.author": "Author",
-  "entity.history.changeMessage": "Change Message",
 
   // Entity Page
   "entity.pieces": "Pieces",
@@ -186,6 +186,7 @@ export default {
   "entity.deleteFailed": "Failed to delete entity",
   "entity.cancel": "Cancel",
   "entity.editPage": "Edit Page",
+  "entity.currentVersion": "Current Version",
   "entity.versionHistory": "Version History",
   "entity.changeMessage": "Change Message",
   "entity.save": "Save",
@@ -231,11 +232,47 @@ export default {
   "review.before": "Before",
   "review.after": "After",
   "entity.history.reviewer": "Reviewed By",
-  "entity.history.reviewComment": "Review Comment",
-  "entity.history.rejected": "Rejected changes to {name}. Only moderators and their authors see these.",
-  "changes.kind": "Change",
   "changes.new": "New entity",
   "changes.edit": "Edit",
-  "user.status": "Status",
   "user.changeRole": "Change role",
+
+  // Administration
+  "nav.admin": "Admin",
+  "user.roleChanged": "The role has been changed.",
+  "admin.title": "Administration",
+  "admin.overview": "Overview",
+  "admin.users": "Users",
+  "admin.audit": "Audit Log",
+  "admin.accounts": "Accounts",
+  "admin.images": "Images",
+  "admin.searchUsers": "Search users by name",
+  "admin.noAudit": "Nothing has been recorded yet.",
+  "admin.allRoles": "All roles",
+  "admin.noUsers": "No users found.",
+  "admin.action": "Action",
+  "admin.allActions": "All actions",
+  "audit.account_created": "{subject} created an account",
+  "audit.role_changed": "{actor} changed the role of {subject}",
+  "audit.entity_deleted": "{actor} deleted {subject}",
+  "audit.image_deleted": "{actor} deleted the image {subject}",
+  "audit.version_approved": "{actor} approved a change to {subject}",
+  "audit.version_rejected": "{actor} rejected a change to {subject}",
+  "audit.label.account_created": "Account created",
+  "audit.label.role_changed": "Role changed",
+  "audit.label.entity_deleted": "Entity deleted",
+  "audit.label.image_deleted": "Image deleted",
+  "audit.label.version_approved": "Change approved",
+  "audit.label.version_rejected": "Change rejected",
+
+  // Notifications and paging
+  "nav.notificationsNew": "Notifications, {count} new",
+  "notify.title": "Notifications",
+  "notify.empty": "Nothing to see here yet. When your changes are reviewed, you'll find out here.",
+  "notify.new": "New",
+  "notify.pending": "Changes waiting for review: {count}",
+  "notify.approved": "Your change to {name} was approved",
+  "notify.rejected": "Your change to {name} was rejected",
+  "notify.roleChanged": "Your role was changed to {role}",
+  "action.page": "Page {page}",
+  "action.pages": "Pages",
 };

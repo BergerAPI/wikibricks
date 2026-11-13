@@ -25,7 +25,10 @@ const fieldLabel = (name: string) =>
 export const cmsErrorResponse = (
   c: DefaultContext,
   error: unknown,
-  messages: Partial<Record<CmsErrorCode, MessageKey>> = {},
+  { messages = {}, invalidFields = {} }: {
+    messages?: Partial<Record<CmsErrorCode, MessageKey>>;
+    invalidFields?: Partial<Record<string, MessageKey>>;
+  } = {},
 ) => {
   if (!(error instanceof CmsError)) throw error;
 
@@ -33,6 +36,7 @@ export const cmsErrorResponse = (
   const [status, message] = responses[error.code];
   if (error.code === "taken" && error.field === "name") return c.body(t("error.nameTaken"), status);
 
+  const fieldMessage = error.code === "invalid" && error.field && invalidFields[error.field];
   const label = error.field && fieldLabel(error.field);
-  return c.body(t(messages[error.code] ?? message, { field: label ? t(label) : (error.field ?? "") }), status);
+  return c.body(t(fieldMessage || messages[error.code] || message, { field: label ? t(label) : (error.field ?? "") }), status);
 };

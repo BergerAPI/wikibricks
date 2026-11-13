@@ -37,6 +37,7 @@ services:
       - UPLOAD_DIR=/app/data
       - ASSET_STORE_DIR=/app/shared-assets/files
       - JWT_SECRET=${JWT_SECRET:?set JWT_SECRET}
+      - SITE_URL=${SITE_URL:?set SITE_URL}
       - GITHUB_URL=${GITHUB_URL:-https://github.com/BergerAPI/wikibricks}
     ports:
       - "3000:3000"

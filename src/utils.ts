@@ -1,3 +1,4 @@
+import { parseId } from "@wikibricks/cms";
 import type { Context, Next } from "hono";
 import { deleteCookie, getCookie } from "hono/cookie";
 import { sign, verify } from "hono/jwt";
@@ -7,8 +8,8 @@ import type { Language } from "./translation";
 export type Variables = {
   user?: User | null;
   language?: Language;
-  /** How many changes wait for review, set for moderators only */
-  pendingChanges?: number;
+  /** How many notifications are new, set for users who are logged in */
+  notifications?: number;
 };
 
 export type DefaultContext = Context<{ Variables: Variables }>;
@@ -44,21 +45,46 @@ export const routeParam = (c: Context, name: string) => {
   return value;
 };
 
+export { parseId };
+
+const invalid = Symbol("invalid");
+
+/** Turns a value of a request into what the handler works with, or marks it invalid */
+type Parser<T> = (value: unknown) => T | typeof invalid;
+
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === "object" && !Array.isArray(value);
+
 /**
- * Parses a database ID from a route parameter or request body.
- * Returns undefined for anything that isn't a positive integer.
+ * The values requests may contain. Each one accepts its kind of value and nothing else.
  */
-export const parseId = (value: unknown) => {
-  const id = Number(value);
-  return Number.isInteger(id) && id > 0 ? id : undefined;
+export const is = {
+  /** Required text must contain something besides whitespace. */
+  text: ({ max = Infinity, required = false } = {}): Parser<string> => (value) =>
+    typeof value === "string" && value.length <= max && (!required || value.trim()) ? value : invalid,
+  id: (value: unknown) => parseId(value) ?? invalid,
+  oneOf: <const T extends string>(...options: T[]): Parser<T> => (value) =>
+    options.includes(value as T) ? (value as T) : invalid,
+  /** Collection fields are validated by the CMS once the collection is known. */
+  fields: (value: unknown) => isObject(value) ? value : invalid,
+  optional: <T>(parse: Parser<T>): Parser<T | undefined> => (value) => (value === undefined ? undefined : parse(value)),
+  nullable: <T>(parse: Parser<T>): Parser<T | null> => (value) => (value == null ? null : parse(value)),
 };
 
 /**
- * Reads a JSON object from the request body. Anything else, including invalid JSON, yields an empty object.
+ * Reads a JSON request body with a parser for each key. Returns undefined when any value doesn't fit.
  */
-export const readJson = async <T>(c: Context): Promise<Partial<T>> => {
-  const body = await c.req.json().catch(() => undefined);
-  return body && typeof body === "object" && !Array.isArray(body) ? body : {};
+export const readJson = async <S extends Record<string, Parser<unknown>>>(c: Context, shape: S) => {
+  const body: unknown = await c.req.json().catch(() => undefined);
+  if (!isObject(body)) return;
+
+  const result: Record<string, unknown> = {};
+  for (const [key, parse] of Object.entries(shape)) {
+    const value = parse(Object.hasOwn(body, key) ? body[key] : undefined);
+    if (value === invalid) return;
+    result[key] = value;
+  }
+  return result as { [K in keyof S]: Exclude<ReturnType<S[K]>, typeof invalid> };
 };
 
 const DEV_SECRET = "dev-only-insecure-secret-change-me";
