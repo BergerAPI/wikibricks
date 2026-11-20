@@ -223,6 +223,8 @@ export const createCMS = <const C extends Collections<any>>({ db, collections, r
     referencing: (entityId: number, limit = 100, options?: { offset?: number }) =>
       adapter.referencing(entityId, limit, options) as Promise<Reference<Type>[]>,
     isReferenced: (table: string, id: number) => adapter.isReferenced(table, id),
+    /** Values a field already has, like the themes sets use */
+    values: (type: Type, field: string) => adapter.values(type, field),
 
     /**
      * Creates an entry. Its first version waits for review, unless the collection has no review.

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { afterEach, mock, test } from "node:test";
+import { afterEach, beforeEach, mock, test } from "node:test";
 import type { FindQuery } from "@wikibricks/cms";
 import { Hono } from "hono";
 import { cms } from "../collections";
@@ -8,6 +8,7 @@ import { handleEntityOptions, handleRelationOptions } from "../routes/entities/o
 import type { SelectOptionsResponse } from "../shared/contracts";
 
 afterEach(() => mock.restoreAll());
+beforeEach(() => { mock.method(cms, "values", async () => []); });
 
 const entries = (count: number) => Array.from({ length: count }, (_, index) => ({
   entityId: index + 1, title: `Choice ${index + 1}`,
@@ -41,12 +42,17 @@ test("does not serialize the first page into an unselected large picker", async 
   assert.ok(options.lookupUrl);
 });
 
-test("keeps CMS select options as ordinary selects", async () => {
+test("offers the known themes and the ones users added", async () => {
   const list = mock.method(cms, "list", async () => []);
-  const options = (await loadFieldOptions("set")).theme;
+  mock.method(cms, "values", async () => ["Kunst", "lego-nature-farm"]);
+  const options = (await loadFieldOptions("set", { theme: "Weltraum" })).theme;
   assert.deepEqual(options.items.find((option) => option.value === "lego-nature-farm"), {
     value: "lego-nature-farm", label: "Bauernhof", group: "Lego / Natur",
   });
+  assert.deepEqual(options.items.slice(-2), [
+    { value: "Kunst", label: "Kunst" },
+    { value: "Weltraum", label: "Weltraum" },
+  ]);
   assert.equal(options.lookupUrl, undefined);
   assert.equal(list.mock.callCount(), 1);
 });

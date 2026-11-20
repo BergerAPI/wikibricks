@@ -9,6 +9,7 @@ test("returns a filtered set search to the first page when its offset exceeds th
   const list = context.mock.method(cms, "list", async (query: FindQuery) =>
     query.type === "set" && !query.offset ? [{ entityId: 1, title: "City Bus" }] : [],
   );
+  context.mock.method(cms, "values", async () => []);
   const app = new Hono().get("/entities/search", handleSearchPage);
   const response = await app.request("/entities/search?entity_type=set&filter.pieces.min=100&page=1");
 

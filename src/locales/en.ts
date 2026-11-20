@@ -123,6 +123,7 @@ export default {
   "select.empty": "No matching entries found.",
   "select.more": "More matches available. Refine your search.",
   "select.error": "Could not load suggestions. Type again to retry.",
+  "select.create": "Add “{value}”",
   "entities.changeRequests": "Change Requests",
   "entities.addNew": "Add New Entity",
   "entities.entityTypeLabel": "Entity Type",
@@ -130,7 +131,7 @@ export default {
   "entities.descriptionLabel": "Description",
   "entities.imageLabel": "Image",
   "entities.selectBrand": "Select a brand",
-  "entities.selectTheme": "Select a theme",
+  "entities.selectTheme": "Select or enter a theme",
 
   // Entity Types
   "entityType.all": "All",
@@ -170,13 +171,19 @@ export default {
 
   // Entity Page
   "entity.pieces": "Pieces",
-  "entity.size": "Size",
+  "entity.brickSize": "Brick size",
+  "entity.brickSizeHint": "e.g. Mini, Standard",
+  "entity.setSize": "Set size",
+  "entity.setSizeHint": "e.g. 5 cm x 6 cm x 7 cm",
   "entity.theme": "Theme",
   "entity.issued": "Issued",
   "entity.issuedHint": "YYYY, MM.YYYY or DD.MM.YYYY",
   "entity.brand": "Brand",
   "entity.country": "Country",
   "entity.website": "Website",
+  "entity.addImage": "Add image",
+  "entity.replaceImage": "Replace image",
+  "entity.removeImage": "Remove image",
   "entity.imageOf": "Image of {name}",
   "entity.referencedBy": "Linked from",
   "entity.delete": "Delete",

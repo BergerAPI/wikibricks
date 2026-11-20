@@ -44,13 +44,19 @@ export default function mount(element: HTMLElement) {
     // The server has already matched looked-up options.
     searchField: url ? [] : ["text"],
     allowEmptyOption: true,
-    create: false,
+    create: !!messages.createMessage,
     highlight: false,
     maxOptions: null,
     loadThrottle: 200,
     shouldLoad: () => true,
     render: {
       no_results: () => note(messages.emptyMessage!),
+      option_create: ({ input }: { input: string }) => {
+        const node = document.createElement("div");
+        node.className = "create";
+        node.textContent = messages.createMessage!.replace("{value}", input);
+        return node;
+      },
       loading: () => note(messages.loadingMessage!),
     },
     onDropdownOpen(this: TomSelect) { if (url) this.load(this.control_input.value); },

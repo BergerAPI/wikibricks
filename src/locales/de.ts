@@ -126,6 +126,7 @@ export default {
   "select.empty": "Keine passenden Einträge gefunden.",
   "select.more": "Weitere Treffer vorhanden. Grenzen Sie die Suche ein.",
   "select.error": "Vorschläge konnten nicht geladen werden. Zum Wiederholen erneut tippen.",
+  "select.create": "„{value}“ hinzufügen",
   "entities.changeRequests": "Änderungsanfragen",
   "entities.addNew": "Neu hinzufügen",
   "entities.entityTypeLabel": "Elementtyp",
@@ -133,7 +134,7 @@ export default {
   "entities.descriptionLabel": "Beschreibung",
   "entities.imageLabel": "Bild",
   "entities.selectBrand": "Marke auswählen",
-  "entities.selectTheme": "Thema auswählen",
+  "entities.selectTheme": "Thema auswählen oder neu eingeben",
 
   // Entity Types
   "entityType.all": "Alle",
@@ -173,13 +174,19 @@ export default {
 
   // Entity Page
   "entity.pieces": "Teile",
-  "entity.size": "Größe",
+  "entity.brickSize": "Steinegröße",
+  "entity.brickSizeHint": "z. B. Mini, Standard",
+  "entity.setSize": "Setgröße",
+  "entity.setSizeHint": "z. B. 5 cm x 6 cm x 7 cm",
   "entity.theme": "Thema",
   "entity.issued": "Ausgegeben",
   "entity.issuedHint": "YYYY oder MM.YYYY oder DD.MM.YYYY",
   "entity.brand": "Marke",
   "entity.country": "Land",
   "entity.website": "Website",
+  "entity.addImage": "Bild hinzufügen",
+  "entity.replaceImage": "Bild ersetzen",
+  "entity.removeImage": "Bild entfernen",
   "entity.imageOf": "Bild von {name}",
   "entity.referencedBy": "Verlinkt von",
   "entity.delete": "Löschen",

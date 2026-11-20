@@ -36,7 +36,8 @@ export function readSearchFilters(fields: Record<string, Field<FieldUi>>, query:
     const value = read(key);
     if (!value) continue;
     switch (field.type) {
-      case "text": where[name] = { contains: value }; break;
+      // Fields with suggestions store whole values, like the ID of a theme
+      case "text": where[name] = field.meta.tree ? value : { contains: value }; break;
       case "select":
         if (!field.options.includes(value)) throw new Error("Invalid search filter");
         where[name] = value;

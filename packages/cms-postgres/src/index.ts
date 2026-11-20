@@ -402,6 +402,14 @@ export const postgresAdapter =
         return rows.map((row) => ({ entityId: row.id, type: row.type, title: row.title, field: row.field }));
       },
 
+      async values(type, field) {
+        const rows = await sql<{ value: unknown }[]>`
+          SELECT DISTINCT ${sql(field)} AS value FROM ${sql(`${type}_view`)}
+          WHERE ${sql(field)} IS NOT NULL ORDER BY value
+        `;
+        return rows.map(({ value }) => value);
+      },
+
       async isReferenced(table, id) {
         const { collectionTables, itemTables } = valueTables(collections);
 

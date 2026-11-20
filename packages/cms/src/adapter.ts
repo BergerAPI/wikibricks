@@ -84,6 +84,8 @@ export interface DatabaseAdapter extends Store {
   referencing(entityId: number, limit: number, options?: { offset?: number }): Promise<Reference[]>;
   /** Whether any version still points at a row of a table outside the CMS */
   isReferenced(table: string, id: number): Promise<boolean>;
+  /** The distinct values a field has in the current entries of a collection, sorted */
+  values(type: string, field: string): Promise<unknown[]>;
 }
 
 /** Adapters are created with the collections they store */

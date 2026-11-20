@@ -34,14 +34,21 @@ export const EntityFieldInput = ({
   t,
   ...attributes
 }: FieldInputProps) => {
-  if (field.type === "boolean" || field.type === "select" || field.type === "relation") {
+  if (field.type === "boolean" || field.type === "select" || field.type === "relation" || field.meta.tree) {
     const items = field.type === "boolean" ? [
       { value: "true", label: t("field.yes") },
       { value: "false", label: t("field.no") },
     ] : options.items;
 
     return (
-      <Select {...attributes} t={t} lookupUrl={options.lookupUrl} search={items.length > SEARCHABLE_FROM}>
+      // Search filters only offer values that exist
+      <Select
+        {...attributes}
+        t={t}
+        lookupUrl={options.lookupUrl}
+        search={items.length > SEARCHABLE_FROM}
+        create={field.type === "text" && emptyLabel === undefined}
+      >
         <option value="">{emptyLabel ?? t(field.meta.placeholder ?? "select.placeholder")}</option>
         {optionGroups(items).map((group) => {
           const choices = group.items.map((option) => <option value={option.value} selected={option.value === value}>{option.label}</option>);

@@ -9,7 +9,7 @@ const fields: Record<string, Field<FieldUi>> = {
   name: { type: "text", meta: {} },
   notes: { type: "text", meta: { label: "entities.descriptionLabel" } },
   weight: { type: "number", meta: { label: "entity.pieces" } },
-  category: { type: "select", options: ["small", "large"], meta: { label: "entity.size" } },
+  category: { type: "select", options: ["small", "large"], meta: { label: "entity.brickSize" } },
   owner: { type: "relation", to: "anything", meta: { label: "entity.brand" } },
   nested: { type: "array", fields: {}, meta: { label: "entity.theme" } },
 };
@@ -70,7 +70,7 @@ test("rejects invalid numeric, relation and select values before querying Postgr
 
 test("supports boolean and date fields added to a CMS collection", () => {
   const extra: Record<string, Field<FieldUi>> = {
-    active: { type: "boolean", meta: { label: "entity.size" } },
+    active: { type: "boolean", meta: { label: "entity.brickSize" } },
     published: { type: "date", meta: { label: "entity.issued" } },
   };
   assert.deepEqual(readSearchFilters(extra, new URLSearchParams({

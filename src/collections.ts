@@ -18,14 +18,14 @@ export type FieldUi = {
   hint?: TranslationKey;
   /** First, empty option of select and relation fields */
   placeholder?: TranslationKey;
-  /** Shows the options of a select field as this tree, with the parents as group headers */
+  /**
+   * Shows the options of a select field as this tree, with the parents as group headers.
+   * On a text field they are suggestions, and users can add their own value.
+   */
   tree?: Category[];
   /** Turns a stored value into a link target */
   link?: (value: string) => string;
 };
-
-const leafIds = (tree: Category[]): string[] =>
-  tree.flatMap((category) => (category.children?.length ? leafIds(category.children) : [category.id]));
 
 // Every entity has a unique name, a description and may have an image
 const common = {
@@ -64,11 +64,12 @@ const collections = {
         validate: (value) => Number(value) >= 0,
         meta: { label: "entity.pieces" },
       },
-      size: { type: "text", maxLength: 64, required: true, meta: { label: "entity.size" } },
+      size: { type: "text", maxLength: 64, required: true, meta: { label: "entity.brickSize", hint: "entity.brickSizeHint" } },
+      set_size: { type: "text", maxLength: 64, meta: { label: "entity.setSize", hint: "entity.setSizeHint" } },
+      // Stores the ID of a known category, or the name of one a user added
       theme: {
-        type: "select",
-        options: leafIds(categories),
-        required: true,
+        type: "text",
+        validate: (value) => value.trim().length <= 100,
         meta: { label: "entity.theme", placeholder: "entities.selectTheme", tree: categories },
       },
       issued: {

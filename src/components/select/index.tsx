@@ -7,18 +7,21 @@ type SelectProps = PropsWithChildren<JSX.IntrinsicElements["select"] & {
   search?: boolean;
   /** Searches the options on the server instead of listing them all */
   lookupUrl?: string;
+  /** Lets users add the searched text as a new value */
+  create?: boolean;
 }>;
 
 /**
  * A native select. Only long or server-backed lists get the searchable dropdown,
  * so short ones keep the system picker and need no script.
  */
-export const Select = ({ t, search, lookupUrl, children, class: className, ...attributes }: SelectProps) =>
-  search || lookupUrl ? (
+export const Select = ({ t, search, lookupUrl, create, children, class: className, ...attributes }: SelectProps) =>
+  search || lookupUrl || create ? (
     <div
       class={`min-w-0 ${className ?? ""}`}
       data-include-script="components/select"
       data-options-url={lookupUrl}
+      data-create-message={create ? t("select.create") : undefined}
       data-search-label={t("select.search")}
       data-loading-message={t("select.loading")}
       data-empty-message={t("select.empty")}

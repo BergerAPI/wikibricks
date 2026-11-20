@@ -77,11 +77,63 @@ function deletion(root: HTMLElement) {
   }
 }
 
+// The server keeps at most this many pixels per edge anyway.
+const MAX_IMAGE_EDGE = 2048;
+
+/**
+ * Scales large photos down before they are sent, so phone pictures stay well within the upload limit.
+ */
+async function shrinkImage(file: File): Promise<Blob> {
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    // The server explains what it can't read
+    return file;
+  }
+
+  const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(bitmap.width, bitmap.height));
+  if (scale === 1 && file.size <= 2 * 1024 * 1024) {
+    bitmap.close();
+    return file;
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  // PNGs may be transparent, which JPEG can't keep
+  const type = file.type === "image/png" ? "image/png" : "image/jpeg";
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.9));
+  return blob && blob.size < file.size ? blob : file;
+}
+
+/**
+ * Uploads the chosen image once, even when the form is sent again after an error.
+ */
+function imageUploader(fileInput: HTMLInputElement, uploadUrl: string) {
+  let uploaded: { file: File; id: number } | undefined;
+  fileInput.addEventListener("change", () => { uploaded = undefined; });
+
+  return async (file: File) => {
+    if (uploaded?.file === file) return uploaded.id;
+    const upload = new FormData();
+    upload.append("file", await shrinkImage(file), file.name);
+    const { id } = await (await request(uploadUrl, { method: "POST", body: upload })).json() as UploadImageResponse;
+    if (fileInput.files?.[0] === file) uploaded = { file, id };
+    return id;
+  };
+}
+
 function editEntity(root: HTMLElement) {
   const page = root.querySelector<HTMLElement>("[data-edit-url]")!;
-  const { editUrl, historyUrl, baseVersionId } = page.dataset;
+  const { editUrl, historyUrl, baseVersionId, uploadUrl } = page.dataset;
   const message = page.querySelector<HTMLInputElement>("#change_message")!;
   const description = page.querySelector<HTMLInputElement>('[name="description"]')!;
+  const fileInput = page.querySelector<HTMLInputElement>("#image_file")!;
+  const removeImage = page.querySelector<HTMLInputElement>("#remove_image");
+  const uploadImage = imageUploader(fileInput, uploadUrl!);
 
   // Only changed values are sent, so remember what each field started with
   const controls = [...page.querySelectorAll<HTMLInputElement | HTMLSelectElement>("[data-edit-field]"), description];
@@ -92,6 +144,9 @@ function editEntity(root: HTMLElement) {
     for (const [control, value] of initial) {
       if (control !== description && control.value !== value) fields[control.dataset.editField!] = control.value;
     }
+    const file = fileInput.files?.[0];
+    if (file) fields.image_id = String(await uploadImage(file));
+    else if (removeImage?.checked) fields.image_id = "";
     const body: EditEntityRequest = { fields, baseVersionId: Number(baseVersionId), changeMessage: message.value };
     if (description.value !== initial.get(description)) body.description = description.value;
 
@@ -104,6 +159,7 @@ function newEntity(root: HTMLElement) {
   const page = root.querySelector<HTMLElement>("[data-create-url]")!;
   const { createUrl, uploadUrl } = page.dataset;
   const fileInput = page.querySelector<HTMLInputElement>("#image_file")!;
+  const uploadImage = imageUploader(fileInput, uploadUrl!);
   const typeSelect = page.querySelector<HTMLSelectElement>("#entity_type")!;
   const valueOf = (name: string) => page.querySelector<HTMLInputElement>(`[name="${name}"]`)?.value ?? "";
 
@@ -112,9 +168,6 @@ function newEntity(root: HTMLElement) {
       panel.classList.toggle("hidden", panel.id !== `tab-${typeSelect.value}`);
     }
   });
-
-  let uploaded: { file: File; id: number } | undefined;
-  fileInput.addEventListener("change", () => { uploaded = undefined; });
 
   setUpForm(page, [page.querySelector("#submit_button")!], async () => {
     const file = fileInput.files?.[0];
@@ -132,17 +185,7 @@ function newEntity(root: HTMLElement) {
       image_id: null,
       fields,
     };
-    if (file) {
-      if (uploaded?.file === file) {
-        body.image_id = uploaded.id;
-      } else {
-        const upload = new FormData();
-        upload.append("file", file);
-        const { id } = await (await request(uploadUrl!, { method: "POST", body: upload })).json() as UploadImageResponse;
-        body.image_id = id;
-        if (fileInput.files?.[0] === file) uploaded = { file, id };
-      }
-    }
+    if (file) body.image_id = await uploadImage(file);
     const { id, entity_id } = await (await sendJson(createUrl!, body)).json() as CreateEntityResponse;
     return `/entities/${entity_id}?version=${id}`;
   });

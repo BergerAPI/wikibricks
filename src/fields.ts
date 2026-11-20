@@ -24,6 +24,15 @@ export const loadFieldOptions = async (type: EntityType, values: Record<string, 
   const options: Record<string, FieldOptions> = {};
 
   for (const [name, field] of Object.entries(fieldsOf(type))) {
+    if (field.type === "text" && field.meta.tree) {
+      const known = treeOptions(field.meta.tree);
+      // Values users added are offered too, so the next set can reuse them
+      const used = await cms.values(type, name);
+      const added = [...new Set([...used, values[name]].map((value) => String(value ?? "")))]
+        .filter((value) => value && !known.some((option) => option.value === value));
+      options[name] = { items: [...known, ...added.map((value) => ({ value, label: value }))] };
+    }
+
     if (field.type === "select") {
       options[name] = {
         items: field.meta.tree
@@ -81,7 +90,7 @@ export const displayField = (
   value: string,
   relationName?: string,
 ): { text: string; href?: string } => {
-  if (field.type === "select" && field.meta.tree) {
+  if (field.meta.tree) {
     const category = treeOptions(field.meta.tree).find((option) => option.value === value);
     return { text: category?.label ?? value };
   }
